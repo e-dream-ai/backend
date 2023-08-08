@@ -1,0 +1,34 @@
+require("dotenv/config");
+import cors from "cors";
+import express, { Request, Response, NextFunction } from "express";
+// const swaggerUi = require('swagger-ui-express');
+// import swaggerDoc from "./swagger";
+import { json } from "body-parser";
+
+const app: express.Application = express();
+const port = process.env.PORT ?? 8080;
+const version = process.env.npm_package_version
+
+const routes = []
+
+const customHeaders = (req: Request, res: Response, next: NextFunction) => {
+    app.disable("x-powered-by");
+    res.setHeader("X-Powered-By", `e-dream.ai ${version}`);
+    next();
+}
+
+app.use(json());
+app.use(cors());
+app.use(customHeaders);
+
+routes.push();
+
+app.get("/", (req: Request, res: Response) => {
+    res
+        .status(200)
+        .send({ message: `e-dream.ai is running api at version ${version}` });
+});
+
+app.listen(port, () => {
+    console.debug(`e-dream.ai api ${version} started on port ${port}`);
+});

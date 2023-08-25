@@ -1,0 +1,41 @@
+version: '3'
+services:
+  e-dream-ai-api:
+    build: .
+    ports:
+      - 4000:4000
+    environment:
+      - JWT_SECRET=jwt_secret
+      - PORT=4000
+      - FRONTEND_CORS_URL=https://localhost:3000/
+      - PGSSLMODE=no-verify
+      - TYPEORM_CONNECTION=postgres
+      - TYPEORM_DATABASE=postgres
+      - TYPEORM_ENTITIES=src/entities/**/*.ts
+      - TYPEORM_HOST=postgres
+      - TYPEORM_LOGGING=false
+      - TYPEORM_MIGRATIONS=src/migrations/**/*.ts
+      - TYPEORM_MIGRATIONS_RUN=false
+      - TYPEORM_PASSWORD=Pass2023!
+      - TYPEORM_PORT=5432
+      - TYPEORM_SYNCHRONIZE=true
+      - TYPEORM_USERNAME=postgres
+      - TYPEORM_SSL=false
+      - TYPEORM_DRIVER_EXTRA={"ssl":false}
+    links:
+      - postgres
+    volumes:
+      - .:/app
+  postgres:
+    image: postgres:15.4
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Pass2023!
+      - POSTGRES_DB=postgres
+    logging:
+      options:
+        max-size: 10m
+        max-file: '3'
+    ports:
+      - '5432:5432'

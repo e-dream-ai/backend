@@ -26,7 +26,7 @@ routes.push();
 app.get("/", (req: Request, res: Response) => {
     res
         .status(200)
-        .send({ message: `e-dream.ai is running api at version ${version}` });
+        .send({ message: `e-dream.ai is running api at version ${version}`, version });
 });
 
 app.listen(port, () => {

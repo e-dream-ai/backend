@@ -16,7 +16,8 @@
     "dev": "nodemon -r dotenv/config --watch 'src/' --exec ts-node src/index.ts -e ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint . --ext .js,.ts",
-    "lint:fix": "eslint . --fix --ext .js,.ts"
+    "lint:fix": "eslint . --fix --ext .js,.ts",
+    "create-env-file": "cp .env.example .env"
   },
   "repository": {
     "type": "git",

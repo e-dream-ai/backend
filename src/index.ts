@@ -6,6 +6,7 @@ import express, { Request, Response, NextFunction } from "express";
 import { json } from "body-parser";
 import { PostgresService } from "./infra/postgres.service";
 import { validateEnv } from "./shared/validateEnv";
+import { APP_LOGGER } from "./shared/logger";
 
 validateEnv();
 
@@ -35,6 +36,6 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.listen(port, async () => {
-  console.debug(`e-dream.ai api ${version} started on port ${port}`);
+  APP_LOGGER.info(`e-dream.ai api ${version} started on port ${port}`);
   await postgresService.connect();
 });

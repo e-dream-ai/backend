@@ -21,10 +21,11 @@ export class PostgresService {
     });
 
     this.conn.initialize().then(() => {
-      console.log("Connected with postgres");
+      APP_LOGGER.info("Connected with postgres");
     })
       .catch((err: any) => {
-        console.error("Error during postgres connection", err);
+        APP_LOGGER.error("Error during postgres connection", err);
+        console.error(err);
       });
   }
 

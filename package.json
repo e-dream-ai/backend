@@ -3,12 +3,13 @@
   "version": "0.0.1",
   "description": "Backend of e-dream.ai",
   "main": "index.js",
+  "type": "commonjs",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "start": "node dist/index.js",
     "postinstall": "tsc",
     "build": "rm -rf dist & tsc --build",
     "watch-node": "nodemon dist/index.js",

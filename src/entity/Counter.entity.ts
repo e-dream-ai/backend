@@ -2,7 +2,7 @@ import { Entity, Column, PrimaryGeneratedColumn } from "typeorm";
 
 export type KeyCounterType = "general-conter";
 
-@Entity({ name: "counter", schema: "public" })
+@Entity("counter")
 export class Counter {
   @PrimaryGeneratedColumn()
   id: number;

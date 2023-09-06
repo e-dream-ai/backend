@@ -1,6 +1,7 @@
 require("dotenv/config");
 import path from "path";
 import { DataSource } from "typeorm";
+import * as entities from "../entity";
 
 const appDataSource = new DataSource({
   type: "postgres",
@@ -10,7 +11,7 @@ const appDataSource = new DataSource({
   password: process.env.TYPEORM_PASSWORD || "postgres",
   database: process.env.TYPEORM_DATABASE || "postgres",
   migrationsTableName: "migrations",
-  entities: [path.join(__dirname, "..", "entity/**/*.{ts,js}")],
+  entities: [...Object.values(entities)],
   migrations: [path.join(__dirname, "..", "migrations/**/*.{ts,js}")],
   synchronize: false,
   ssl: {

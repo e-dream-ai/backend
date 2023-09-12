@@ -1,16 +1,19 @@
-require("dotenv/config");
-import cors from "cors";
-import express, { Request, Response, NextFunction } from "express";
-import { json } from "body-parser";
-import { validateEnv } from "./shared/validateEnv";
-import { APP_LOGGER } from "./shared/logger";
-import { Counter } from "./entity/Counter.entity";
-import appDataSource from "./database/app-data-source";
+import "dotenv/config";
 
-validateEnv();
+import { json } from "body-parser";
+import cors from "cors";
+import appDataSource from "database/app-data-source";
+import express, { NextFunction, Request, Response } from "express";
+import httpStatus from "http-status";
+import { errorMiddleware } from "middlewares/error.middleware";
+import authRouter from "routes/v1/auth.router";
+import env from "shared/env";
+
+import { APP_LOGGER } from "./shared/logger";
+
 const app: express.Application = express();
-const port = process.env.PORT ?? 8080;
-const version = process.env.npm_package_version;
+const port = env.PORT ?? 8080;
+const version = env.npm_package_version;
 
 const customHeaders = (req: Request, res: Response, next: NextFunction) => {
   app.disable("x-powered-by");
@@ -18,8 +21,16 @@ const customHeaders = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
+// parse json request body
 app.use(json());
+
+// cors middleware
 app.use(cors());
+
+// parse urlencoded request body
+app.use(express.urlencoded({ extended: true }));
+
+// custom headers
 app.use(customHeaders);
 
 // establish database connection
@@ -33,49 +44,30 @@ appDataSource
     console.error(err);
   });
 
-// register routes
+/**
+ * Register routes
+ */
+
+// main route
 app.get("/", (req: Request, res: Response) => {
   res
-    .status(200)
+    .status(httpStatus.OK)
     .send({ message: `e-dream.ai is running api at version ${version}` });
 });
 
-app.get("/counter", async (req: Request, res: Response) => {
-  const counterRepository = appDataSource.getRepository(Counter);
+// register auth router
+app.use("/api/v1/auth", authRouter);
 
-  let counter = await counterRepository.findOneBy({
-    key: "general-conter",
-  });
-
-  if (!counter) {
-    counter = new Counter();
-    counter.key = "general-conter";
-    counter.value = 1;
-    await counterRepository.save(counter);
-  }
-
-  res.status(200).send({ counter: counter.value });
-});
-
-app.post("/counter", async (req: Request, res: Response) => {
-  const counterRepository = appDataSource.getRepository(Counter);
-
-  let counter = await counterRepository.findOneBy({
-    key: "general-conter",
-  });
-
-  if (!counter) {
-    counter = new Counter();
-    counter.key = "general-conter";
-    counter.value = 1;
+app.all("*", (req, res) => {
+  res.status(httpStatus.NOT_FOUND);
+  if (req.accepts("json")) {
+    res.json({ error: "404 Not Found" });
   } else {
-    counter.value += 1;
+    res.type("txt").send("404 Not Found");
   }
-
-  await counterRepository.save(counter);
-
-  res.status(200).send({ counter: counter.value });
 });
+
+app.use(errorMiddleware);
 
 // start express server
 app.listen(port, async () => {

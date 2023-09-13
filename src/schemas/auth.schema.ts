@@ -3,6 +3,7 @@ import Joi from "joi";
 import type {
   UserLoginCredentials,
   UserSignUpCredentials,
+  UserVerifyCredentials,
 } from "types/auth.types";
 
 export const signupSchema = {
@@ -13,9 +14,16 @@ export const signupSchema = {
   }),
 };
 
+export const verifySchema = {
+  body: Joi.object<UserVerifyCredentials>().keys({
+    username: Joi.string().required(),
+    code: Joi.string().required().length(6),
+  }),
+};
+
 export const loginSchema = {
   body: Joi.object<UserLoginCredentials>().keys({
-    email: Joi.string().required().email(),
+    username: Joi.string().required().email(),
     password: Joi.string().required().min(6),
   }),
 };

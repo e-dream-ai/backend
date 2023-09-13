@@ -5,6 +5,18 @@ export const env = cleanEnv(process.env, {
   PORT: port(),
 
   /**
+   * AWS
+   */
+  AWS_REGION: str(),
+  AWS_ACCESS_KEY_ID: str(),
+  AWS_SECRET_ACCESS_KEY: str(),
+
+  /**
+   * Cognito
+   */
+  AWS_COGNITO_APP_CLIENT_ID: str(),
+
+  /**
    * TYPEORM
    */
   TYPEORM_CONNECTION: str(),

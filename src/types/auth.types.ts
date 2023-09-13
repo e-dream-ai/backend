@@ -4,4 +4,9 @@ export interface UserSignUpCredentials {
   password: string;
 }
 
-export type UserLoginCredentials = Omit<UserSignUpCredentials, "username">;
+export interface UserVerifyCredentials {
+  username: string;
+  code: string;
+}
+
+export type UserLoginCredentials = Omit<UserSignUpCredentials, "email">;

@@ -14,6 +14,7 @@ export const env = cleanEnv(process.env, {
   /**
    * Cognito
    */
+  AWS_COGNITO_USER_POOL_ID: str(),
   AWS_COGNITO_APP_CLIENT_ID: str(),
 
   /**

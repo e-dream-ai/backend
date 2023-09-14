@@ -1,23 +1,29 @@
 import * as authController from "controllers/auth.controller";
 import { Router } from "express";
-import validator from "middlewares/validator.middleware";
+import validatorMiddleware from "middlewares/validator.middleware";
 import { loginSchema, signupSchema, verifySchema } from "schemas/auth.schema";
 
 const authRouter = Router();
 
 authRouter.post(
   "/signup",
-  validator(signupSchema),
+  validatorMiddleware(signupSchema),
   authController.handleSignUp,
 );
 
 authRouter.post(
   "/code",
-  validator(verifySchema),
+  validatorMiddleware(verifySchema),
   authController.handleVerifyCode,
 );
 
-authRouter.post("/login", validator(loginSchema), authController.handleLogin);
+authRouter.post(
+  "/login",
+  validatorMiddleware(loginSchema),
+  authController.handleLogin,
+);
+
+authRouter.get("/current-user", authController.handleLogout);
 
 authRouter.post("/logout", authController.handleLogout);
 

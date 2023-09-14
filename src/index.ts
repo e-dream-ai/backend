@@ -5,6 +5,7 @@ import cors from "cors";
 import appDataSource from "database/app-data-source";
 import express, { NextFunction, Request, Response } from "express";
 import httpStatus from "http-status";
+import authMiddleware from "middlewares/auth.middleware";
 import { errorMiddleware } from "middlewares/error.middleware";
 import authRouter from "routes/v1/auth.router";
 import env from "shared/env";
@@ -33,6 +34,9 @@ app.use(express.urlencoded({ extended: true }));
 // custom headers
 app.use(customHeaders);
 
+// auth middleware
+app.use(authMiddleware);
+
 // establish database connection
 appDataSource
   .initialize()
@@ -50,9 +54,9 @@ appDataSource
 
 // main route
 app.get("/", (req: Request, res: Response) => {
-  res
-    .status(httpStatus.OK)
-    .send({ message: `e-dream.ai is running api at version ${version}` });
+  res.status(httpStatus.OK).send({
+    message: `e-dream.ai is running api at version ${version}`,
+  });
 });
 
 // register auth router

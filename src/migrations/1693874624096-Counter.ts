@@ -5,10 +5,10 @@ export class Counter1693874624096 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TYPE "public"."counter_key_enum" AS ENUM('general-conter')`
+      `CREATE TYPE "public"."counter_key_enum" AS ENUM('general-conter')`,
     );
     await queryRunner.query(
-      `CREATE TABLE "counter" ("id" SERIAL NOT NULL, "key" "public"."counter_key_enum" NOT NULL DEFAULT 'general-conter', "value" integer NOT NULL, CONSTRAINT "PK_012f437b30fcf5a172841392ef3" PRIMARY KEY ("id"))`
+      `CREATE TABLE "counter" ("id" SERIAL NOT NULL, "key" "public"."counter_key_enum" NOT NULL DEFAULT 'general-conter', "value" integer NOT NULL, CONSTRAINT "PK_012f437b30fcf5a172841392ef3" PRIMARY KEY ("id"))`,
     );
   }
 

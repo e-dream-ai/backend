@@ -1,3 +1,10 @@
+import { JwtHeader, JwtPayload } from "jsonwebtoken";
+
+export type DecodedToken = {
+  header: JwtHeader;
+  payload: JwtPayload;
+  signature: string;
+};
 export interface UserSignUpCredentials {
   username: string;
   email: string;

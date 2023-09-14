@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   e-dream-ai-api:
     build: .
@@ -36,6 +36,6 @@ services:
     logging:
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
     ports:
-      - '5432:5432'
+      - "5432:5432"

@@ -21,7 +21,7 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 
 import type { Request, Response } from "express";
-import type { RequestType } from "types/types";
+import type { RequestType } from "types/express.types";
 /**
  * Handles the signup
  *
@@ -48,27 +48,28 @@ export const handleSignUp = async (
     });
 
     await cognitoIdentityProviderClient.send(command);
-    return res
-      .status(httpStatus.OK)
-      .json(
-        jsonResponse({ success: true, message: AUTH_MESSAGES.USER_CREATED }),
-      );
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        message: AUTH_MESSAGES.USER_CREATED,
+      }),
+    );
   } catch (error) {
     const awsError = error as CognitoIdentityProviderServiceException;
 
     let message: string;
     switch (awsError.name) {
-    case CognitoIPSExceptions.USERNAME_EXISTS_EXCEPTION:
-      message = AUTH_MESSAGES.USER_ALREADY_EXISTS;
-      break;
-    case CognitoIPSExceptions.INVALID_PARAMETER_EXCEPTION:
-      message = AUTH_MESSAGES.INVALID_PARAMETERS;
-      break;
-    case CognitoIPSExceptions.TOO_MANY_REQUESTS_EXCEPTION:
-      message = AUTH_MESSAGES.TOO_MANY_REQUESTS;
-      break;
-    default:
-      message = AUTH_MESSAGES.UNEXPECTED_ERROR;
+      case CognitoIPSExceptions.USERNAME_EXISTS_EXCEPTION:
+        message = AUTH_MESSAGES.USER_ALREADY_EXISTS;
+        break;
+      case CognitoIPSExceptions.INVALID_PARAMETER_EXCEPTION:
+        message = AUTH_MESSAGES.INVALID_PARAMETERS;
+        break;
+      case CognitoIPSExceptions.TOO_MANY_REQUESTS_EXCEPTION:
+        message = AUTH_MESSAGES.TOO_MANY_REQUESTS;
+        break;
+      default:
+        message = AUTH_MESSAGES.UNEXPECTED_ERROR;
     }
 
     return res
@@ -100,30 +101,31 @@ export const handleVerifyCode = async (
     });
 
     await cognitoIdentityProviderClient.send(command);
-    return res
-      .status(httpStatus.OK)
-      .json(
-        jsonResponse({ success: true, message: AUTH_MESSAGES.USER_VERIFIED }),
-      );
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        message: AUTH_MESSAGES.USER_VERIFIED,
+      }),
+    );
   } catch (error) {
     const awsError = error as CognitoIdentityProviderServiceException;
 
     let message: string;
     switch (awsError.name) {
-    case CognitoIPSExceptions.CODE_MISMATCH_EXCEPTION:
-      message = AUTH_MESSAGES.CODE_MISMATCH;
-      break;
-    case CognitoIPSExceptions.EXPIRED_CODE_EXCEPTION:
-      message = AUTH_MESSAGES.EXPIRED_CODE;
-      break;
-    case CognitoIPSExceptions.INVALID_PARAMETER_EXCEPTION:
-      message = AUTH_MESSAGES.INVALID_PARAMETERS;
-      break;
-    case CognitoIPSExceptions.TOO_MANY_REQUESTS_EXCEPTION:
-      message = AUTH_MESSAGES.TOO_MANY_REQUESTS;
-      break;
-    default:
-      message = AUTH_MESSAGES.UNEXPECTED_ERROR;
+      case CognitoIPSExceptions.CODE_MISMATCH_EXCEPTION:
+        message = AUTH_MESSAGES.CODE_MISMATCH;
+        break;
+      case CognitoIPSExceptions.EXPIRED_CODE_EXCEPTION:
+        message = AUTH_MESSAGES.EXPIRED_CODE;
+        break;
+      case CognitoIPSExceptions.INVALID_PARAMETER_EXCEPTION:
+        message = AUTH_MESSAGES.INVALID_PARAMETERS;
+        break;
+      case CognitoIPSExceptions.TOO_MANY_REQUESTS_EXCEPTION:
+        message = AUTH_MESSAGES.TOO_MANY_REQUESTS;
+        break;
+      default:
+        message = AUTH_MESSAGES.UNEXPECTED_ERROR;
     }
 
     return res
@@ -158,31 +160,29 @@ export const handleLogin = async (
     });
 
     const commandResponse = await cognitoIdentityProviderClient.send(command);
-    return res
-      .status(httpStatus.OK)
-      .json(
-        jsonResponse({
-          success: true,
-          message: AUTH_MESSAGES.USER_LOGGED_IN,
-          data: commandResponse.AuthenticationResult,
-        }),
-      );
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        message: AUTH_MESSAGES.USER_LOGGED_IN,
+        data: commandResponse.AuthenticationResult,
+      }),
+    );
   } catch (error) {
     const awsError = error as CognitoIdentityProviderServiceException;
 
     let message: string;
     switch (awsError.name) {
-    case CognitoIPSExceptions.NOT_AUTHORIZED_EXCEPTION:
-      message = AUTH_MESSAGES.INVALID_CREDENTIALS;
-      break;
-    case CognitoIPSExceptions.INVALID_PARAMETER_EXCEPTION:
-      message = AUTH_MESSAGES.INVALID_PARAMETERS;
-      break;
-    case CognitoIPSExceptions.TOO_MANY_REQUESTS_EXCEPTION:
-      message = AUTH_MESSAGES.TOO_MANY_REQUESTS;
-      break;
-    default:
-      message = AUTH_MESSAGES.UNEXPECTED_ERROR;
+      case CognitoIPSExceptions.NOT_AUTHORIZED_EXCEPTION:
+        message = AUTH_MESSAGES.INVALID_CREDENTIALS;
+        break;
+      case CognitoIPSExceptions.INVALID_PARAMETER_EXCEPTION:
+        message = AUTH_MESSAGES.INVALID_PARAMETERS;
+        break;
+      case CognitoIPSExceptions.TOO_MANY_REQUESTS_EXCEPTION:
+        message = AUTH_MESSAGES.TOO_MANY_REQUESTS;
+        break;
+      default:
+        message = AUTH_MESSAGES.UNEXPECTED_ERROR;
     }
 
     return res
@@ -201,7 +201,9 @@ export const handleLogin = async (
  *
  */
 export const handleLogout = async (req: Request, res: Response) => {
-  return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(req);
+  return res
+    .status(httpStatus.OK)
+    .json(jsonResponse({ success: true, message: "hello" }));
 };
 
 /**

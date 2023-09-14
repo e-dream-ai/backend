@@ -3,7 +3,7 @@ import httpStatus from "http-status";
 import Joi from "joi";
 
 import type { ObjectSchema } from "joi";
-import type { RequireAtLeastOne } from "types/types";
+import type { RequireAtLeastOne } from "types/utility.types";
 
 type RequestValidationSchema = RequireAtLeastOne<
   Record<"body" | "query" | "params", ObjectSchema>
@@ -17,7 +17,7 @@ type RequestValidationSchema = RequireAtLeastOne<
  * @returns Returns 400 BAD REQUEST if a validation error occurs
  *
  */
-const validate =
+const validatorMiddleware =
   (schema: RequestValidationSchema) =>
     (req: Request, res: Response, next: NextFunction) => {
       const { error } = Joi.object(schema).validate(
@@ -43,4 +43,4 @@ const validate =
       }
     };
 
-export default validate;
+export default validatorMiddleware;

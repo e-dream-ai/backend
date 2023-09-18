@@ -1,11 +1,16 @@
+import { JWTErrors } from "constants/aws/erros.constant";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
-import { NextFunction, Response } from "express";
-import jwt from "jsonwebtoken";
+import { fetchAwsUser } from "controllers/auth.controller";
+import { NextFunction } from "express";
+import httpStatus from "http-status";
+import jwt, { JsonWebTokenError } from "jsonwebtoken";
 import jwksClient, { DecodedToken } from "jwks-rsa";
 import env from "shared/env";
-import { RequestType } from "types/express.types";
+import { JwtPayloadType } from "types/auth.types";
+import { RequestType, ResponseType } from "types/express.types";
+import { jsonResponse } from "utils/responses.util";
 
-const validateToken = async (token: string): Promise<object> => {
+const validateToken = async (token: string): Promise<JwtPayloadType> => {
   const jwksUri = `https://cognito-idp.${env.AWS_REGION}.amazonaws.com/${env.AWS_COGNITO_USER_POOL_ID}/.well-known/jwks.json`;
   const verifyIssuerUri = `https://cognito-idp.${env.AWS_REGION}.amazonaws.com/${env.AWS_COGNITO_USER_POOL_ID}`;
 
@@ -29,35 +34,43 @@ const validateToken = async (token: string): Promise<object> => {
   return jwt.verify(token, signingKey.getPublicKey(), {
     issuer: verifyIssuerUri,
     algorithms: ["RS256"],
-  });
+  }) as JwtPayloadType;
 };
 
 const authMiddleware = async (
-  request: RequestType,
-  response: Response,
+  req: RequestType,
+  res: ResponseType,
   next: NextFunction,
 ) => {
-  if (!request.headers.authorization) {
+  if (!req.headers.authorization) {
     return next();
   }
   try {
-    const tokenBearer = request.headers.authorization.split(" ")[1];
-
-    const resultValidation = await validateToken(tokenBearer);
-
-    console.log({ resultValidation });
-
-    response.locals.user = 2;
-
-    //resultValidation returns current user data (as a token we should use IdToken to get all of the details about the user)
-    // request.user = {
-    //   id: resultValidation.sub,
-    //   name: resultValidation.name,
-    //   email: resultValidation.email,
-    //   roles: resultValidation["cognito:groups"],
-    // };
+    const accessToken = req.headers.authorization.split(" ")[1];
+    await validateToken(accessToken);
+    const user = await fetchAwsUser(accessToken);
+    res.locals.user = user;
+    res.locals.accessToken = accessToken;
   } catch (error) {
-    throw new Error(AUTH_MESSAGES.INVALID_TOKEN);
+    const jwtError = error as JsonWebTokenError;
+    let message: string;
+    switch (jwtError.name) {
+      case JWTErrors.JSON_WEB_TOKEN_ERROR:
+        message = AUTH_MESSAGES.USER_ALREADY_EXISTS;
+        break;
+      case JWTErrors.TOKEN_EXPIRED_ERROR:
+        message = AUTH_MESSAGES.EXPIRED_TOKEN;
+        break;
+      case JWTErrors.NOT_BEFORE_ERROR:
+        message = AUTH_MESSAGES.UNEXPECTED_ERROR;
+        break;
+      default:
+        message = AUTH_MESSAGES.UNEXPECTED_ERROR;
+    }
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
   }
 
   next();

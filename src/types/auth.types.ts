@@ -5,15 +5,48 @@ export type DecodedToken = {
   payload: JwtPayload;
   signature: string;
 };
-export interface UserSignUpCredentials {
+
+export type JwtPayloadType = JwtPayload & {
+  username: string;
+};
+
+export type UserSignUpCredentials = {
   username: string;
   email: string;
   password: string;
-}
+};
 
-export interface UserVerifyCredentials {
+export type UserVerifyCredentials = {
   username: string;
   code: string;
-}
+};
 
 export type UserLoginCredentials = Omit<UserSignUpCredentials, "email">;
+
+export type UserChangePasswordCredentials = {
+  previousPassword: string;
+  proposedPassword: string;
+};
+
+export type UserForgotPasswordCredentials = {
+  username: string;
+};
+
+export type UserConfirmForgotPasswordCredentials = {
+  username: string;
+  code: string;
+  password: string;
+};
+
+export type RefreshTokenCredentials = {
+  refreshToken: string;
+};
+
+export type RevokeTokenCredentials = {
+  refreshToken: string;
+};
+
+export type MiddlewareUser = {
+  id?: string;
+  email?: string;
+};

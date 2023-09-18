@@ -1,5 +1,6 @@
 import * as authController from "controllers/auth.controller";
 import { Router } from "express";
+import { requireAuth } from "middlewares/require-auth.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import { loginSchema, signupSchema, verifySchema } from "schemas/auth.schema";
 
@@ -23,10 +24,23 @@ authRouter.post(
   authController.handleLogin,
 );
 
-authRouter.get("/current-user", authController.handleLogout);
+authRouter.get("/user", requireAuth, authController.handleUser);
 
 authRouter.post("/logout", authController.handleLogout);
 
 authRouter.post("/refresh", authController.handleRefresh);
+
+authRouter.post(
+  "/change-password",
+  requireAuth,
+  authController.handleChangePassword,
+);
+
+authRouter.post("/forgot-password", authController.handleForgotPassword);
+
+authRouter.post(
+  "/confirm-forgot-password",
+  authController.handleConfirmForgotPassword,
+);
 
 export default authRouter;

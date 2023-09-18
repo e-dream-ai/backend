@@ -1,1 +1,5 @@
-export type JsonResponse = { success: boolean; message: string; data?: object };
+export type JsonResponse = {
+  success: boolean;
+  message?: string;
+  data?: object;
+};

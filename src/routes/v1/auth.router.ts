@@ -1,26 +1,46 @@
 import * as authController from "controllers/auth.controller";
 import { Router } from "express";
-import validator from "middlewares/validator.middleware";
+import { requireAuth } from "middlewares/require-auth.middleware";
+import validatorMiddleware from "middlewares/validator.middleware";
 import { loginSchema, signupSchema, verifySchema } from "schemas/auth.schema";
 
 const authRouter = Router();
 
 authRouter.post(
   "/signup",
-  validator(signupSchema),
+  validatorMiddleware(signupSchema),
   authController.handleSignUp,
 );
 
 authRouter.post(
   "/code",
-  validator(verifySchema),
+  validatorMiddleware(verifySchema),
   authController.handleVerifyCode,
 );
 
-authRouter.post("/login", validator(loginSchema), authController.handleLogin);
+authRouter.post(
+  "/login",
+  validatorMiddleware(loginSchema),
+  authController.handleLogin,
+);
+
+authRouter.get("/user", requireAuth, authController.handleUser);
 
 authRouter.post("/logout", authController.handleLogout);
 
 authRouter.post("/refresh", authController.handleRefresh);
+
+authRouter.post(
+  "/change-password",
+  requireAuth,
+  authController.handleChangePassword,
+);
+
+authRouter.post("/forgot-password", authController.handleForgotPassword);
+
+authRouter.post(
+  "/confirm-forgot-password",
+  authController.handleConfirmForgotPassword,
+);
 
 export default authRouter;

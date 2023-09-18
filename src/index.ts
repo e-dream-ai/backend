@@ -1,19 +1,23 @@
 import "dotenv/config";
 
 import { json } from "body-parser";
+import swaggerDocument from "constants/swagger.json";
 import cors from "cors";
 import appDataSource from "database/app-data-source";
 import express, { NextFunction, Request, Response } from "express";
 import httpStatus from "http-status";
+import authMiddleware from "middlewares/auth.middleware";
 import { errorMiddleware } from "middlewares/error.middleware";
 import authRouter from "routes/v1/auth.router";
 import env from "shared/env";
+import swaggerUi from "swagger-ui-express";
 
 import { APP_LOGGER } from "./shared/logger";
 
 const app: express.Application = express();
 const port = env.PORT ?? 8080;
 const version = env.npm_package_version;
+const swaggerPath = "/api/v1/api-docs";
 
 const customHeaders = (req: Request, res: Response, next: NextFunction) => {
   app.disable("x-powered-by");
@@ -33,6 +37,13 @@ app.use(express.urlencoded({ extended: true }));
 // custom headers
 app.use(customHeaders);
 
+// auth middleware
+app.use(authMiddleware);
+
+// swagger ui
+app.use(swaggerPath, swaggerUi.serve);
+app.get(swaggerPath, swaggerUi.setup(swaggerDocument));
+
 // establish database connection
 appDataSource
   .initialize()
@@ -49,10 +60,10 @@ appDataSource
  */
 
 // main route
-app.get("/", (req: Request, res: Response) => {
-  res
-    .status(httpStatus.OK)
-    .send({ message: `e-dream.ai is running api at version ${version}` });
+app.get(["/", "/api/v1"], (req: Request, res: Response) => {
+  res.status(httpStatus.OK).send({
+    message: `e-dream.ai is running api at version ${version}`,
+  });
 });
 
 // register auth router

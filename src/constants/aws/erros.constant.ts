@@ -52,3 +52,9 @@ export const CognitoIPSExceptions = {
   UNSUPPORTED_TOKEN_TYPE_EXCEPTION: "UnsupportedTokenTypeException",
   ENABLE_SOFTWARE_TOKEN_MFA_EXCEPTION: "EnableSoftwareTokenMFAException",
 };
+
+export const JWTErrors = {
+  JSON_WEB_TOKEN_ERROR: "JsonWebTokenError",
+  TOKEN_EXPIRED_ERROR: "TokenExpiredError",
+  NOT_BEFORE_ERROR: "NotBeforeError",
+};

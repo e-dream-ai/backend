@@ -77,7 +77,7 @@ export const handleSignUp = async (
 };
 
 /**
- * Handles the verify
+ * Handles verify email
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object
@@ -242,7 +242,7 @@ export const handleLogout = async (
 };
 
 /**
- * Handles the refresh
+ * Handles token refresh
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object

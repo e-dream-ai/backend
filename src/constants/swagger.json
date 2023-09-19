@@ -15,7 +15,7 @@
     },
     {
       "description": "staging",
-      "url": "https://e-dream-76c98b08cc5d.herokuapp.com"
+      "url": "https://e-dream-76c98b08cc5d.herokuapp.com/api/v1"
     }
   ],
   "tags": [

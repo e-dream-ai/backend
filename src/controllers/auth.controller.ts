@@ -145,11 +145,14 @@ export const handleLogin = async (
     });
 
     const commandResponse = await cognitoIdentityProviderClient.send(command);
+    const accessToken = commandResponse.AuthenticationResult?.AccessToken;
+    const user = await fetchAwsUser(accessToken!);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
         message: AUTH_MESSAGES.USER_LOGGED_IN,
-        data: commandResponse.AuthenticationResult,
+        data: { token: commandResponse.AuthenticationResult, ...user },
       }),
     );
   } catch (error) {
@@ -178,7 +181,12 @@ export const fetchAwsUser = async (accessToken: string) => {
   const email = commandResponse.UserAttributes?.find(
     (userAttribute) => userAttribute.Name === UserAttributes.EMAIL,
   )?.Value;
-  return { id: commandResponse.Username, email: email } as MiddlewareUser;
+
+  return {
+    id: commandResponse.Username,
+    email: email,
+    username: email,
+  } as MiddlewareUser;
 };
 
 /**

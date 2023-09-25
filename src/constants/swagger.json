@@ -156,12 +156,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Tokens"
-                    }
-                  }
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "properties": {
+                      "data": {
+                        "$ref": "#/components/schemas/User",
+                        "type": "object"
+                      }
+                    }}
+                  ]
+
                 }
               }
             }
@@ -460,7 +465,7 @@
   },
   "components": {
     "schemas": {
-      "Tokens": {
+      "Token": {
         "type": "object",
         "properties": {
           "AccessToken": {
@@ -521,9 +526,15 @@
           "id": {
             "type": "string"
           },
+          "username": {
+            "type": "string"
+          },
           "email": {
             "type": "string",
             "format": "email"
+          },
+          "token": {
+            "$ref": "#/components/schemas/Token"
           }
         }
       }

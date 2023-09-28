@@ -25,6 +25,9 @@ export const getErrorMessage: (errorName: string) => string = (errorName) => {
     case CognitoIPSExceptions.PASSWORD_RESET_REQUIRED_EXCEPTION:
       message = AUTH_MESSAGES.PASSWORD_RESET_REQUIRED;
       break;
+    case CognitoIPSExceptions.USER_NOT_CONFIRMED_EXCEPTION:
+      message = AUTH_MESSAGES.USER_NOT_CONFIRMED;
+      break;
     default:
       message = AUTH_MESSAGES.UNEXPECTED_ERROR;
   }

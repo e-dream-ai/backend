@@ -5,6 +5,8 @@ export const AUTH_MESSAGES = {
   USER_LOGGED_OUT: "User logged out successfully.",
   USER_ALREADY_EXISTS: "User already exists.",
   USER_PASSWORD_CHANGED: "User password changed successfully.",
+  USER_NOT_CONFIRMED:
+    "User is not confirmed, check your email to verify account.",
   INVALID_PARAMETERS: "Invalid parameters provided.",
   INVALID_CREDENTIALS: "Invalid credentials provided.",
   INVALID_TOKEN: "Invalid token.",

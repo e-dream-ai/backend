@@ -1,5 +1,3 @@
-import "dotenv/config";
-
 import { json } from "body-parser";
 import swaggerDocument from "constants/swagger.json";
 import cors from "cors";

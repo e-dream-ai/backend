@@ -30,6 +30,8 @@ import {
   SignUpCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
+import appDataSource from "database/app-data-source";
+import { User } from "entities";
 import type { Response } from "express";
 import type { RequestType, ResponseType } from "types/express.types";
 import { getErrorMessage } from "utils/aws/auth-errors";
@@ -59,7 +61,15 @@ export const handleSignUp = async (
       UserAttributes: [{ Name: UserAttributes.EMAIL, Value: email }],
     });
 
-    await cognitoIdentityProviderClient.send(command);
+    const cognitoResponse = await cognitoIdentityProviderClient.send(command);
+
+    const userRepository = appDataSource.getRepository(User);
+
+    const user = new User();
+    user.cognitoId = cognitoResponse.UserSub!;
+    user.email = email!;
+    await userRepository.save(user);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,

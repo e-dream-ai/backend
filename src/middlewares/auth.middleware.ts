@@ -1,4 +1,3 @@
-import { JWTErrors } from "constants/aws/erros.constant";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import { fetchAwsUser } from "controllers/auth.controller";
 import { NextFunction } from "express";
@@ -8,6 +7,7 @@ import jwksClient, { DecodedToken } from "jwks-rsa";
 import env from "shared/env";
 import { JwtPayloadType } from "types/auth.types";
 import { RequestType, ResponseType } from "types/express.types";
+import { getErrorMessage } from "utils/aws/auth-errors";
 import { jsonResponse } from "utils/responses.util";
 
 const validateToken = async (token: string): Promise<JwtPayloadType> => {
@@ -53,20 +53,7 @@ const authMiddleware = async (
     res.locals.accessToken = accessToken;
   } catch (error) {
     const jwtError = error as JsonWebTokenError;
-    let message: string;
-    switch (jwtError.name) {
-      case JWTErrors.JSON_WEB_TOKEN_ERROR:
-        message = AUTH_MESSAGES.USER_ALREADY_EXISTS;
-        break;
-      case JWTErrors.TOKEN_EXPIRED_ERROR:
-        message = AUTH_MESSAGES.EXPIRED_TOKEN;
-        break;
-      case JWTErrors.NOT_BEFORE_ERROR:
-        message = AUTH_MESSAGES.UNEXPECTED_ERROR;
-        break;
-      default:
-        message = AUTH_MESSAGES.UNEXPECTED_ERROR;
-    }
+    const message: string = getErrorMessage(jwtError.name);
 
     return res
       .status(httpStatus.BAD_REQUEST)

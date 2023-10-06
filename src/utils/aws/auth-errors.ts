@@ -1,9 +1,18 @@
-import { CognitoIPSExceptions } from "constants/aws/erros.constant";
+import { CognitoIPSExceptions, JWTErrors } from "constants/aws/erros.constant";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 
 export const getErrorMessage: (errorName: string) => string = (errorName) => {
   let message: string;
   switch (errorName) {
+    case JWTErrors.JSON_WEB_TOKEN_ERROR:
+      message = AUTH_MESSAGES.USER_ALREADY_EXISTS;
+      break;
+    case JWTErrors.TOKEN_EXPIRED_ERROR:
+      message = AUTH_MESSAGES.EXPIRED_TOKEN;
+      break;
+    case JWTErrors.NOT_BEFORE_ERROR:
+      message = AUTH_MESSAGES.UNEXPECTED_ERROR;
+      break;
     case CognitoIPSExceptions.USERNAME_EXISTS_EXCEPTION:
       message = AUTH_MESSAGES.USER_ALREADY_EXISTS;
       break;

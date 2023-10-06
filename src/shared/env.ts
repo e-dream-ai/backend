@@ -19,6 +19,11 @@ export const env = cleanEnv(process.env, {
   AWS_COGNITO_APP_CLIENT_ID: str(),
 
   /**
+   * S3
+   */
+  AWS_BUCKET_NAME: str(),
+
+  /**
    * TYPEORM
    */
   TYPEORM_CONNECTION: str(),

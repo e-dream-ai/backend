@@ -1,5 +1,5 @@
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
-import { fetchAwsUser } from "controllers/auth.controller";
+import { fetchUser } from "controllers/auth.controller";
 import { NextFunction } from "express";
 import httpStatus from "http-status";
 import jwt, { JsonWebTokenError } from "jsonwebtoken";
@@ -47,8 +47,19 @@ const authMiddleware = async (
   }
   try {
     const accessToken = req.headers.authorization.split(" ")[1];
-    await validateToken(accessToken);
-    const user = await fetchAwsUser(accessToken);
+    const validatedToken = await validateToken(accessToken);
+    const { username } = validatedToken;
+    const user = await fetchUser(username);
+
+    if (!user) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: AUTH_MESSAGES.USER_NOT_FOUND,
+        }),
+      );
+    }
+
     res.locals.user = user;
     res.locals.accessToken = accessToken;
   } catch (error) {

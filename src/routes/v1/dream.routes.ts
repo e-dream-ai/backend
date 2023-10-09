@@ -2,14 +2,13 @@ import * as dreamController from "controllers/dream.controller";
 import { Router } from "express";
 import { uploadMiddleware } from "middlewares/multer.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
-import { createDreamSchema, updateDreamSchema } from "schemas/dream.schema";
+import { updateDreamSchema } from "schemas/dream.schema";
 
 const dreamRouter = Router();
 
 dreamRouter.post(
   "/",
   uploadMiddleware.single("file"),
-  validatorMiddleware(createDreamSchema),
   dreamController.handleCreateDream,
 );
 
@@ -18,5 +17,9 @@ dreamRouter.put(
   validatorMiddleware(updateDreamSchema),
   dreamController.handleUpdateDream,
 );
+
+dreamRouter.put("/:id/video", dreamController.handleUpdateVideoDream);
+
+dreamRouter.put("/:id/thumbnail", dreamController.handleThumbnailDream);
 
 export default dreamRouter;

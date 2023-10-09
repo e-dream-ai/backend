@@ -1,4 +1,5 @@
 export const AUTH_MESSAGES = {
+  USER_NOT_FOUND: "User not found.",
   USER_CREATED: "User crated successfully.",
   USER_VERIFIED: "User verified successfully.",
   USER_LOGGED_IN: "User logged in successfully.",

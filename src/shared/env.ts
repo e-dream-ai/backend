@@ -22,6 +22,7 @@ export const env = cleanEnv(process.env, {
    * S3
    */
   AWS_BUCKET_NAME: str(),
+  AWS_BUCKET_URL: str(),
 
   /**
    * TYPEORM

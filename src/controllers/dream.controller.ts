@@ -5,12 +5,14 @@ import {
   DREAMS_MEDIA_TYPES,
 } from "constants/dreams.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
+import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { UpdateDreamRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
+import { completeMediaUrl } from "utils/aws/bucket.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -70,23 +72,59 @@ export const handleCreateDream = async (
 };
 
 /**
- * Handles create dream
+ * Handles get dream
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object
  *
  * @returns {Response} Returns response
- * OK 200 - dream created
- * BAD_REQUEST 400 - error creating dream
+ * OK 200 - dream gotten
+ * BAD_REQUEST 400 - error getting dream
+ *
+ */
+export const handleGetDream = async (
+  req: RequestType<UpdateDreamRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = String(req.params?.uuid);
+  const dreamRepository = appDataSource.getRepository(Dream);
+  const dream = await dreamRepository.findOneBy({ uuid: dreamUUID! });
+
+  if (!dream) {
+    res
+      .status(httpStatus.NOT_FOUND)
+      .json(
+        jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+      );
+  }
+
+  if (dream?.video) {
+    dream.video = completeMediaUrl(dream.video);
+  }
+
+  return res
+    .status(httpStatus.OK)
+    .json(jsonResponse({ success: true, data: { dream: dream } }));
+};
+
+/**
+ * Handles update dream
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream updated
+ * BAD_REQUEST 400 - error updating dream
  *
  */
 export const handleUpdateDream = async (
   req: RequestType<UpdateDreamRequest>,
   res: ResponseType,
 ) => {
-  const dreamId: number = Number(req.params.id);
+  const dreamUUID: string = String(req.params.uuid);
   const dreamRepository = appDataSource.getRepository(Dream);
-  const dream = await dreamRepository.findOneBy({ id: dreamId! });
+  const dream = await dreamRepository.findOneBy({ uuid: dreamUUID });
 
   if (!dream) {
     return res.status(httpStatus.NOT_FOUND).json(
@@ -98,6 +136,11 @@ export const handleUpdateDream = async (
   }
 
   const updatedDream = await dreamRepository.save({ ...dream, ...req.body });
+
+  if (updatedDream?.video) {
+    updatedDream.video = completeMediaUrl(dream.video);
+  }
+
   res
     .status(httpStatus.OK)
     .json(jsonResponse({ success: true, data: { dream: updatedDream } }));

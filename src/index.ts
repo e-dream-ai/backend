@@ -10,6 +10,9 @@ import authRouter from "routes/v1/auth.router";
 import env from "shared/env";
 import swaggerUi from "swagger-ui-express";
 
+import { GENERAL_MESSAGES } from "constants/messages/general.constants";
+import dreamRouter from "routes/v1/dream.routes";
+import { jsonResponse } from "utils/responses.util";
 import { APP_LOGGER } from "./shared/logger";
 
 const app: express.Application = express();
@@ -67,12 +70,17 @@ app.get(["/", "/api/v1"], (req: Request, res: Response) => {
 // register auth router
 app.use("/api/v1/auth", authRouter);
 
+// register dream router
+app.use("/api/v1/dream", dreamRouter);
+
 app.all("*", (req, res) => {
   res.status(httpStatus.NOT_FOUND);
   if (req.accepts("json")) {
-    res.json({ error: "404 Not Found" });
+    res.json(
+      jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+    );
   } else {
-    res.type("txt").send("404 Not Found");
+    res.type("txt").send(GENERAL_MESSAGES.NOT_FOUND_404);
   }
 });
 

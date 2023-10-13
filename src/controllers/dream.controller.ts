@@ -1,5 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
+import { BUCKET_ACL } from "constants/aws/s3.constants";
 import {
   DREAMS_FILE_EXTENSIONS,
   DREAMS_MEDIA_TYPES,
@@ -12,7 +13,7 @@ import httpStatus from "http-status";
 import env from "shared/env";
 import { UpdateDreamRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
-import { completeMediaUrl } from "utils/aws/bucket.util";
+import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -52,22 +53,25 @@ export const handleCreateDream = async (
       Key: filePath,
       Body: videoBuffer,
       ContentType: DREAMS_MEDIA_TYPES.MP4,
+      ACL: BUCKET_ACL,
     });
 
     await s3Client.send(command);
 
     //update dream
-    dream.video = filePath;
+    dream.video = generateBucketObjectURL(filePath);
     const createdDream = await dreamRepository.save(dream);
 
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: createdDream } }));
   } catch (err) {
-    console.error(err);
-    return res
-      .status(httpStatus.INTERNAL_SERVER_ERROR)
-      .json(jsonResponse({ success: false }));
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
   }
 };
 
@@ -87,24 +91,69 @@ export const handleGetDream = async (
   res: ResponseType,
 ) => {
   const dreamUUID: string = String(req.params?.uuid);
-  const dreamRepository = appDataSource.getRepository(Dream);
-  const dream = await dreamRepository.findOneBy({ uuid: dreamUUID! });
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+    });
 
-  if (!dream) {
-    res
-      .status(httpStatus.NOT_FOUND)
-      .json(
-        jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-      );
+    if (!dream) {
+      res
+        .status(httpStatus.NOT_FOUND)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+        );
+    }
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { dream: dream } }));
+  } catch (err) {
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
   }
+};
 
-  if (dream?.video) {
-    dream.video = completeMediaUrl(dream.video);
+/**
+ * Handles get my dreams
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dreams gotten
+ * BAD_REQUEST 400 - error getting dreams
+ *
+ */
+export const handleGetMyDreams = async (
+  req: RequestType<UpdateDreamRequest>,
+  res: ResponseType,
+) => {
+  const user = res.locals.user;
+
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const dreams = await dreamRepository.find({
+      where: { user: { id: user?.id } },
+      relations: { user: true },
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { dreams } }));
+  } catch (err) {
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
   }
-
-  return res
-    .status(httpStatus.OK)
-    .json(jsonResponse({ success: true, data: { dream: dream } }));
 };
 
 /**
@@ -123,27 +172,46 @@ export const handleUpdateDream = async (
   res: ResponseType,
 ) => {
   const dreamUUID: string = String(req.params.uuid);
-  const dreamRepository = appDataSource.getRepository(Dream);
-  const dream = await dreamRepository.findOneBy({ uuid: dreamUUID });
+  const user = res.locals.user;
 
-  if (!dream) {
-    return res.status(httpStatus.NOT_FOUND).json(
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+
+    if (dream.user.id !== user?.id) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    const updatedDream = await dreamRepository.save({ ...dream, ...req.body });
+
+    res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+  } catch (err) {
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,
-        message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
       }),
     );
   }
-
-  const updatedDream = await dreamRepository.save({ ...dream, ...req.body });
-
-  if (updatedDream?.video) {
-    updatedDream.video = completeMediaUrl(dream.video);
-  }
-
-  res
-    .status(httpStatus.OK)
-    .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
 };
 
 /**
@@ -162,43 +230,66 @@ export const handleUpdateVideoDream = async (
   res: ResponseType,
 ) => {
   const user = res.locals.user;
-  const dreamId: number = Number(req.params.id);
-  const dreamRepository = appDataSource.getRepository(Dream);
-  const dream = await dreamRepository.findOneBy({ id: dreamId! });
+  const dreamUUID: string = String(req.params.uuid);
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID },
+      relations: { user: true },
+    });
 
-  if (!dream) {
-    return res.status(httpStatus.NOT_FOUND).json(
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+
+    if (dream.user.id !== user?.id) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    // update dream
+    const videoBuffer = req.file?.buffer;
+    const bucketName = env.AWS_BUCKET_NAME;
+    const fileName = `${dreamUUID}.${DREAMS_FILE_EXTENSIONS.MP4}`;
+    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+
+    if (videoBuffer) {
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: filePath,
+        Body: videoBuffer,
+        ContentType: DREAMS_MEDIA_TYPES.MP4,
+        ACL: BUCKET_ACL,
+      });
+      await s3Client.send(command);
+    }
+
+    const updatedDream: Dream = await dreamRepository.save({
+      ...dream,
+      video: videoBuffer ? generateBucketObjectURL(filePath) : null,
+    });
+
+    res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+  } catch (err) {
+    console.log(err);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,
-        message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
       }),
     );
   }
-
-  // update dream
-  const videoBuffer = req.file?.buffer;
-  const dreamUUID = dream.uuid;
-  const bucketName = env.AWS_BUCKET_NAME;
-  const fileName = `${dreamUUID}.${DREAMS_FILE_EXTENSIONS.MP4}`;
-  const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
-
-  const command = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: filePath,
-    Body: videoBuffer,
-    ContentType: DREAMS_MEDIA_TYPES.MP4,
-  });
-
-  const updatedDream = await dreamRepository.save({
-    ...dream,
-    video: filePath,
-  });
-
-  await s3Client.send(command);
-
-  res
-    .status(httpStatus.OK)
-    .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
 };
 
 /**
@@ -212,46 +303,69 @@ export const handleUpdateVideoDream = async (
  * BAD_REQUEST 400 - error updating thumbnail dream
  *
  */
-export const handleThumbnailDream = async (
+export const handleUpdateThumbnailDream = async (
   req: RequestType,
   res: ResponseType,
 ) => {
   const user = res.locals.user;
-  const dreamId: number = Number(req.params.id);
-  const dreamRepository = appDataSource.getRepository(Dream);
-  const dream = await dreamRepository.findOneBy({ id: dreamId! });
+  const dreamUUID: string = String(req.params.uuid);
 
-  if (!dream) {
-    return res.status(httpStatus.NOT_FOUND).json(
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+
+    if (dream.user.id !== user?.id) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    // update dream
+    const thumbnailBuffer = req.file?.buffer;
+    const bucketName = env.AWS_BUCKET_NAME;
+    const fileName = `${dreamUUID}.${DREAMS_FILE_EXTENSIONS.JPG}`;
+    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+
+    if (thumbnailBuffer) {
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: filePath,
+        Body: thumbnailBuffer,
+        ContentType: DREAMS_MEDIA_TYPES.JPEG,
+        ACL: BUCKET_ACL,
+      });
+      await s3Client.send(command);
+    }
+
+    const updatedDream = await dreamRepository.save({
+      ...dream,
+      thumbnail: thumbnailBuffer ? generateBucketObjectURL(filePath) : null,
+    });
+
+    res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+  } catch (err) {
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,
-        message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
       }),
     );
   }
-
-  // update dream
-  const thumbnailBuffer = req.file?.buffer;
-  const dreamUUID = dream.uuid;
-  const bucketName = env.AWS_BUCKET_NAME;
-  const fileName = `${dreamUUID}.${DREAMS_FILE_EXTENSIONS.JPG}`;
-  const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
-
-  const command = new PutObjectCommand({
-    Bucket: bucketName,
-    Key: filePath,
-    Body: thumbnailBuffer,
-    ContentType: DREAMS_MEDIA_TYPES.JPEG,
-  });
-
-  const updatedDream = await dreamRepository.save({
-    ...dream,
-    thumbnail: filePath,
-  });
-
-  await s3Client.send(command);
-
-  res
-    .status(httpStatus.OK)
-    .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
 };

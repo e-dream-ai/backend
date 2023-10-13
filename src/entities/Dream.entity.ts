@@ -23,14 +23,14 @@ export class Dream {
   @JoinColumn()
   user: User;
 
-  @Column({ nullable: true })
-  name: string;
+  @Column({ nullable: true, type: "varchar" })
+  name?: string | null;
 
-  @Column({ nullable: true })
-  video: string;
+  @Column({ nullable: true, type: "varchar" })
+  video?: string | null;
 
-  @Column({ nullable: true })
-  thumbnail: string;
+  @Column({ nullable: true, type: "varchar" })
+  thumbnail?: string | null;
 
   @CreateDateColumn()
   created_at: Date;

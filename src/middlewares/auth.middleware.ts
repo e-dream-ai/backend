@@ -7,7 +7,7 @@ import jwksClient, { DecodedToken } from "jwks-rsa";
 import env from "shared/env";
 import { JwtPayloadType } from "types/auth.types";
 import { RequestType, ResponseType } from "types/express.types";
-import { getErrorMessage } from "utils/aws/auth-errors";
+import { getErrorCode, getErrorMessage } from "utils/aws/auth-errors";
 import { jsonResponse } from "utils/responses.util";
 
 const validateToken = async (token: string): Promise<JwtPayloadType> => {
@@ -65,10 +65,9 @@ const authMiddleware = async (
   } catch (error) {
     const jwtError = error as JsonWebTokenError;
     const message: string = getErrorMessage(jwtError.name);
+    const code: number = getErrorCode(jwtError.name);
 
-    return res
-      .status(httpStatus.BAD_REQUEST)
-      .json(jsonResponse({ success: false, message }));
+    return res.status(code).json(jsonResponse({ success: false, message }));
   }
 
   next();

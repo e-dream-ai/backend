@@ -1,5 +1,6 @@
 import { CognitoIPSExceptions, JWTErrors } from "constants/aws/erros.constant";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
+import httpStatus from "http-status";
 
 export const getErrorMessage: (errorName: string) => string = (errorName) => {
   let message: string;
@@ -42,4 +43,23 @@ export const getErrorMessage: (errorName: string) => string = (errorName) => {
   }
 
   return message;
+};
+
+export const getErrorCode: (errorName: string) => number = (errorName) => {
+  let code: number;
+  switch (errorName) {
+    case JWTErrors.JSON_WEB_TOKEN_ERROR:
+      code = httpStatus.BAD_REQUEST;
+      break;
+    case JWTErrors.TOKEN_EXPIRED_ERROR:
+      code = httpStatus.UNAUTHORIZED;
+      break;
+    case JWTErrors.NOT_BEFORE_ERROR:
+      code = httpStatus.BAD_REQUEST;
+      break;
+    default:
+      code = httpStatus.BAD_REQUEST;
+  }
+
+  return code;
 };

@@ -14,6 +14,8 @@ dreamRouter.post(
   dreamController.handleCreateDream,
 );
 
+dreamRouter.get("/my-dreams", requireAuth, dreamController.handleGetMyDreams);
+
 dreamRouter.get("/:uuid", requireAuth, dreamController.handleGetDream);
 
 dreamRouter.put(
@@ -24,15 +26,17 @@ dreamRouter.put(
 );
 
 dreamRouter.put(
-  "/:id/video",
+  "/:uuid/video",
   requireAuth,
+  uploadMiddleware.single("file"),
   dreamController.handleUpdateVideoDream,
 );
 
 dreamRouter.put(
-  "/:id/thumbnail",
+  "/:uuid/thumbnail",
   requireAuth,
-  dreamController.handleThumbnailDream,
+  uploadMiddleware.single("file"),
+  dreamController.handleUpdateThumbnailDream,
 );
 
 export default dreamRouter;

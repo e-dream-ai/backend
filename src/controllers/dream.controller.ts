@@ -1,10 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
-import {
-  DREAMS_FILE_EXTENSIONS,
-  DREAMS_MEDIA_TYPES,
-} from "constants/dreams.constants";
+import { DREAMS_FILE_EXTENSIONS } from "constants/dreams.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import appDataSource from "database/app-data-source";
@@ -53,7 +50,6 @@ export const handleCreateDream = async (
       Bucket: bucketName,
       Key: filePath,
       Body: videoBuffer,
-      ContentType: DREAMS_MEDIA_TYPES.MP4,
       ACL: BUCKET_ACL,
     });
 
@@ -272,7 +268,6 @@ export const handleUpdateVideoDream = async (
         Bucket: bucketName,
         Key: filePath,
         Body: videoBuffer,
-        ContentType: DREAMS_MEDIA_TYPES.MP4,
         ACL: BUCKET_ACL,
       });
       await s3Client.send(command);
@@ -351,7 +346,6 @@ export const handleUpdateThumbnailDream = async (
         Bucket: bucketName,
         Key: filePath,
         Body: thumbnailBuffer,
-        ContentType: DREAMS_MEDIA_TYPES.JPEG,
         ACL: BUCKET_ACL,
       });
       await s3Client.send(command);

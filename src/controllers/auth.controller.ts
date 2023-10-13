@@ -33,6 +33,7 @@ import {
 import appDataSource from "database/app-data-source";
 import { User } from "entities";
 import type { Response } from "express";
+import { APP_LOGGER } from "shared/logger";
 import type { RequestType, ResponseType } from "types/express.types";
 import { getErrorMessage } from "utils/aws/auth-errors";
 
@@ -77,6 +78,7 @@ export const handleSignUp = async (
       }),
     );
   } catch (error) {
+    APP_LOGGER.error(error);
     const awsError = error as CognitoIdentityProviderServiceException;
     const message: string = getErrorMessage(awsError.name);
 
@@ -118,6 +120,7 @@ export const handleVerifyCode = async (
       }),
     );
   } catch (error) {
+    APP_LOGGER.error(error);
     const awsError = error as CognitoIdentityProviderServiceException;
     const message: string = getErrorMessage(awsError.name);
 
@@ -166,6 +169,7 @@ export const handleLogin = async (
       }),
     );
   } catch (error) {
+    APP_LOGGER.error(error);
     const awsError = error as CognitoIdentityProviderServiceException;
     const message: string = getErrorMessage(awsError.name);
 
@@ -264,6 +268,7 @@ export const handleLogout = async (
       }),
     );
   } catch (error) {
+    APP_LOGGER.error(error);
     const awsError = error as CognitoIdentityProviderServiceException;
     const message: string = getErrorMessage(awsError.name);
 
@@ -308,6 +313,7 @@ export const handleRefresh = async (
       }),
     );
   } catch (error) {
+    APP_LOGGER.error(error);
     const awsError = error as CognitoIdentityProviderServiceException;
     const message: string = getErrorMessage(awsError.name);
 
@@ -351,6 +357,7 @@ export const handleChangePassword = async (
       }),
     );
   } catch (error) {
+    APP_LOGGER.error(error);
     const awsError = error as CognitoIdentityProviderServiceException;
     const message: string = getErrorMessage(awsError.name);
 
@@ -392,6 +399,7 @@ export const handleForgotPassword = async (
       }),
     );
   } catch (error) {
+    APP_LOGGER.error(error);
     const awsError = error as CognitoIdentityProviderServiceException;
     const message: string = getErrorMessage(awsError.name);
 
@@ -434,6 +442,7 @@ export const handleConfirmForgotPassword = async (
       }),
     );
   } catch (error) {
+    APP_LOGGER.error(error);
     const awsError = error as CognitoIdentityProviderServiceException;
     const message: string = getErrorMessage(awsError.name);
 

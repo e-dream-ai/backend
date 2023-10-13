@@ -5,6 +5,7 @@ import httpStatus from "http-status";
 import jwt, { JsonWebTokenError } from "jsonwebtoken";
 import jwksClient, { DecodedToken } from "jwks-rsa";
 import env from "shared/env";
+import { APP_LOGGER } from "shared/logger";
 import { JwtPayloadType } from "types/auth.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { getErrorCode, getErrorMessage } from "utils/aws/auth-errors";
@@ -63,6 +64,7 @@ const authMiddleware = async (
     res.locals.user = user;
     res.locals.accessToken = accessToken;
   } catch (error) {
+    APP_LOGGER.error(error);
     const jwtError = error as JsonWebTokenError;
     const message: string = getErrorMessage(jwtError.name);
     const code: number = getErrorCode(jwtError.name);

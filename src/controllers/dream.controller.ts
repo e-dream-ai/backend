@@ -11,6 +11,7 @@ import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
+import { APP_LOGGER } from "shared/logger";
 import { UpdateDreamRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
@@ -65,7 +66,8 @@ export const handleCreateDream = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: createdDream } }));
-  } catch (err) {
+  } catch (error) {
+    APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,
@@ -109,7 +111,8 @@ export const handleGetDream = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: dream } }));
-  } catch (err) {
+  } catch (error) {
+    APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,
@@ -146,7 +149,8 @@ export const handleGetMyDreams = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dreams } }));
-  } catch (err) {
+  } catch (error) {
+    APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,
@@ -204,7 +208,8 @@ export const handleUpdateDream = async (
     res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (err) {
+  } catch (error) {
+    APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,
@@ -281,8 +286,8 @@ export const handleUpdateVideoDream = async (
     res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,
@@ -360,7 +365,8 @@ export const handleUpdateThumbnailDream = async (
     res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (err) {
+  } catch (error) {
+    APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,

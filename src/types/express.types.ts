@@ -1,6 +1,6 @@
+import { User } from "entities";
 import type { Request, Response } from "express";
 import type { DeepPartial } from "utility-types";
-import { MiddlewareUser } from "./auth.types";
 
 export type RequestType<
   ReqBody = Record<string, unknown>,
@@ -17,7 +17,7 @@ export type RequestType<
 // export interface ResponseType extends Response { Locals: LocalsType }
 
 export type LocalsType = {
-  user?: MiddlewareUser;
+  user?: User;
   accessToken?: string;
 } & Record<string, unknown>;
 

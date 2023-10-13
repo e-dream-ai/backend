@@ -200,6 +200,20 @@ export const fetchAwsUser = async (accessToken: string) => {
 };
 
 /**
+ * Fetch user from database
+ *
+ * @param {string} access_token - user access token
+ *
+ * @returns {MiddlewareUser} Returns middleware user
+ *
+ */
+export const fetchUser = async (username: string) => {
+  const userRepository = appDataSource.getRepository(User);
+  const user = await userRepository.findOneBy({ cognitoId: username });
+  return user;
+};
+
+/**
  * Handles current user
  *
  * @param {RequestType} req - Request object

@@ -6,10 +6,12 @@ import {
   Generated,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "./User.entity";
+import { Vote } from "./Vote.entity";
 
 @Entity()
 export class Dream {
@@ -32,6 +34,16 @@ export class Dream {
 
   @Column({ nullable: true, type: "varchar" })
   thumbnail?: string | null;
+
+  @OneToMany(() => Vote, (vote) => vote.dream)
+  @JoinColumn()
+  votes: Vote;
+
+  @Column({ default: 0 })
+  upvotes: number;
+
+  @Column({ default: 0 })
+  downvotes: number;
 
   @CreateDateColumn()
   created_at: Date;

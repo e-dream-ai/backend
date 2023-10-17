@@ -43,4 +43,16 @@ dreamRouter.put(
 
 dreamRouter.delete("/:uuid", requireAuth, dreamController.handleDeleteDream);
 
+dreamRouter.put(
+  "/:uuid/upvote",
+  requireAuth,
+  dreamController.handleUpvoteDream,
+);
+
+dreamRouter.put(
+  "/:uuid/downvote",
+  requireAuth,
+  dreamController.handleDownvoteDream,
+);
+
 export default dreamRouter;

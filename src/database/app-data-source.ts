@@ -13,6 +13,7 @@ const appDataSource = new DataSource({
   migrationsTableName: "migrations",
   entities: [...Object.values(entities)],
   migrations: [path.join(__dirname, "..", "migrations/**/*.{ts,js}")],
+  logging: "all",
   synchronize: false,
   ssl: {
     rejectUnauthorized: false,

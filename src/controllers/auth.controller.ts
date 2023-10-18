@@ -2,10 +2,14 @@ import {
   AWS_COGNITO_APP_CLIENT_ID,
   cognitoIdentityProviderClient,
 } from "clients/cognito.client";
-import { UserAttributes } from "constants/aws/user.constant";
+import {
+  AUTH_CUSTOM_CHALLENGE,
+  UserAttributes,
+} from "constants/aws/cognito.constant";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import httpStatus from "http-status";
 import {
+  ConfirmUserLoginWithCodeCredentials,
   MiddlewareUser,
   RefreshTokenCredentials,
   RevokeTokenCredentials,
@@ -13,12 +17,14 @@ import {
   UserConfirmForgotPasswordCredentials,
   UserForgotPasswordCredentials,
   UserLoginCredentials,
+  UserLoginWithCodeCredentials,
   UserSignUpCredentials,
   UserVerifyCredentials,
 } from "types/auth.types";
 import { jsonResponse } from "utils/responses.util";
 
 import {
+  AuthFlowType,
   ChangePasswordCommand,
   CognitoIdentityProviderServiceException,
   ConfirmForgotPasswordCommand,
@@ -26,6 +32,7 @@ import {
   ForgotPasswordCommand,
   GetUserCommand,
   InitiateAuthCommand,
+  RespondToAuthChallengeCommand,
   RevokeTokenCommand,
   SignUpCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
@@ -36,6 +43,77 @@ import type { Response } from "express";
 import { APP_LOGGER } from "shared/logger";
 import type { RequestType, ResponseType } from "types/express.types";
 import { getErrorMessage } from "utils/aws/auth-errors";
+
+export const handleLoginWithCode = async (
+  req: RequestType<UserLoginWithCodeCredentials>,
+  res: Response,
+) => {
+  try {
+    const { username } = req.body;
+
+    const command = new InitiateAuthCommand({
+      AuthFlow: AuthFlowType.CUSTOM_AUTH,
+      ClientId: AWS_COGNITO_APP_CLIENT_ID,
+      AuthParameters: {
+        USERNAME: username!,
+        CHALLENGE_NAME: AUTH_CUSTOM_CHALLENGE,
+      },
+    });
+
+    const commandResponse = await cognitoIdentityProviderClient.send(command);
+    const session = commandResponse?.Session;
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { session } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const awsError = error as CognitoIdentityProviderServiceException;
+    const message: string = getErrorMessage(awsError.name);
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};
+
+export const handleConfirmLoginWithCode = async (
+  req: RequestType<ConfirmUserLoginWithCodeCredentials>,
+  res: Response,
+) => {
+  try {
+    const { username, code, session } = req.body;
+    const command = new RespondToAuthChallengeCommand({
+      ClientId: AWS_COGNITO_APP_CLIENT_ID,
+      ChallengeName: AUTH_CUSTOM_CHALLENGE,
+      Session: session!,
+      ChallengeResponses: {
+        ANSWER: code!,
+        USERNAME: username!,
+      },
+    });
+
+    const commandResponse = await cognitoIdentityProviderClient.send(command);
+    const accessToken = commandResponse.AuthenticationResult?.AccessToken;
+    const user = await fetchAwsUser(accessToken!);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        message: AUTH_MESSAGES.USER_LOGGED_IN,
+        data: { token: commandResponse.AuthenticationResult, ...user },
+      }),
+    );
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const awsError = error as CognitoIdentityProviderServiceException;
+    const message: string = getErrorMessage(awsError.name);
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};
 
 /**
  * Handles the signup
@@ -149,7 +227,7 @@ export const handleLogin = async (
     const { username, password } = req.body;
 
     const command = new InitiateAuthCommand({
-      AuthFlow: "USER_PASSWORD_AUTH",
+      AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
       ClientId: AWS_COGNITO_APP_CLIENT_ID,
       AuthParameters: {
         USERNAME: username!,
@@ -297,7 +375,7 @@ export const handleRefresh = async (
     const { refreshToken } = req.body;
 
     const command = new InitiateAuthCommand({
-      AuthFlow: "REFRESH_TOKEN",
+      AuthFlow: AuthFlowType.REFRESH_TOKEN,
       ClientId: AWS_COGNITO_APP_CLIENT_ID,
       AuthParameters: {
         REFRESH_TOKEN: refreshToken!,

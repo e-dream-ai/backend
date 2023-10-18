@@ -12,8 +12,6 @@ export type RequestType<
   DeepPartial<QueryString>
 >;
 
-// export interface LocalsType extends Locals { user: MiddlewareUser}
-
 // export interface ResponseType extends Response { Locals: LocalsType }
 
 export type LocalsType = {

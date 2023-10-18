@@ -7,6 +7,8 @@ import { updateDreamSchema } from "schemas/dream.schema";
 
 const dreamRouter = Router();
 
+dreamRouter.get("/", requireAuth, dreamController.handleGetDreams);
+
 dreamRouter.post(
   "/",
   requireAuth,

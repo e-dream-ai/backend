@@ -2,9 +2,27 @@ import * as authController from "controllers/auth.controller";
 import { Router } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
-import { loginSchema, signupSchema, verifySchema } from "schemas/auth.schema";
+import {
+  confirmLoginWithCodeSchema,
+  loginSchema,
+  loginWithCodeSchema,
+  signupSchema,
+  verifySchema,
+} from "schemas/auth.schema";
 
 const authRouter = Router();
+
+authRouter.post(
+  "/login-with-code",
+  validatorMiddleware(loginWithCodeSchema),
+  authController.handleLoginWithCode,
+);
+
+authRouter.post(
+  "/confirm-login-with-code",
+  validatorMiddleware(confirmLoginWithCodeSchema),
+  authController.handleConfirmLoginWithCode,
+);
 
 authRouter.post(
   "/signup",

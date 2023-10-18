@@ -50,3 +50,13 @@ export type MiddlewareUser = {
   id?: string;
   email?: string;
 };
+
+export type UserLoginWithCodeCredentials = {
+  username: string;
+};
+
+export type ConfirmUserLoginWithCodeCredentials = {
+  username: string;
+  code: string;
+  session: string;
+};

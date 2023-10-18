@@ -4,6 +4,7 @@ import Joi from "joi";
 
 import type { ObjectSchema } from "joi";
 import type { RequireAtLeastOne } from "types/utility.types";
+import { jsonResponse } from "utils/responses.util";
 
 type RequestValidationSchema = RequireAtLeastOne<
   Record<"body" | "query" | "params", ObjectSchema>
@@ -34,12 +35,14 @@ const validatorMiddleware =
         next();
       } else {
       // mapping erros to response
-        const errors = error?.details.map((err) => ({
+        const errors = error?.details?.map((err) => ({
           field: err.path.join(", "),
           message: err.message,
         }));
 
-        res.status(httpStatus.BAD_REQUEST).json({ errors });
+        res
+          .status(httpStatus.BAD_REQUEST)
+          .json(jsonResponse({ success: false, data: errors }));
       }
     };
 

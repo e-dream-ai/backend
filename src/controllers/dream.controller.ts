@@ -4,6 +4,7 @@ import { BUCKET_ACL } from "constants/aws/s3.constants";
 import { DREAMS_FILE_EXTENSIONS } from "constants/dreams.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
+import { PAGINATION } from "constants/pagination.constants";
 import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import httpStatus from "http-status";
@@ -13,6 +14,49 @@ import { UpdateDreamRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { jsonResponse } from "utils/responses.util";
+
+/**
+ * Handles get dreams
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dreams
+ * BAD_REQUEST 400 - error getting dream
+ *
+ */
+export const handleGetDreams = async (req: RequestType, res: ResponseType) => {
+  try {
+    const take = Math.min(
+      Number(req.query.take) || PAGINATION.TAKE,
+      PAGINATION.TAKE,
+    );
+    const skip = Number(req.query.skip) || PAGINATION.SKIP;
+    const userId = Number(req.query.userId) || undefined;
+    const dreamRepository = appDataSource.getRepository(Dream);
+
+    const [dreams, count] = await dreamRepository.findAndCount({
+      where: { user: { id: userId } },
+      relations: { user: true },
+      order: { created_at: "DESC" },
+      take,
+      skip,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { dreams: dreams, count } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
 
 /**
  * Handles create dream
@@ -140,6 +184,7 @@ export const handleGetMyDreams = async (
     const dreams = await dreamRepository.find({
       where: { user: { id: user?.id } },
       relations: { user: true },
+      order: { created_at: "DESC" },
     });
 
     return res

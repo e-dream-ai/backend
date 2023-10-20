@@ -161,7 +161,126 @@
                     {
                       "properties": {
                       "data": {
-                        "$ref": "#/components/schemas/User",
+                        "$ref": "#/components/schemas/UserWithToken",
+                        "type": "object"
+                      }
+                    }}
+                  ]
+
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login-with-code": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Login user with code request",
+        "description": "Handles the login with code request",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Code sent to email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "session": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/confirm-login-with-code": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Login user with code",
+        "description": "Handles the login with code",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "session": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User logged in successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {"$ref": "#/components/schemas/ApiResponse"},
+                    {
+                      "properties": {
+                      "data": {
+                        "$ref": "#/components/schemas/UserWithToken",
                         "type": "object"
                       }
                     }}
@@ -461,6 +580,391 @@
           }
         }
       }
+    },
+    "/dream": {
+      "get": {
+        "tags": ["dream"],
+        "summary": "Gets dreams",
+        "description": "Get dreams",
+        "responses": {
+          "200": {
+            "description": "Get dreams",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "dreams": {
+                              "type": "array",
+                              "items": {
+                                  "$ref": "#/components/schemas/Dream"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "tags": ["dream"],
+        "summary": "Create dream",
+        "description": "Create dreams",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Create dreams",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "dreams": {
+                              "$ref": "#/components/schemas/Dream"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/dream/my-dreams": {
+      "get": {
+        "tags": ["dream"],
+        "summary": "Gets user dreams",
+        "description": "Handles get user dreams",
+        "responses": {
+          "200": {
+            "description": "Get user dreams",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "dreams": {
+                              "type": "array",
+                              "items": {
+                                  "$ref": "#/components/schemas/Dream"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/dream/{uuid}": {
+      "get": {
+        "tags": ["dream"],
+        "summary": "Gets dream",
+        "description": "Get dream",
+        "responses": {
+          "200": {
+            "description": "Get dream",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "dream": {
+                              "$ref": "#/components/schemas/Dream"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "tags": ["dream"],
+        "summary": "Update dream",
+        "description": "Update dreams",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Dream"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Create dreams",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "dreams": {
+                              "$ref": "#/components/schemas/Dream"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/dream/{uuid}/video": {
+      "put": {
+        "tags": ["dream"],
+        "summary": "Update video file",
+        "description": "Update video file",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dream updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "dreams": {
+                              "$ref": "#/components/schemas/Dream"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/dream/{uuid}/thumbnail": {
+      "put": {
+        "tags": ["dream"],
+        "summary": "Update thumbnail file",
+        "description": "Update thumbnail file",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dream updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "dreams": {
+                              "$ref": "#/components/schemas/Dream"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadApiResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [{ "bearerAuth": [] }]
+      }
     }
   },
   "components": {
@@ -532,9 +1036,51 @@
           "email": {
             "type": "string",
             "format": "email"
+          }
+        }
+      },
+      "UserWithToken": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/User"
           },
-          "token": {
-            "$ref": "#/components/schemas/Token"
+          {
+            "properties": {
+              "token": {
+                "$ref": "#/components/schemas/Token"
+              }
+            }
+          }
+        ]
+      },
+      "Dream": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "video": {
+            "type": "string"
+          },
+          "thumbnail": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
           }
         }
       }

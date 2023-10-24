@@ -1,0 +1,58 @@
+import * as playlistController from "controllers/playlist.controller";
+import { Router } from "express";
+import { requireAuth } from "middlewares/require-auth.middleware";
+const playlistRouter = Router();
+
+/**
+ * Get playlists
+ */
+playlistRouter.get(
+  "/my-playlists",
+  requireAuth,
+  playlistController.handleGetMyPlaylists,
+);
+
+/**
+ * Get playlist
+ */
+playlistRouter.get("/:id", requireAuth, playlistController.handleGetPlaylist);
+
+/**
+ * Create playlist
+ */
+playlistRouter.post("/", requireAuth, playlistController.handleCreatePlaylist);
+
+/**
+ * Update playlist
+ */
+playlistRouter.put(
+  "/:id",
+  requireAuth,
+  playlistController.handleUpdatePlaylist,
+);
+
+/**
+ * Remove playlist
+ */
+playlistRouter.delete(
+  "/:id",
+  requireAuth,
+  playlistController.handleDeletePlaylist,
+);
+
+/**
+ * Update playlist order
+ */
+playlistRouter.put("/:id/order", requireAuth, () => ({}));
+
+/**
+ * Add item to playlist
+ */
+playlistRouter.put("/:id/add-item", requireAuth, () => ({}));
+
+/**
+ * Remove item from playlist
+ */
+playlistRouter.delete("/:id/remove-item/:itemId", requireAuth, () => ({}));
+
+export default playlistRouter;

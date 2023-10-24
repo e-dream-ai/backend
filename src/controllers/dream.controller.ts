@@ -105,7 +105,7 @@ export const handleCreateDream = async (
     const createdDream = await dreamRepository.save(dream);
 
     return res
-      .status(httpStatus.OK)
+      .status(httpStatus.CREATED)
       .json(jsonResponse({ success: true, data: { dream: createdDream } }));
   } catch (error) {
     APP_LOGGER.error(error);

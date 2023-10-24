@@ -12,6 +12,7 @@ import swaggerUi from "swagger-ui-express";
 
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import dreamRouter from "routes/v1/dream.routes";
+import playlistRouter from "routes/v1/playlist.router";
 import { jsonResponse } from "utils/responses.util";
 import { APP_LOGGER } from "./shared/logger";
 
@@ -72,6 +73,9 @@ app.use("/api/v1/auth", authRouter);
 
 // register dream router
 app.use("/api/v1/dream", dreamRouter);
+
+// register playlist router
+app.use("/api/v1/playlist", playlistRouter);
 
 app.all("*", (req, res) => {
   res.status(httpStatus.NOT_FOUND);

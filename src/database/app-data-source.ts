@@ -1,6 +1,5 @@
 import path from "path";
 import { DataSource } from "typeorm";
-import * as entities from "../entities";
 import env from "../shared/env";
 
 const appDataSource = new DataSource({
@@ -11,7 +10,7 @@ const appDataSource = new DataSource({
   password: env.TYPEORM_PASSWORD || "postgres",
   database: env.TYPEORM_DATABASE || "postgres",
   migrationsTableName: "migrations",
-  entities: [...Object.values(entities)],
+  entities: [path.join(__dirname, "..", "entities/**/*.{ts,js}")],
   migrations: [path.join(__dirname, "..", "migrations/**/*.{ts,js}")],
   logging: "all",
   synchronize: false,

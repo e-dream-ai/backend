@@ -43,16 +43,28 @@ playlistRouter.delete(
 /**
  * Update playlist order
  */
-playlistRouter.put("/:id/order", requireAuth, () => ({}));
+playlistRouter.put(
+  "/:id/order",
+  requireAuth,
+  playlistController.handleOrderPlaylist,
+);
 
 /**
  * Add item to playlist
  */
-playlistRouter.put("/:id/add-item", requireAuth, () => ({}));
+playlistRouter.put(
+  "/:id/add-item",
+  requireAuth,
+  playlistController.handleAddPlaylistItem,
+);
 
 /**
  * Remove item from playlist
  */
-playlistRouter.delete("/:id/remove-item/:itemId", requireAuth, () => ({}));
+playlistRouter.delete(
+  "/:id/remove-item/:itemId",
+  requireAuth,
+  playlistController.handleRemovePlaylistItem,
+);
 
 export default playlistRouter;

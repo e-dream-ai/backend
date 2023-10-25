@@ -1,15 +1,25 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class Playlist1697841331225 implements MigrationInterface {
-  name = "Playlist1697841331225";
+export class Playlist1698187325976 implements MigrationInterface {
+  name = "Playlist1698187325976";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TABLE "playlist_item" ("id" SERIAL NOT NULL, "order" integer NOT NULL DEFAULT '0', "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "playlistId" integer, "dreamItemId" integer, "playlistItemId" integer, CONSTRAINT "PK_958bd2e5a3e9728df21b5855dc9" PRIMARY KEY ("id"))`,
+      `CREATE TYPE "public"."playlist_item_type_enum" AS ENUM('none', 'playlist', 'dream')`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "playlist_item" ("id" SERIAL NOT NULL, "type" "public"."playlist_item_type_enum" NOT NULL DEFAULT 'none', "order" integer NOT NULL DEFAULT '0', "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "playlistId" integer, "dreamItemId" integer, "playlistItemId" integer, CONSTRAINT "PK_958bd2e5a3e9728df21b5855dc9" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TABLE "playlist" ("id" SERIAL NOT NULL, "name" character varying, "thumbnail" character varying, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "userId" integer, CONSTRAINT "PK_538c2893e2024fabc7ae65ad142" PRIMARY KEY ("id"))`,
     );
+    await queryRunner.query(
+      `ALTER TABLE "user" ADD "created_at" TIMESTAMP NOT NULL DEFAULT now()`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "user" ADD "updated_at" TIMESTAMP NOT NULL DEFAULT now()`,
+    );
+    await queryRunner.query(`ALTER TABLE "user" ADD "deleted_at" TIMESTAMP`);
     await queryRunner.query(
       `ALTER TABLE "playlist_item" ADD CONSTRAINT "FK_9b9b229772d88966e7d9959d907" FOREIGN KEY ("playlistId") REFERENCES "playlist"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
@@ -37,7 +47,11 @@ export class Playlist1697841331225 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "playlist_item" DROP CONSTRAINT "FK_9b9b229772d88966e7d9959d907"`,
     );
+    await queryRunner.query(`ALTER TABLE "user" DROP COLUMN "deleted_at"`);
+    await queryRunner.query(`ALTER TABLE "user" DROP COLUMN "updated_at"`);
+    await queryRunner.query(`ALTER TABLE "user" DROP COLUMN "created_at"`);
     await queryRunner.query(`DROP TABLE "playlist"`);
     await queryRunner.query(`DROP TABLE "playlist_item"`);
+    await queryRunner.query(`DROP TYPE "public"."playlist_item_type_enum"`);
   }
 }

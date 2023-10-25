@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { PlaylistItemType } from "types/playlist.types";
 import { Dream } from "./Dream.entity";
 import { Playlist } from "./Playlist.entity";
 
@@ -22,6 +23,13 @@ export class PlaylistItem {
   @ManyToOne(() => Playlist)
   @JoinColumn()
   playlist: Playlist;
+
+  @Column({
+    type: "enum",
+    enum: PlaylistItemType,
+    default: PlaylistItemType.NONE,
+  })
+  type: PlaylistItemType;
 
   /**
    * Dream of Playlist Item

@@ -27,9 +27,9 @@ export class Playlist {
   @Column({ nullable: true, type: "varchar" })
   thumbnail?: string | null;
 
-  @OneToMany(() => Playlist, (playlist) => playlist.items)
+  @OneToMany(() => PlaylistItem, (playlistItem) => playlistItem.playlist)
   @JoinColumn()
-  items: PlaylistItem;
+  items: PlaylistItem[];
 
   @CreateDateColumn()
   created_at: Date;

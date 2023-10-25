@@ -19,6 +19,10 @@
 └── index.ts        # Express App
 ```
 
+## Documentation
+
+Served by swagger on [staging](https://e-dream-76c98b08cc5d.herokuapp.com/api/v1/api-docs).
+
 ## Run locally
 
 Install all packagees based on the actual

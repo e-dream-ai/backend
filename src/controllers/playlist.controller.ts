@@ -1,12 +1,14 @@
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import appDataSource from "database/app-data-source";
-import { Playlist } from "entities";
+import { Dream, Playlist, PlaylistItem } from "entities";
 import httpStatus from "http-status";
 import { APP_LOGGER } from "shared/logger";
 import { RequestType, ResponseType } from "types/express.types";
 import {
+  AddPlaylistItemRequest,
   CreatePlaylistRequest,
+  PlaylistItemType,
   UpdatePlaylistRequest,
 } from "types/playlist.types";
 import { jsonResponse } from "utils/responses.util";
@@ -76,6 +78,7 @@ export const handleGetPlaylist = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
+      relations: { user: true, items: { playlistItem: true, dreamItem: true } },
     });
 
     if (!playlist) {
@@ -208,7 +211,7 @@ export const handleUpdatePlaylist = async (
 };
 
 /**
- * Handles get playlist
+ * Handles delete playlist
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object
@@ -223,6 +226,7 @@ export const handleDeletePlaylist = async (
   res: ResponseType,
 ) => {
   const id: number = Number(req.params?.id) || 0;
+  const user = res.locals.user;
   try {
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
@@ -237,7 +241,261 @@ export const handleDeletePlaylist = async (
         );
     }
 
-    await playlistRepository.softDelete({ id: playlist.id });
+    if (playlist.user.id !== user?.id) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    const { affected } = await playlistRepository.softDelete({
+      id: playlist.id,
+    });
+
+    if (!affected) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+        );
+    }
+
+    return res.status(httpStatus.NO_CONTENT).json();
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles create playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlist
+ * BAD_REQUEST 400 - error updating playlist
+ *
+ */
+
+export const handleOrderPlaylist = async (
+  req: RequestType<UpdatePlaylistRequest>,
+  res: ResponseType,
+) => {
+  const id: number = Number(req.params.id) || 0;
+  const user = res.locals.user;
+  const reorder = req.body;
+
+  try {
+    const playlistRepository = appDataSource.getRepository(Playlist);
+    const [playlist] = await playlistRepository.find({
+      where: { id },
+      relations: { user: true, items: true },
+    });
+
+    if (!playlist) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.NOT_FOUND,
+        }),
+      );
+    }
+
+    if (playlist.user.id !== user?.id) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    playlist.items = playlist.items.map((item) => {
+      const reorderItem = reorder.find((i) => i.id === item.id);
+      if (!reorderItem) return item;
+      return { ...item, order: reorderItem.order! };
+    });
+
+    const updatedPlaylist = await playlistRepository.save(playlist);
+
+    return res
+      .status(httpStatus.OK)
+      .json(
+        jsonResponse({ success: true, data: { playlist: updatedPlaylist } }),
+      );
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles add item to playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlist
+ * BAD_REQUEST 400 - error deleting playlist
+ *
+ */
+export const handleAddPlaylistItem = async (
+  req: RequestType<AddPlaylistItemRequest>,
+  res: ResponseType,
+) => {
+  const id: number = Number(req.params?.id) || 0;
+  const { type, id: itemId } = req.body;
+  try {
+    const playlistRepository = appDataSource.getRepository(Playlist);
+    const [playlist] = await playlistRepository.find({ where: { id } });
+
+    if (!playlist) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+        );
+    }
+
+    const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
+
+    const playlistSearch =
+      type === PlaylistItemType.DREAM
+        ? { dreamItem: { id: itemId } }
+        : { playlistItem: { id: itemId } };
+
+    let [playlistItem] = await playlistItemRepository.find({
+      where: { type: type, ...playlistSearch },
+    });
+
+    if (playlistItem) {
+      return res
+        .status(httpStatus.CONFLICT)
+        .json(jsonResponse({ success: false }));
+    }
+
+    playlistItem = new PlaylistItem();
+    playlistItem.playlist = playlist;
+    playlistItem.type = type!;
+    playlistItem.order = (playlist.items?.length || 0) + 1;
+
+    if (type === PlaylistItemType.DREAM) {
+      const dreamRepository = appDataSource.getRepository(Dream);
+      const [dreamToAdd] = await dreamRepository.find({
+        where: { id: itemId },
+      });
+
+      if (!dreamToAdd) {
+        return res.status(httpStatus.NOT_FOUND).json(
+          jsonResponse({
+            success: false,
+            message: GENERAL_MESSAGES.NOT_FOUND,
+          }),
+        );
+      }
+
+      playlistItem.dreamItem = dreamToAdd;
+    } else if (type === PlaylistItemType.PLAYLIST) {
+      const [playlistToAdd] = await playlistRepository.find({
+        where: { id: itemId },
+      });
+
+      if (!playlistToAdd) {
+        return res.status(httpStatus.NOT_FOUND).json(
+          jsonResponse({
+            success: false,
+            message: GENERAL_MESSAGES.NOT_FOUND,
+          }),
+        );
+      }
+
+      playlistItem.playlistItem = playlistToAdd;
+    }
+
+    await playlistItemRepository.save(playlistItem);
+
+    return res.status(httpStatus.CREATED).json();
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles remove item to playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlist
+ * BAD_REQUEST 400 - error deleting playlist
+ *
+ */
+export const handleRemovePlaylistItem = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const id: number = Number(req.params?.id) || 0;
+  const itemId: number = Number(req.params?.itemId) || 0;
+  const user = res.locals.user;
+  try {
+    const playlistRepository = appDataSource.getRepository(Playlist);
+    const [playlist] = await playlistRepository.find({
+      where: { id },
+      relations: { user: true },
+    });
+
+    if (!playlist) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+        );
+    }
+
+    if (playlist.user.id !== user?.id) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
+    const { affected } = await playlistItemRepository.softDelete({
+      id: itemId,
+      playlist: { id: playlist.id },
+    });
+
+    if (!affected) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+        );
+    }
 
     return res.status(httpStatus.NO_CONTENT).json();
   } catch (error) {

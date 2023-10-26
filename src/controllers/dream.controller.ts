@@ -177,19 +177,26 @@ export const handleGetMyDreams = async (
   req: RequestType<UpdateDreamRequest>,
   res: ResponseType,
 ) => {
+  const take = Math.min(
+    Number(req.query.take) || PAGINATION.TAKE,
+    PAGINATION.TAKE,
+  );
+  const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const user = res.locals.user;
 
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
-    const dreams = await dreamRepository.find({
+    const [dreams, count] = await dreamRepository.findAndCount({
       where: { user: { id: user?.id } },
       relations: { user: true },
       order: { created_at: "DESC" },
+      take,
+      skip,
     });
 
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dreams } }));
+      .json(jsonResponse({ success: true, data: { dreams, count } }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(

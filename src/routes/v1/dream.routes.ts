@@ -1,6 +1,6 @@
 import * as dreamController from "controllers/dream.controller";
 import { Router } from "express";
-import { uploadMiddleware } from "middlewares/multer.middleware";
+import { multerSingleFileMiddleware } from "middlewares/multer.middleware";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import { updateDreamSchema } from "schemas/dream.schema";
@@ -12,7 +12,7 @@ dreamRouter.get("/", requireAuth, dreamController.handleGetDreams);
 dreamRouter.post(
   "/",
   requireAuth,
-  uploadMiddleware.single("file"),
+  multerSingleFileMiddleware,
   dreamController.handleCreateDream,
 );
 
@@ -30,14 +30,14 @@ dreamRouter.put(
 dreamRouter.put(
   "/:uuid/video",
   requireAuth,
-  uploadMiddleware.single("file"),
+  multerSingleFileMiddleware,
   dreamController.handleUpdateVideoDream,
 );
 
 dreamRouter.put(
   "/:uuid/thumbnail",
   requireAuth,
-  uploadMiddleware.single("file"),
+  multerSingleFileMiddleware,
   dreamController.handleUpdateThumbnailDream,
 );
 

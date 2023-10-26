@@ -1,8 +1,34 @@
+import { NextFunction, Request, Response } from "express";
+import httpStatus from "http-status";
 import multer from "multer";
+import { jsonResponse } from "utils/responses.util";
 
-export const uploadMiddleware = multer({
+export const multerInstance = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 60 * 1024 * 1024, // limit file size to 60MB
+    fileSize: 1024 * 1024 * 1024, // limit file size to 60MB
   },
 });
+
+export const multerSingleFileMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const upload = multerInstance.single("file");
+  return upload(req, res, (error) => {
+    if (error instanceof multer.MulterError) {
+      // A Multer error occurred when uploading.
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(jsonResponse({ success: false, message: error.message }));
+    } else if (error) {
+      // An unknown error occurred when uploading.
+      return res
+        .status(httpStatus.INTERNAL_SERVER_ERROR)
+        .json(jsonResponse({ success: false, message: error.message }));
+    }
+    // Everything went fine.
+    next();
+  });
+};

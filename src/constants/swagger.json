@@ -586,6 +586,22 @@
         "tags": ["dream"],
         "summary": "Gets dreams",
         "description": "Get dreams",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "name": "take",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "name": "skip",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Get dreams",
@@ -607,6 +623,9 @@
                               "items": {
                                   "$ref": "#/components/schemas/Dream"
                               }
+                            },
+                            "count": {
+                              "type": "number"
                             }
                           }
                         }
@@ -696,6 +715,22 @@
         "tags": ["dream"],
         "summary": "Gets user dreams",
         "description": "Handles get user dreams",
+        "parameters": [
+          {
+            "schema": {
+              "type": "number"
+            },
+            "name": "take",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "number"
+            },
+            "name": "skip",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Get user dreams",
@@ -717,6 +752,9 @@
                               "items": {
                                   "$ref": "#/components/schemas/Dream"
                               }
+                            },
+                            "count": {
+                              "type": "number"
                             }
                           }
                         }

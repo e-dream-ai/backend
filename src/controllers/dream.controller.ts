@@ -141,7 +141,7 @@ export const handleGetDream = async (
     });
 
     if (!dream) {
-      res
+      return res
         .status(httpStatus.NOT_FOUND)
         .json(
           jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
@@ -411,6 +411,71 @@ export const handleUpdateThumbnailDream = async (
     res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles delete dream
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * NO_CONTENT 204 - dream
+ * BAD_REQUEST 400 - error deleting dream
+ *
+ */
+export const handleDeleteDream = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const uuid: string = String(req.params?.uuid) || "";
+  const user = res.locals.user;
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+        );
+    }
+
+    if (dream.user.id !== user?.id) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    const { affected } = await dreamRepository.softDelete({
+      id: dream.id,
+    });
+
+    if (!affected) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+        );
+    }
+
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(

@@ -55,13 +55,13 @@ docker compose -f "docker-compose.yml" up -d --build
 
 ### Stage
 
-- When you merge a change from a branch feat/name or fix/name to stage, or push changes directly to stage a deploy review on netlify. Only owners might deploy directly without permissions.
-- To trigger a deploy on netlify, go to netlify dashboard and find stage app > **deploys** on sidemenu, find **trigger deploy** > **deploy site**
-- Deploy will be trigger, wait for the build and deploy should be done.
+- When you merge a change from a branch feat/name or fix/name to stage, or push changes directly to stage a deploy is trigger automatically on heroku.
+- As stage and development share database, you don't need to run migrations on this environment.
 
 ### Production
 
-You can follow the same steps used in stage.
+- Before push any change to production branch (**main**), you have to run migrations on this environment. Use `npm run migration:run` command using `env.production` file values on `.env` file. This process will be automated configured in the future.
+- When you merge a change from a branch feat/name or fix/name to production, or push changes directly to production a deploy is trigger automatically on heroku.
 
 ## TypeORM commands
 

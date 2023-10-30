@@ -49,8 +49,15 @@ docker compose -f "docker-compose.yml" up -d --build
 
 ## Deployment process
 
-- If you push something to stage branch, this will be deployed to staging environment
-- If you create an tag, this one will be deployed to production
+### Stage
+
+- When you merge a change from a branch feat/name or fix/name to stage, or push changes directly to stage a deploy review on netlify. Only owners might deploy directly without permissions.
+- To trigger a deploy on netlify, go to netlify dashboard and find stage app > **deploys** on sidemenu, find **trigger deploy** > **deploy site**
+- Deploy will be trigger, wait for the build and deploy should be done.
+
+### Production
+
+You can follow the same steps used in stage.
 
 ## TypeORM commands
 

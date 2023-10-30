@@ -41,4 +41,6 @@ dreamRouter.put(
   dreamController.handleUpdateThumbnailDream,
 );
 
+dreamRouter.delete("/:uuid", requireAuth, dreamController.handleDeleteDream);
+
 export default dreamRouter;

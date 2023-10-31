@@ -438,7 +438,7 @@ export const handleDeleteDream = async (
   res: ResponseType,
 ) => {
   const uuid: string = String(req.params?.uuid) || "";
-  const user = res.locals.user;
+  // const user = res.locals.user;
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
@@ -454,14 +454,15 @@ export const handleDeleteDream = async (
         );
     }
 
-    if (dream.user.id !== user?.id) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
-    }
+    // disabled temporarily
+    // if (dream.user.id !== user?.id) {
+    //   return res.status(httpStatus.UNAUTHORIZED).json(
+    //     jsonResponse({
+    //       success: false,
+    //       message: GENERAL_MESSAGES.UNAUTHORIZED,
+    //     }),
+    //   );
+    // }
 
     const { affected } = await dreamRepository.softDelete({
       id: dream.id,

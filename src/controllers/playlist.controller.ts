@@ -1,8 +1,15 @@
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { s3Client } from "clients/s3.client";
+import { BUCKET_ACL } from "constants/aws/s3.constants";
+import { FILE_EXTENSIONS } from "constants/file.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
+import { THUMBNAIL } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
+import { PLAYLIST_PREFIX } from "constants/playlist.constants";
 import appDataSource from "database/app-data-source";
 import { Dream, Playlist, PlaylistItem } from "entities";
 import httpStatus from "http-status";
+import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 import { RequestType, ResponseType } from "types/express.types";
 import {
@@ -11,6 +18,7 @@ import {
   PlaylistItemType,
   UpdatePlaylistRequest,
 } from "types/playlist.types";
+import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -40,6 +48,7 @@ export const handleGetMyPlaylists = async (
     const [playlists, count] = await playlistRepository.findAndCount({
       where: { user: { id: userId } },
       order: { created_at: "DESC" },
+      relations: { user: true },
       take,
       skip,
     });
@@ -211,6 +220,86 @@ export const handleUpdatePlaylist = async (
 };
 
 /**
+ * Handles update thumbnail playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - thumbnail playlist updated
+ * BAD_REQUEST 400 - error updating playlist thumbnail
+ *
+ */
+export const handleUpdateThumbnailPlaylist = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const user = res.locals.user;
+  const id: number = Number(req.params.id) || 0;
+
+  try {
+    const playlistRepository = appDataSource.getRepository(Playlist);
+    const [playlist] = await playlistRepository.find({
+      where: { id: id! },
+      relations: { user: true },
+    });
+
+    if (!playlist) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.NOT_FOUND,
+        }),
+      );
+    }
+
+    if (playlist.user.id !== user?.id) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    // update playlist
+    const thumbnailBuffer = req.file?.buffer;
+    const bucketName = env.AWS_BUCKET_NAME;
+    const fileName = `${THUMBNAIL}.${FILE_EXTENSIONS.JPG}`;
+    const filePath = `${user?.cognitoId}/${PLAYLIST_PREFIX}-${id}/${fileName}`;
+
+    if (thumbnailBuffer) {
+      const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: filePath,
+        Body: thumbnailBuffer,
+        ACL: BUCKET_ACL,
+      });
+      await s3Client.send(command);
+    }
+
+    const updatedPlaylist = await playlistRepository.save({
+      ...playlist,
+      thumbnail: thumbnailBuffer ? generateBucketObjectURL(filePath) : null,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(
+        jsonResponse({ success: true, data: { playlist: updatedPlaylist } }),
+      );
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
  * Handles delete playlist
  *
  * @param {RequestType} req - Request object
@@ -231,6 +320,7 @@ export const handleDeletePlaylist = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
+      relations: { user: true },
     });
 
     if (!playlist) {
@@ -262,7 +352,7 @@ export const handleDeletePlaylist = async (
         );
     }
 
-    return res.status(httpStatus.NO_CONTENT).json();
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(

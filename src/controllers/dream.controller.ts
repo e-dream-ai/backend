@@ -1,7 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
-import { DREAMS_FILE_EXTENSIONS } from "constants/dreams.constants";
+import { FILE_EXTENSIONS } from "constants/file.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
@@ -88,7 +88,7 @@ export const handleCreateDream = async (
     await dreamRepository.save(dream);
     const dreamUUID = dream.uuid;
 
-    const fileName = `${dreamUUID}.${DREAMS_FILE_EXTENSIONS.MP4}`;
+    const fileName = `${dreamUUID}.${FILE_EXTENSIONS.MP4}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
 
     const command = new PutObjectCommand({
@@ -133,13 +133,12 @@ export const handleGetDream = async (
   req: RequestType<UpdateDreamRequest>,
   res: ResponseType,
 ) => {
-  const user = res.locals.user;
   const dreamUUID: string = String(req.params?.uuid);
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID!, votes: { user: { id: user?.id } } },
-      relations: { user: true, votes: true },
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
     });
 
     if (!dream) {
@@ -231,8 +230,8 @@ export const handleUpdateDream = async (
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID!, votes: { user: { id: user?.id } } },
-      relations: { user: true, votes: true },
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
     });
 
     if (!dream) {
@@ -289,8 +288,8 @@ export const handleUpdateVideoDream = async (
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID!, votes: { user: { id: user?.id } } },
-      relations: { user: true, votes: true },
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
     });
 
     if (!dream) {
@@ -314,7 +313,7 @@ export const handleUpdateVideoDream = async (
     // update dream
     const videoBuffer = req.file?.buffer;
     const bucketName = env.AWS_BUCKET_NAME;
-    const fileName = `${dreamUUID}.${DREAMS_FILE_EXTENSIONS.MP4}`;
+    const fileName = `${dreamUUID}.${FILE_EXTENSIONS.MP4}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
 
     if (videoBuffer) {
@@ -367,8 +366,8 @@ export const handleUpdateThumbnailDream = async (
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID!, votes: { user: { id: user?.id } } },
-      relations: { user: true, votes: true },
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
     });
 
     if (!dream) {
@@ -392,7 +391,7 @@ export const handleUpdateThumbnailDream = async (
     // update dream
     const thumbnailBuffer = req.file?.buffer;
     const bucketName = env.AWS_BUCKET_NAME;
-    const fileName = `${dreamUUID}.${DREAMS_FILE_EXTENSIONS.JPG}`;
+    const fileName = `${dreamUUID}.${FILE_EXTENSIONS.JPG}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
 
     if (thumbnailBuffer) {

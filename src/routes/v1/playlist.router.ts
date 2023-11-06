@@ -1,5 +1,6 @@
 import * as playlistController from "controllers/playlist.controller";
 import { Router } from "express";
+import { multerSingleFileMiddleware } from "middlewares/multer.middleware";
 import { requireAuth } from "middlewares/require-auth.middleware";
 const playlistRouter = Router();
 
@@ -29,6 +30,16 @@ playlistRouter.put(
   "/:id",
   requireAuth,
   playlistController.handleUpdatePlaylist,
+);
+
+/**
+ * Update thumbnail
+ */
+playlistRouter.put(
+  "/:id/thumbnail",
+  requireAuth,
+  multerSingleFileMiddleware,
+  playlistController.handleUpdateThumbnailPlaylist,
 );
 
 /**

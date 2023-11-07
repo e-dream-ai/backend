@@ -2,6 +2,8 @@ import * as playlistController from "controllers/playlist.controller";
 import { Router } from "express";
 import { multerSingleFileMiddleware } from "middlewares/multer.middleware";
 import { requireAuth } from "middlewares/require-auth.middleware";
+import validatorMiddleware from "middlewares/validator.middleware";
+import { addPlaylistItemSchema } from "schemas/playlist.schema";
 const playlistRouter = Router();
 
 /**
@@ -66,6 +68,7 @@ playlistRouter.put(
 playlistRouter.put(
   "/:id/add-item",
   requireAuth,
+  validatorMiddleware(addPlaylistItemSchema),
   playlistController.handleAddPlaylistItem,
 );
 

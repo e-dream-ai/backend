@@ -87,7 +87,10 @@ export const handleGetPlaylist = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
-      relations: { user: true, items: { playlistItem: true, dreamItem: true } },
+      relations: {
+        user: true,
+        items: { playlistItem: { user: true }, dreamItem: { user: true } },
+      },
     });
 
     if (!playlist) {
@@ -177,7 +180,10 @@ export const handleUpdatePlaylist = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
-      relations: { user: true },
+      relations: {
+        user: true,
+        items: { playlistItem: { user: true }, dreamItem: { user: true } },
+      },
     });
 
     if (!playlist) {
@@ -517,9 +523,16 @@ export const handleAddPlaylistItem = async (
       playlistItem.playlistItem = playlistToAdd;
     }
 
-    await playlistItemRepository.save(playlistItem);
+    const createdPlaylistItem = await playlistItemRepository.save(playlistItem);
 
-    return res.status(httpStatus.CREATED).json();
+    return res
+      .status(httpStatus.CREATED)
+      .json(
+        jsonResponse({
+          success: true,
+          data: { playlistItem: createdPlaylistItem },
+        }),
+      );
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(

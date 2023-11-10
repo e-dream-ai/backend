@@ -5,14 +5,19 @@ export enum PlaylistItemType {
 }
 
 export type CreatePlaylistRequest = {
-  name?: string;
-  thumbnail?: string;
+  name: string;
 };
 
-export type UpdatePlaylistRequest = Array<{
+export type UpdatePlaylistRequest = {
+  name: string;
+};
+
+export type OrderPlaylist = {
   id: number;
   order: number;
-}>;
+};
+
+export type OrderPlaylistRequest = Array<OrderPlaylist>;
 
 export type AddPlaylistItemRequest = {
   type: PlaylistItemType;

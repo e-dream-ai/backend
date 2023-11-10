@@ -15,6 +15,7 @@ import { RequestType, ResponseType } from "types/express.types";
 import {
   AddPlaylistItemRequest,
   CreatePlaylistRequest,
+  OrderPlaylistRequest,
   PlaylistItemType,
   UpdatePlaylistRequest,
 } from "types/playlist.types";
@@ -36,22 +37,37 @@ export const handleGetMyPlaylists = async (
   req: RequestType,
   res: ResponseType,
 ) => {
+  const user = res.locals.user;
+
   try {
     const take = Math.min(
       Number(req.query.take) || PAGINATION.TAKE,
       PAGINATION.TAKE,
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
-    const userId = Number(req.query.userId) || undefined;
     const playlistRepository = appDataSource.getRepository(Playlist);
 
-    const [playlists, count] = await playlistRepository.findAndCount({
-      where: { user: { id: userId } },
-      order: { created_at: "DESC" },
-      relations: { user: true },
-      take,
-      skip,
-    });
+    // const [playlists, count] = await playlistRepository.findAndCount({
+    //   where: { user: { id: user?.id } },
+    //   order: { created_at: "DESC" },
+    //   relations: { user: true },
+    //   take,
+    //   skip,
+    // });
+
+    const query = playlistRepository
+      .createQueryBuilder("playlist")
+      .leftJoinAndSelect("playlist.user", "user")
+      .leftJoinAndSelect("playlist.items", "item")
+      .where({ user: { id: user?.id } });
+
+    const count = await query.getCount();
+
+    const playlists = await query
+      .loadRelationCountAndMap("playlist.itemCount", "playlist.items")
+      .skip(skip)
+      .take(take)
+      .getMany();
 
     return res
       .status(httpStatus.OK)
@@ -383,12 +399,12 @@ export const handleDeletePlaylist = async (
  */
 
 export const handleOrderPlaylist = async (
-  req: RequestType<UpdatePlaylistRequest>,
+  req: RequestType<OrderPlaylistRequest>,
   res: ResponseType,
 ) => {
   const id: number = Number(req.params.id) || 0;
   const user = res.locals.user;
-  const reorder = req.body;
+  const order = req.body;
 
   try {
     const playlistRepository = appDataSource.getRepository(Playlist);
@@ -416,7 +432,7 @@ export const handleOrderPlaylist = async (
     }
 
     playlist.items = playlist.items.map((item) => {
-      const reorderItem = reorder.find((i) => i.id === item.id);
+      const reorderItem = order.find((i) => i.id === item.id);
       if (!reorderItem) return item;
       return { ...item, order: reorderItem.order! };
     });
@@ -480,9 +496,12 @@ export const handleAddPlaylistItem = async (
     });
 
     if (playlistItem) {
-      return res
-        .status(httpStatus.CONFLICT)
-        .json(jsonResponse({ success: false }));
+      return res.status(httpStatus.CONFLICT).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.DUPLICATED,
+        }),
+      );
     }
 
     playlistItem = new PlaylistItem();
@@ -525,14 +544,12 @@ export const handleAddPlaylistItem = async (
 
     const createdPlaylistItem = await playlistItemRepository.save(playlistItem);
 
-    return res
-      .status(httpStatus.CREATED)
-      .json(
-        jsonResponse({
-          success: true,
-          data: { playlistItem: createdPlaylistItem },
-        }),
-      );
+    return res.status(httpStatus.CREATED).json(
+      jsonResponse({
+        success: true,
+        data: { playlistItem: createdPlaylistItem },
+      }),
+    );
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
@@ -600,7 +617,7 @@ export const handleRemovePlaylistItem = async (
         );
     }
 
-    return res.status(httpStatus.NO_CONTENT).json();
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(

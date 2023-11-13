@@ -17,7 +17,9 @@ export type OrderPlaylist = {
   order: number;
 };
 
-export type OrderPlaylistRequest = Array<OrderPlaylist>;
+export type OrderPlaylistRequest = {
+  order: OrderPlaylist[];
+};
 
 export type AddPlaylistItemRequest = {
   type: PlaylistItemType;

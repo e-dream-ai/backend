@@ -404,10 +404,11 @@ export const handleOrderPlaylist = async (
 ) => {
   const id: number = Number(req.params.id) || 0;
   const user = res.locals.user;
-  const order = req.body;
+  const order = req.body.order!;
 
   try {
     const playlistRepository = appDataSource.getRepository(Playlist);
+    const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
     const [playlist] = await playlistRepository.find({
       where: { id },
       relations: { user: true, items: true },
@@ -431,19 +432,21 @@ export const handleOrderPlaylist = async (
       );
     }
 
-    playlist.items = playlist.items.map((item) => {
-      const reorderItem = order.find((i) => i.id === item.id);
-      if (!reorderItem) return item;
-      return { ...item, order: reorderItem.order! };
-    });
+    playlist.items = await Promise.all(
+      playlist.items.map(async (item) => {
+        const reorderItem = order.find((i) => i.id === item.id);
+        if (!reorderItem) return item;
 
-    const updatedPlaylist = await playlistRepository.save(playlist);
+        return await playlistItemRepository.save({
+          ...item,
+          order: reorderItem.order!,
+        });
+      }),
+    );
 
     return res
       .status(httpStatus.OK)
-      .json(
-        jsonResponse({ success: true, data: { playlist: updatedPlaylist } }),
-      );
+      .json(jsonResponse({ success: true, data: { playlist } }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
@@ -471,7 +474,9 @@ export const handleAddPlaylistItem = async (
   res: ResponseType,
 ) => {
   const id: number = Number(req.params?.id) || 0;
-  const { type, id: itemId } = req.body;
+  const { type, id: item } = req.body;
+  const itemId = Number(item) ?? 0;
+  console.log({ itemId, id });
   try {
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({ where: { id } });
@@ -484,6 +489,14 @@ export const handleAddPlaylistItem = async (
         );
     }
 
+    if (PlaylistItemType.PLAYLIST && id === itemId) {
+      return res
+        .status(httpStatus.FORBIDDEN)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.FORBIDDEN }),
+        );
+    }
+
     const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 
     const playlistSearch =
@@ -492,7 +505,7 @@ export const handleAddPlaylistItem = async (
         : { playlistItem: { id: itemId } };
 
     let [playlistItem] = await playlistItemRepository.find({
-      where: { type: type, ...playlistSearch },
+      where: { playlist: { id }, type: type, ...playlistSearch },
     });
 
     if (playlistItem) {

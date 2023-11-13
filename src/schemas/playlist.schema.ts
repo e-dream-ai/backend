@@ -3,6 +3,7 @@ import {
   AddPlaylistItemRequest,
   CreatePlaylistRequest,
   OrderPlaylist,
+  OrderPlaylistRequest,
   PlaylistItemType,
   UpdatePlaylistRequest,
 } from "types/playlist.types";
@@ -20,14 +21,23 @@ export const updatePlaylistSchema = {
 };
 
 export const orderPlaylistSchema = {
-  body: Joi.array<OrderPlaylist>().items(
-    Joi.object().keys({ order: Joi.number() }),
-  ),
+  body: Joi.object<OrderPlaylistRequest>().keys({
+    order: Joi.array()
+      .required()
+      .items(
+        Joi.object<OrderPlaylist>().keys({
+          id: Joi.number().required(),
+          order: Joi.number().required(),
+        }),
+      ),
+  }),
 };
 
 export const addPlaylistItemSchema = {
   body: Joi.object<AddPlaylistItemRequest>().keys({
-    type: Joi.string().required().equal(PlaylistItemType),
-    id: Joi.string().required(),
+    type: Joi.string()
+      .required()
+      .valid(PlaylistItemType.DREAM, PlaylistItemType.PLAYLIST),
+    id: Joi.number().required(),
   }),
 };

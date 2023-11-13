@@ -4,4 +4,5 @@ export const GENERAL_MESSAGES = {
   INTERNAL_SERVER_ERROR: "Internal Server Error.",
   UNAUTHORIZED: "Unauthorized.",
   DUPLICATED: "Resource already exists.",
+  FORBIDDEN: "Action not allowed.",
 };

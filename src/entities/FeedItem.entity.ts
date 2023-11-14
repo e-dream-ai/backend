@@ -5,48 +5,45 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { PlaylistItemType } from "types/playlist.types";
+import { FeedItemType } from "types/feed-item.types";
 import { Dream } from "./Dream.entity";
 import { Playlist } from "./Playlist.entity";
+import { User } from "./User.entity";
 
 @Entity()
-export class PlaylistItem {
+export class FeedItem {
   @PrimaryGeneratedColumn()
   id: number;
 
-  /**
-   * Playlist which belongs the playlist item
-   */
-  @ManyToOne(() => Playlist)
-  @JoinColumn()
-  playlist: Playlist;
+  @ManyToOne(() => User, (user) => user.dreams)
+  user: User;
 
   @Column({
     type: "enum",
-    enum: PlaylistItemType,
-    default: PlaylistItemType.NONE,
+    enum: FeedItemType,
+    default: FeedItemType.NONE,
   })
-  type: PlaylistItemType;
+  type: FeedItemType;
 
   /**
-   * Dream of the Playlist Item
+   * Dream of Playlist Item
    * Should be null if playlistItem exists
    */
-  @ManyToOne(() => Dream, (dream) => dream.playlistItems)
+  @OneToOne(() => Dream)
+  @JoinColumn()
   dreamItem: Dream;
 
   /**
-   * Playlist of the Playlist Item
+   * Playlist of Playlist Item
    * Should be null if dreamItem exists
    */
-  @ManyToOne(() => Playlist, (playlist) => playlist.playlistItems)
+  @OneToOne(() => Playlist)
+  @JoinColumn()
   playlistItem: Playlist;
-
-  @Column({ default: 0 })
-  order: number;
 
   @CreateDateColumn()
   created_at: Date;

@@ -7,9 +7,12 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { FeedItem } from "./FeedItem.entity";
+import { PlaylistItem } from "./PlaylistItem.entity";
 import { User } from "./User.entity";
 import { Vote } from "./Vote.entity";
 
@@ -25,6 +28,14 @@ export class Dream {
   @ManyToOne(() => User, (user) => user.dreams)
   @JoinColumn()
   user: User;
+
+  /**
+   * Feed Item
+   */
+  @OneToOne(() => FeedItem, (feedItem) => feedItem.dreamItem, {
+    cascade: ["soft-remove"],
+  })
+  feedItem: FeedItem;
 
   @Column({ nullable: true, type: "varchar" })
   name?: string | null;
@@ -44,6 +55,11 @@ export class Dream {
 
   @Column({ default: 0 })
   downvotes: number;
+
+  @OneToMany(() => PlaylistItem, (playlistItem) => playlistItem.dreamItem, {
+    cascade: ["soft-remove"],
+  })
+  playlistItems: PlaylistItem[];
 
   @CreateDateColumn()
   created_at: Date;

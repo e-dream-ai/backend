@@ -7,11 +7,12 @@ import { THUMBNAIL } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { PLAYLIST_PREFIX } from "constants/playlist.constants";
 import appDataSource from "database/app-data-source";
-import { Dream, Playlist, PlaylistItem } from "entities";
+import { Dream, FeedItem, Playlist, PlaylistItem } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 import { RequestType, ResponseType } from "types/express.types";
+import { FeedItemType } from "types/feed-item.types";
 import {
   AddPlaylistItemRequest,
   CreatePlaylistRequest,
@@ -157,6 +158,20 @@ export const handleCreatePlaylist = async (
     playlist.name = name;
     playlist.user = user!;
     const createdPlaylist = await playlistRepository.save(playlist);
+
+    /**
+     * create feed item when playlist is created
+     */
+    const feedRepository = appDataSource.getRepository(FeedItem);
+
+    const feedItem = new FeedItem();
+    feedItem.type = FeedItemType.PLAYLIST;
+    feedItem.user = createdPlaylist.user;
+    feedItem.playlistItem = createdPlaylist;
+    feedItem.created_at = createdPlaylist.created_at;
+    feedItem.updated_at = createdPlaylist.updated_at;
+
+    await feedRepository.save(feedItem);
 
     return res
       .status(httpStatus.CREATED)
@@ -342,7 +357,7 @@ export const handleDeletePlaylist = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
-      relations: { user: true },
+      relations: { user: true, playlistItems: true, feedItem: true },
     });
 
     if (!playlist) {
@@ -362,9 +377,7 @@ export const handleDeletePlaylist = async (
       );
     }
 
-    const { affected } = await playlistRepository.softDelete({
-      id: playlist.id,
-    });
+    const affected = await playlistRepository.softRemove(playlist);
 
     if (!affected) {
       return res

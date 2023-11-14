@@ -6,12 +6,13 @@ import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import appDataSource from "database/app-data-source";
-import { Dream, Vote } from "entities";
+import { Dream, FeedItem, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 import { UpdateDreamRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
+import { FeedItemType } from "types/feed-item.types";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { jsonResponse } from "utils/responses.util";
@@ -104,6 +105,20 @@ export const handleCreateDream = async (
     dream.video = generateBucketObjectURL(filePath);
     const createdDream = await dreamRepository.save(dream);
 
+    /**
+     * create feed item when dream is created
+     */
+    const feedRepository = appDataSource.getRepository(FeedItem);
+
+    const feedItem = new FeedItem();
+    feedItem.type = FeedItemType.DREAM;
+    feedItem.user = createdDream.user;
+    feedItem.dreamItem = createdDream;
+    feedItem.created_at = createdDream.created_at;
+    feedItem.updated_at = createdDream.updated_at;
+
+    await feedRepository.save(feedItem);
+
     return res
       .status(httpStatus.CREATED)
       .json(jsonResponse({ success: true, data: { dream: createdDream } }));
@@ -138,7 +153,7 @@ export const handleGetDream = async (
     const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true },
+      relations: { user: true, playlistItems: true },
     });
 
     if (!dream) {
@@ -628,9 +643,9 @@ export const handleDeleteDream = async (
   // const user = res.locals.user;
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
-    const [dream] = await dreamRepository.find({
+    const dream = await dreamRepository.findOne({
       where: { uuid },
-      relations: { user: true },
+      relations: { user: true, playlistItems: true, feedItem: true },
     });
 
     if (!dream) {
@@ -651,9 +666,7 @@ export const handleDeleteDream = async (
     //   );
     // }
 
-    const { affected } = await dreamRepository.softDelete({
-      id: dream.id,
-    });
+    const affected = await dreamRepository.softRemove(dream);
 
     if (!affected) {
       return res

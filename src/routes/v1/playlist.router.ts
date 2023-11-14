@@ -3,7 +3,12 @@ import { Router } from "express";
 import { multerSingleFileMiddleware } from "middlewares/multer.middleware";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
-import { addPlaylistItemSchema } from "schemas/playlist.schema";
+import {
+  addPlaylistItemSchema,
+  createPlaylistSchema,
+  orderPlaylistSchema,
+  updatePlaylistSchema,
+} from "schemas/playlist.schema";
 const playlistRouter = Router();
 
 /**
@@ -23,7 +28,12 @@ playlistRouter.get("/:id", requireAuth, playlistController.handleGetPlaylist);
 /**
  * Create playlist
  */
-playlistRouter.post("/", requireAuth, playlistController.handleCreatePlaylist);
+playlistRouter.post(
+  "/",
+  requireAuth,
+  validatorMiddleware(createPlaylistSchema),
+  playlistController.handleCreatePlaylist,
+);
 
 /**
  * Update playlist
@@ -31,6 +41,7 @@ playlistRouter.post("/", requireAuth, playlistController.handleCreatePlaylist);
 playlistRouter.put(
   "/:id",
   requireAuth,
+  validatorMiddleware(updatePlaylistSchema),
   playlistController.handleUpdatePlaylist,
 );
 
@@ -59,6 +70,7 @@ playlistRouter.delete(
 playlistRouter.put(
   "/:id/order",
   requireAuth,
+  validatorMiddleware(orderPlaylistSchema),
   playlistController.handleOrderPlaylist,
 );
 

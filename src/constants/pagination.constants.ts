@@ -1,4 +1,4 @@
 export const PAGINATION = {
-  TAKE: 50,
+  TAKE: 10,
   SKIP: 0,
 };

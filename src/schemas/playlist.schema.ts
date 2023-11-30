@@ -16,7 +16,7 @@ export const createPlaylistSchema = {
 
 export const updatePlaylistSchema = {
   body: Joi.object<UpdatePlaylistRequest>().keys({
-    name: Joi.string().required(),
+    name: Joi.string().required().max(100),
   }),
 };
 

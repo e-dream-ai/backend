@@ -45,7 +45,7 @@ export class PlaylistItem {
   @ManyToOne(() => Playlist, (playlist) => playlist.playlistItems)
   playlistItem: Playlist;
 
-  @Column({ default: 0 })
+  @Column({ default: 0, type: "integer" })
   order: number;
 
   @CreateDateColumn()

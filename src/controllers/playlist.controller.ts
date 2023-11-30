@@ -489,7 +489,7 @@ export const handleAddPlaylistItem = async (
   const id: number = Number(req.params?.id) || 0;
   const { type, id: item } = req.body;
   const itemId = Number(item) ?? 0;
-  console.log({ itemId, id });
+
   try {
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({ where: { id } });

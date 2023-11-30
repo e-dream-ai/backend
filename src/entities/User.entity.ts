@@ -15,11 +15,20 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: "varchar" })
   cognitoId: string;
 
-  @Column()
+  @Column({ type: "varchar" })
   email: string;
+
+  @Column({ nullable: true, type: "varchar", length: 50 })
+  name?: string | null;
+
+  @Column({ nullable: true, type: "varchar" })
+  description?: string | null;
+
+  @Column({ nullable: true, type: "varchar" })
+  avatar?: string | null;
 
   @OneToMany(() => Dream, (dream) => dream.user)
   dreams: Dream[];

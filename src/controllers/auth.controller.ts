@@ -95,7 +95,7 @@ export const handleConfirmLoginWithCode = async (
 
     const commandResponse = await cognitoIdentityProviderClient.send(command);
     const accessToken = commandResponse.AuthenticationResult?.AccessToken;
-    const user = await fetchAwsUser(accessToken!);
+    const user = await fetchCognitoUser(accessToken!);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -237,13 +237,20 @@ export const handleLogin = async (
 
     const commandResponse = await cognitoIdentityProviderClient.send(command);
     const accessToken = commandResponse.AuthenticationResult?.AccessToken;
-    const user = await fetchAwsUser(accessToken!);
+    const cognitoUser = await fetchCognitoUser(accessToken!);
+
+    const userRepository = appDataSource.getRepository(User);
+    const user = await userRepository.findOne({
+      where: { cognitoId: cognitoUser.id },
+    });
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
         message: AUTH_MESSAGES.USER_LOGGED_IN,
-        data: { token: commandResponse.AuthenticationResult, ...user },
+        data: {
+          user: { ...user, token: commandResponse.AuthenticationResult },
+        },
       }),
     );
   } catch (error) {
@@ -265,7 +272,7 @@ export const handleLogin = async (
  * @returns {MiddlewareUser} Returns middleware user
  *
  */
-export const fetchAwsUser = async (accessToken: string) => {
+export const fetchCognitoUser = async (accessToken: string) => {
   const command = new GetUserCommand({
     AccessToken: accessToken,
   });

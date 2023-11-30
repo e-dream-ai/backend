@@ -1,4 +1,4 @@
-import { json } from "body-parser";
+import bodyParser from "body-parser";
 import swaggerDocument from "constants/swagger.json";
 import cors from "cors";
 import appDataSource from "database/app-data-source";
@@ -14,6 +14,7 @@ import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import dreamRouter from "routes/v1/dream.routes";
 import feedRouter from "routes/v1/feed.router";
 import playlistRouter from "routes/v1/playlist.router";
+import userRouter from "routes/v1/user.router";
 import { jsonResponse } from "utils/responses.util";
 import { APP_LOGGER } from "./shared/logger";
 
@@ -29,7 +30,7 @@ const customHeaders = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // parse json request body
-app.use(json());
+app.use(bodyParser.json());
 
 // cors middleware
 app.use(cors());
@@ -69,8 +70,11 @@ app.get(["/", "/api/v1"], (req: Request, res: Response) => {
   });
 });
 
-// register auth router
+// register user router
 app.use("/api/v1/auth", authRouter);
+
+// register auth router
+app.use("/api/v1/user", userRouter);
 
 // register dream router
 app.use("/api/v1/dream", dreamRouter);

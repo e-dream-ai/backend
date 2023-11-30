@@ -21,7 +21,7 @@ export class Dream {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ type: "string" })
   @Generated("uuid")
   uuid: string;
 
@@ -50,10 +50,10 @@ export class Dream {
   @JoinColumn()
   votes: Vote;
 
-  @Column({ default: 0 })
+  @Column({ default: 0, type: "integer" })
   upvotes: number;
 
-  @Column({ default: 0 })
+  @Column({ default: 0, type: "integer" })
   downvotes: number;
 
   @OneToMany(() => PlaylistItem, (playlistItem) => playlistItem.dreamItem, {

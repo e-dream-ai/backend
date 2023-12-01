@@ -1,7 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
-import { FILE_EXTENSIONS } from "constants/file.constants";
+import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { THUMBNAIL } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
@@ -302,7 +302,10 @@ export const handleUpdateThumbnailPlaylist = async (
     // update playlist
     const thumbnailBuffer = req.file?.buffer;
     const bucketName = env.AWS_BUCKET_NAME;
-    const fileName = `${THUMBNAIL}.${FILE_EXTENSIONS.JPG}`;
+    const fileMymeType = req.file?.mimetype;
+    const fileExtension =
+      MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
+    const fileName = `${THUMBNAIL}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${PLAYLIST_PREFIX}-${id}/${fileName}`;
 
     if (thumbnailBuffer) {

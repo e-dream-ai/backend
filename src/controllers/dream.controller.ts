@@ -1,7 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
-import { FILE_EXTENSIONS } from "constants/file.constants";
+import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
@@ -89,7 +89,9 @@ export const handleCreateDream = async (
     await dreamRepository.save(dream);
     const dreamUUID = dream.uuid;
 
-    const fileName = `${dreamUUID}.${FILE_EXTENSIONS.MP4}`;
+    const fileMymeType = req.file?.mimetype;
+    const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
+    const fileName = `${dreamUUID}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
 
     const command = new PutObjectCommand({
@@ -328,7 +330,9 @@ export const handleUpdateVideoDream = async (
     // update dream
     const videoBuffer = req.file?.buffer;
     const bucketName = env.AWS_BUCKET_NAME;
-    const fileName = `${dreamUUID}.${FILE_EXTENSIONS.MP4}`;
+    const fileMymeType = req.file?.mimetype;
+    const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
+    const fileName = `${dreamUUID}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
 
     if (videoBuffer) {
@@ -406,7 +410,9 @@ export const handleUpdateThumbnailDream = async (
     // update dream
     const thumbnailBuffer = req.file?.buffer;
     const bucketName = env.AWS_BUCKET_NAME;
-    const fileName = `${dreamUUID}.${FILE_EXTENSIONS.JPG}`;
+    const fileMymeType = req.file?.mimetype;
+    const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
+    const fileName = `${dreamUUID}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
 
     if (thumbnailBuffer) {

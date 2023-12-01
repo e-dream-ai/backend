@@ -1,7 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
-import { FILE_EXTENSIONS } from "constants/file.constants";
+import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { AVATAR } from "constants/multimedia.constants";
 import appDataSource from "database/app-data-source";
@@ -145,7 +145,10 @@ export const handleUpdateUserAvatar = async (
     // update playlist
     const avatarBuffer = req.file?.buffer;
     const bucketName = env.AWS_BUCKET_NAME;
-    const fileName = `${AVATAR}.${FILE_EXTENSIONS.JPG}`;
+    const fileMymeType = req.file?.mimetype;
+    const fileExtension =
+      MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
+    const fileName = `${AVATAR}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${fileName}`;
 
     if (avatarBuffer) {

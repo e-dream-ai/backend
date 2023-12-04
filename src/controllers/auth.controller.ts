@@ -248,9 +248,7 @@ export const handleLogin = async (
       jsonResponse({
         success: true,
         message: AUTH_MESSAGES.USER_LOGGED_IN,
-        data: {
-          user: { ...user, token: commandResponse.AuthenticationResult },
-        },
+        data: { ...user, token: commandResponse.AuthenticationResult },
       }),
     );
   } catch (error) {

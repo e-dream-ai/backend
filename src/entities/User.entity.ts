@@ -3,12 +3,15 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 import { Dream } from "./Dream.entity";
 import { Playlist } from "./Playlist.entity";
+import { Role } from "./Role.entity";
 
 @Entity()
 export class User {
@@ -35,6 +38,13 @@ export class User {
 
   @OneToMany(() => Playlist, (playlist) => playlist.user)
   playlists: Playlist[];
+
+  /**
+   *  Role
+   */
+  @ManyToOne(() => Role)
+  @JoinColumn()
+  role: Role;
 
   @CreateDateColumn()
   created_at: Date;

@@ -37,8 +37,10 @@ import {
   SignUpCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
+import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { User } from "entities";
+import { Role } from "entities/Role.entity";
 import type { Response } from "express";
 import { APP_LOGGER } from "shared/logger";
 import type { RequestType, ResponseType } from "types/express.types";
@@ -142,9 +144,12 @@ export const handleSignUp = async (
 
     const cognitoResponse = await cognitoIdentityProviderClient.send(command);
 
+    const roleRepository = appDataSource.getRepository(Role);
+    const role = await roleRepository.findOneBy({ name: ROLES.USER_GROUP });
     const userRepository = appDataSource.getRepository(User);
 
     const user = new User();
+    user.role = role!;
     user.cognitoId = cognitoResponse.UserSub!;
     user.email = email!;
     await userRepository.save(user);
@@ -242,6 +247,7 @@ export const handleLogin = async (
     const userRepository = appDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { cognitoId: cognitoUser.id },
+      relations: { role: true },
     });
 
     return res.status(httpStatus.OK).json(
@@ -296,7 +302,10 @@ export const fetchCognitoUser = async (accessToken: string) => {
  */
 export const fetchUser = async (username: string) => {
   const userRepository = appDataSource.getRepository(User);
-  const user = await userRepository.findOneBy({ cognitoId: username });
+  const user = await userRepository.findOne({
+    where: { cognitoId: username },
+    relations: { role: true },
+  });
   return user;
 };
 

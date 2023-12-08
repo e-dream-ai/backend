@@ -5,6 +5,7 @@ import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
+import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { Dream, FeedItem, Vote } from "entities";
 import httpStatus from "http-status";
@@ -15,6 +16,7 @@ import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { canExecuteAction } from "utils/permissions.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -260,7 +262,13 @@ export const handleUpdateDream = async (
       );
     }
 
-    if (dream.user.id !== user?.id) {
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
       return res.status(httpStatus.UNAUTHORIZED).json(
         jsonResponse({
           success: false,
@@ -318,7 +326,13 @@ export const handleUpdateVideoDream = async (
       );
     }
 
-    if (dream.user.id !== user?.id) {
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
       return res.status(httpStatus.UNAUTHORIZED).json(
         jsonResponse({
           success: false,
@@ -398,7 +412,13 @@ export const handleUpdateThumbnailDream = async (
       );
     }
 
-    if (dream.user.id !== user?.id) {
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
       return res.status(httpStatus.UNAUTHORIZED).json(
         jsonResponse({
           success: false,
@@ -646,7 +666,7 @@ export const handleDeleteDream = async (
   res: ResponseType,
 ) => {
   const uuid: string = String(req.params?.uuid) || "";
-  // const user = res.locals.user;
+  const user = res.locals.user;
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
     const dream = await dreamRepository.findOne({
@@ -662,15 +682,20 @@ export const handleDeleteDream = async (
         );
     }
 
-    // disabled temporarily
-    // if (dream.user.id !== user?.id) {
-    //   return res.status(httpStatus.UNAUTHORIZED).json(
-    //     jsonResponse({
-    //       success: false,
-    //       message: GENERAL_MESSAGES.UNAUTHORIZED,
-    //     }),
-    //   );
-    // }
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
 
     const affected = await dreamRepository.softRemove(dream);
 

@@ -31,7 +31,7 @@ export class FeedItem1699914923094 implements MigrationInterface {
 
     for (let i = 0; i < dreams.length; i++) {
       const dream = dreams[i];
-      await await queryRunner.manager.save(
+      await queryRunner.manager.save(
         queryRunner.manager.create<FeedItem>(FeedItem, {
           user: dream.user,
           dreamItem: dream,

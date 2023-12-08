@@ -6,6 +6,7 @@ import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { THUMBNAIL } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { PLAYLIST_PREFIX } from "constants/playlist.constants";
+import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { Dream, FeedItem, Playlist, PlaylistItem } from "entities";
 import httpStatus from "http-status";
@@ -21,6 +22,7 @@ import {
   UpdatePlaylistRequest,
 } from "types/playlist.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { canExecuteAction } from "utils/permissions.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -226,7 +228,13 @@ export const handleUpdatePlaylist = async (
       );
     }
 
-    if (playlist.user.id !== user?.id) {
+    const isAllowed = canExecuteAction({
+      isOwner: playlist.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
       return res.status(httpStatus.UNAUTHORIZED).json(
         jsonResponse({
           success: false,
@@ -290,7 +298,13 @@ export const handleUpdateThumbnailPlaylist = async (
       );
     }
 
-    if (playlist.user.id !== user?.id) {
+    const isAllowed = canExecuteAction({
+      isOwner: playlist.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
       return res.status(httpStatus.UNAUTHORIZED).json(
         jsonResponse({
           success: false,
@@ -371,7 +385,13 @@ export const handleDeletePlaylist = async (
         );
     }
 
-    if (playlist.user.id !== user?.id) {
+    const isAllowed = canExecuteAction({
+      isOwner: playlist.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
       return res.status(httpStatus.UNAUTHORIZED).json(
         jsonResponse({
           success: false,
@@ -439,7 +459,13 @@ export const handleOrderPlaylist = async (
       );
     }
 
-    if (playlist.user.id !== user?.id) {
+    const isAllowed = canExecuteAction({
+      isOwner: playlist.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
       return res.status(httpStatus.UNAUTHORIZED).json(
         jsonResponse({
           success: false,
@@ -492,6 +518,7 @@ export const handleAddPlaylistItem = async (
   const id: number = Number(req.params?.id) || 0;
   const { type, id: item } = req.body;
   const itemId = Number(item) ?? 0;
+  const user = res.locals.user;
 
   try {
     const playlistRepository = appDataSource.getRepository(Playlist);
@@ -503,6 +530,21 @@ export const handleAddPlaylistItem = async (
         .json(
           jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
         );
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: playlist.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
     }
 
     if (PlaylistItemType.PLAYLIST && id === itemId) {
@@ -623,7 +665,13 @@ export const handleRemovePlaylistItem = async (
         );
     }
 
-    if (playlist.user.id !== user?.id) {
+    const isAllowed = canExecuteAction({
+      isOwner: playlist.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
       return res.status(httpStatus.UNAUTHORIZED).json(
         jsonResponse({
           success: false,

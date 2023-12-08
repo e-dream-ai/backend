@@ -1,9 +1,14 @@
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
-import { NextFunction, Request, Response } from "express";
+import { NextFunction } from "express";
 import httpStatus from "http-status";
+import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
 
-const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+const requireAuth = (
+  req: RequestType,
+  res: ResponseType,
+  next: NextFunction,
+) => {
   if (!res.locals.user) {
     return res
       .status(httpStatus.UNAUTHORIZED)

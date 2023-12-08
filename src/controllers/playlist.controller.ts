@@ -6,6 +6,7 @@ import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { THUMBNAIL } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { PLAYLIST_PREFIX } from "constants/playlist.constants";
+import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { Dream, FeedItem, Playlist, PlaylistItem } from "entities";
 import httpStatus from "http-status";
@@ -229,7 +230,7 @@ export const handleUpdatePlaylist = async (
 
     const isAllowed = canExecuteAction({
       isOwner: playlist.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
@@ -299,7 +300,7 @@ export const handleUpdateThumbnailPlaylist = async (
 
     const isAllowed = canExecuteAction({
       isOwner: playlist.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
@@ -386,7 +387,7 @@ export const handleDeletePlaylist = async (
 
     const isAllowed = canExecuteAction({
       isOwner: playlist.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
@@ -460,7 +461,7 @@ export const handleOrderPlaylist = async (
 
     const isAllowed = canExecuteAction({
       isOwner: playlist.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
@@ -533,7 +534,7 @@ export const handleAddPlaylistItem = async (
 
     const isAllowed = canExecuteAction({
       isOwner: playlist.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
@@ -666,7 +667,7 @@ export const handleRemovePlaylistItem = async (
 
     const isAllowed = canExecuteAction({
       isOwner: playlist.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 

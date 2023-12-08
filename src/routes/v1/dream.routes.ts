@@ -1,3 +1,4 @@
+import { ROLES } from "constants/role.constants";
 import * as dreamController from "controllers/dream.controller";
 import { Router } from "express";
 import { multerSingleFileMiddleware } from "middlewares/multer.middleware";
@@ -11,14 +12,14 @@ const dreamRouter = Router();
 dreamRouter.get(
   "/",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   dreamController.handleGetDreams,
 );
 
 dreamRouter.post(
   "/",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   multerSingleFileMiddleware,
   dreamController.handleCreateDream,
 );
@@ -26,21 +27,21 @@ dreamRouter.post(
 dreamRouter.get(
   "/my-dreams",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   dreamController.handleGetMyDreams,
 );
 
 dreamRouter.get(
   "/:uuid",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   dreamController.handleGetDream,
 );
 
 dreamRouter.put(
   "/:uuid",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(updateDreamSchema),
   dreamController.handleUpdateDream,
 );
@@ -48,7 +49,7 @@ dreamRouter.put(
 dreamRouter.put(
   "/:uuid/video",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   multerSingleFileMiddleware,
   dreamController.handleUpdateVideoDream,
 );
@@ -56,7 +57,7 @@ dreamRouter.put(
 dreamRouter.put(
   "/:uuid/thumbnail",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   multerSingleFileMiddleware,
   dreamController.handleUpdateThumbnailDream,
 );
@@ -64,21 +65,21 @@ dreamRouter.put(
 dreamRouter.delete(
   "/:uuid",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   dreamController.handleDeleteDream,
 );
 
 dreamRouter.put(
   "/:uuid/upvote",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   dreamController.handleUpvoteDream,
 );
 
 dreamRouter.put(
   "/:uuid/downvote",
   requireAuth,
-  checkRoleMiddleware(["user-group", "admin-group"]),
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   dreamController.handleDownvoteDream,
 );
 

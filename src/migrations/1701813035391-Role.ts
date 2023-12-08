@@ -1,3 +1,4 @@
+import { ROLES } from "constants/role.constants";
 import { Role } from "entities/Role.entity";
 import { MigrationInterface, QueryRunner } from "typeorm";
 
@@ -15,13 +16,13 @@ export class Role1701813035391 implements MigrationInterface {
 
     await queryRunner.manager.save(
       queryRunner.manager.create<Role>(Role, {
-        name: "admin-group",
+        name: ROLES.ADMIN_GROUP,
       }),
     );
 
     await queryRunner.manager.save(
       queryRunner.manager.create<Role>(Role, {
-        name: "user-group",
+        name: ROLES.USER_GROUP,
       }),
     );
   }

@@ -5,6 +5,7 @@ import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
+import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { Dream, FeedItem, Vote } from "entities";
 import httpStatus from "http-status";
@@ -263,7 +264,7 @@ export const handleUpdateDream = async (
 
     const isAllowed = canExecuteAction({
       isOwner: dream.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
@@ -327,7 +328,7 @@ export const handleUpdateVideoDream = async (
 
     const isAllowed = canExecuteAction({
       isOwner: dream.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
@@ -413,7 +414,7 @@ export const handleUpdateThumbnailDream = async (
 
     const isAllowed = canExecuteAction({
       isOwner: dream.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
@@ -683,7 +684,7 @@ export const handleDeleteDream = async (
 
     const isAllowed = canExecuteAction({
       isOwner: dream.user.id === user?.id,
-      allowedRoles: ["admin-group"],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 

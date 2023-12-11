@@ -35,6 +35,7 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
     const userRepository = appDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { id },
+      relations: { role: true },
     });
 
     if (!user) {

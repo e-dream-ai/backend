@@ -4,6 +4,7 @@ import { BUCKET_ACL } from "constants/aws/s3.constants";
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { AVATAR } from "constants/multimedia.constants";
+import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { User } from "entities";
@@ -11,11 +12,55 @@ import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
+import { Like } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { UpdateUserRoleRequest } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { jsonResponse } from "utils/responses.util";
+
+/**
+ * Handles get users
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - users
+ * BAD_REQUEST 400 - error getting users
+ *
+ */
+export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
+  try {
+    const take = Math.min(
+      Number(req.query.take) || PAGINATION.TAKE,
+      PAGINATION.TAKE,
+    );
+    const skip = Number(req.query.skip) || PAGINATION.SKIP;
+    const search = String(req.query.search);
+    const userRepository = appDataSource.getRepository(User);
+    const [users, count] = await userRepository.findAndCount({
+      where: {
+        email: search ? Like(`%${search}%`) : undefined,
+      },
+      order: { created_at: "DESC" },
+      take,
+      skip,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { users, count } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
 
 /**
  * Handles get user

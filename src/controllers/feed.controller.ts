@@ -4,6 +4,7 @@ import appDataSource from "database/app-data-source";
 import { FeedItem } from "entities/FeedItem.entity";
 import httpStatus from "http-status";
 import { APP_LOGGER } from "shared/logger";
+import { ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
 
@@ -24,12 +25,22 @@ export const handleGetFeed = async (req: RequestType, res: ResponseType) => {
     PAGINATION.TAKE,
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
+  const search = req.query.search ? String(req.query.search) : undefined;
   const userId = Number(req.query.userId) || undefined;
 
   try {
     const feedRepository = appDataSource.getRepository(FeedItem);
     const [feed, count] = await feedRepository.findAndCount({
-      where: { user: { id: userId } },
+      where: [
+        {
+          user: { id: userId },
+          dreamItem: search ? { name: ILike(`%${search}%`) } : false,
+        },
+        {
+          user: { id: userId },
+          playlistItem: search ? { name: ILike(`%${search}%`) } : false,
+        },
+      ],
       relations: { user: true, dreamItem: true, playlistItem: true },
       order: { created_at: "DESC" },
       take,

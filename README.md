@@ -1,5 +1,10 @@
 # <div align="center"><h1>e-dream.ai backend </h1></div>
 
+## Requeriments
+
+- node 20.x.x
+- npm 9.x.x
+
 ## Project structure
 
 ```
@@ -25,7 +30,13 @@ Served by swagger on [staging](https://e-dream-76c98b08cc5d.herokuapp.com/api/v1
 
 ## Run locally
 
-Install all packagees based on the actual
+Copy env file, replace data with correct environment info
+
+```bash
+cp .env.example .env
+```
+
+Install all packages
 
 ```bash
 npm ci

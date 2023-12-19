@@ -4,8 +4,9 @@ import appDataSource from "database/app-data-source";
 import { FeedItem } from "entities/FeedItem.entity";
 import httpStatus from "http-status";
 import { APP_LOGGER } from "shared/logger";
-import { ILike } from "typeorm";
+import { FindOptionsWhere, ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
+import { GetFeedRequest } from "types/feed.types";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -19,7 +20,10 @@ import { jsonResponse } from "utils/responses.util";
  * BAD_REQUEST 400 - error getting dreams
  *
  */
-export const handleGetFeed = async (req: RequestType, res: ResponseType) => {
+export const handleGetFeed = async (
+  req: RequestType<unknown, GetFeedRequest>,
+  res: ResponseType,
+) => {
   const take = Math.min(
     Number(req.query.take) || PAGINATION.TAKE,
     PAGINATION.TAKE,
@@ -27,20 +31,28 @@ export const handleGetFeed = async (req: RequestType, res: ResponseType) => {
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const search = req.query.search ? String(req.query.search) : undefined;
   const userId = Number(req.query.userId) || undefined;
+  const type = req.query.type;
 
   try {
     const feedRepository = appDataSource.getRepository(FeedItem);
+    const dreamItemSearch: FindOptionsWhere<FeedItem> = {
+      user: userId ? { id: userId } : undefined,
+      dreamItem: search ? { name: ILike(`%${search}%`) } : undefined,
+      type: type,
+    };
+    const playlistItemSearch: FindOptionsWhere<FeedItem> = {
+      user: userId ? { id: userId } : undefined,
+      playlistItem: search ? { name: ILike(`%${search}%`) } : undefined,
+      type: type,
+    };
+    const isSearchEnabled = Boolean(userId) || Boolean(search) || Boolean(type);
     const [feed, count] = await feedRepository.findAndCount({
-      where: [
-        {
-          user: { id: userId },
-          dreamItem: search ? { name: ILike(`%${search}%`) } : false,
-        },
-        {
-          user: { id: userId },
-          playlistItem: search ? { name: ILike(`%${search}%`) } : false,
-        },
-      ],
+      where: isSearchEnabled
+        ? ([
+          dreamItemSearch,
+          playlistItemSearch,
+        ] as FindOptionsWhere<FeedItem>[])
+        : undefined,
       relations: { user: true, dreamItem: true, playlistItem: true },
       order: { created_at: "DESC" },
       take,

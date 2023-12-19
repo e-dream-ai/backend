@@ -12,7 +12,7 @@ import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
-import { Like } from "typeorm";
+import { FindOptionsWhere, ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { UpdateUserRoleRequest } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
@@ -37,12 +37,14 @@ export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
       PAGINATION.TAKE,
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
-    const search = String(req.query.search);
+    const search = req.query.search ? String(req.query.search) : undefined;
     const userRepository = appDataSource.getRepository(User);
     const [users, count] = await userRepository.findAndCount({
-      where: {
-        email: search ? Like(`%${search}%`) : undefined,
-      },
+      where: search
+        ? ({
+          email: ILike(`%${search}%`),
+        } as FindOptionsWhere<User>)
+        : undefined,
       order: { created_at: "DESC" },
       take,
       skip,

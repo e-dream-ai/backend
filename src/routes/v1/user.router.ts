@@ -10,6 +10,13 @@ import { updateUserRoleSchema, updateUserSchema } from "schemas/user.schema";
 const userRouter = Router();
 
 userRouter.get(
+  "/",
+  requireAuth,
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  userController.handleGetUsers,
+);
+
+userRouter.get(
   "/:id",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),

@@ -3,6 +3,8 @@ import * as feedController from "controllers/feed.controller";
 import { Router } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
+import validatorMiddleware from "middlewares/validator.middleware";
+import { feedSchema } from "schemas/feed.schema";
 
 const feedRouter = Router();
 
@@ -17,6 +19,7 @@ feedRouter.get(
   "/my-dreams",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(feedSchema),
   feedController.handleGetMyDreams,
 );
 

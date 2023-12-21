@@ -515,16 +515,17 @@ export const handleAddPlaylistItem = async (
   req: RequestType<AddPlaylistItemRequest>,
   res: ResponseType,
 ) => {
-  console.log({ params: req.params });
   const id: number = Number(req.params?.id) || 0;
   const { type, id: item } = req.body;
   const itemId = Number(item) ?? 0;
   const user = res.locals.user;
-  console.log({ user });
 
   try {
     const playlistRepository = appDataSource.getRepository(Playlist);
-    const [playlist] = await playlistRepository.find({ where: { id } });
+    const [playlist] = await playlistRepository.find({
+      where: { id },
+      relations: { user: true },
+    });
 
     if (!playlist) {
       return res

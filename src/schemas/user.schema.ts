@@ -4,8 +4,8 @@ import { UpdateUserRequest, UpdateUserRoleRequest } from "types/user.types";
 
 export const updateUserSchema = {
   body: Joi.object<UpdateUserRequest>().keys({
-    name: Joi.string().required().max(50),
-    description: Joi.string().max(300),
+    name: Joi.string().optional().allow("").max(50),
+    description: Joi.string().optional().allow("").max(300),
   }),
 };
 

@@ -1,7 +1,4 @@
-import { Dream, Playlist } from "entities";
-import { FeedItem } from "entities/FeedItem.entity";
 import { MigrationInterface, QueryRunner } from "typeorm";
-import { FeedItemType } from "types/feed-item.types";
 
 export class FeedItem1699914923094 implements MigrationInterface {
   name = "FeedItem1699914923094";
@@ -23,44 +20,6 @@ export class FeedItem1699914923094 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "feed_item" ADD CONSTRAINT "FK_c5cb5e21337c664a3b37214676a" FOREIGN KEY ("playlistItemId") REFERENCES "playlist"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
     );
-
-    const dreams = await queryRunner.manager.find(Dream, {
-      withDeleted: true,
-      relations: { user: true },
-    });
-
-    for (let i = 0; i < dreams.length; i++) {
-      const dream = dreams[i];
-      await queryRunner.manager.save(
-        queryRunner.manager.create<FeedItem>(FeedItem, {
-          user: dream.user,
-          dreamItem: dream,
-          type: FeedItemType.DREAM,
-          created_at: dream.created_at,
-          updated_at: dream.updated_at,
-          deleted_at: dream.deleted_at,
-        }),
-      );
-    }
-
-    const playlists = await queryRunner.manager.find(Playlist, {
-      withDeleted: true,
-      relations: { user: true },
-    });
-
-    for (let i = 0; i < playlists.length; i++) {
-      const playlist = playlists[i];
-      await queryRunner.manager.save(
-        queryRunner.manager.create<FeedItem>(FeedItem, {
-          user: playlist.user,
-          playlistItem: playlist,
-          type: FeedItemType.PLAYLIST,
-          created_at: playlist.created_at,
-          updated_at: playlist.updated_at,
-          deleted_at: playlist.deleted_at,
-        }),
-      );
-    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

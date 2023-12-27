@@ -3,6 +3,7 @@ import { bool, cleanEnv, json, port, str, url } from "envalid";
 
 export const env = cleanEnv(process.env, {
   npm_package_version: str(),
+  NODE_ENV: str(),
   PORT: port(),
 
   /**

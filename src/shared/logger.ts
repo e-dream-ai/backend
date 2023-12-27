@@ -1,13 +1,17 @@
-import pino, { Logger, LoggerOptions } from "pino";
+import pino, { Logger } from "pino";
 import pretty from "pino-pretty";
+import env from "../shared/env";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let APP_LOGGER: Logger<LoggerOptions>;
+let APP_LOGGER: Logger;
 
-if (process.env.NOLOG === "true") {
+if (env.NODE_ENV === "production") {
+  /**
+   * Disable logging on production
+   */
   APP_LOGGER = pino({ enabled: false });
 } else {
-  APP_LOGGER = process.env.NODE_ENV === "production" ? pino() : pino(pretty());
+  APP_LOGGER = pino(pretty());
 }
 
 export { APP_LOGGER };

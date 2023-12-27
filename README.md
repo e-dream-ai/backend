@@ -42,6 +42,12 @@ Install all packages
 npm ci
 ```
 
+Install husky
+
+```bash
+npm run husky-install
+```
+
 Run on dev mode
 
 ```bash

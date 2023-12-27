@@ -9,7 +9,6 @@
   },
   "scripts": {
     "start": "NODE_PATH=dist node dist/index.js",
-    "postinstall": "tsc",
     "build": "rm -rf dist & tsc --build",
     "watch-node": "nodemon dist/index.js",
     "watch-ts": "tsc -w",
@@ -27,7 +26,7 @@
     "migration:run": "npm run typeorm migration:run -- -d src/database/app-data-source.ts",
     "migration:revert": "npm run typeorm migration:revert -- -d src/database/app-data-source.ts",
     "migration:show": "npm run typeorm migration:show -- -d src/database/app-data-source.ts",
-    "prepare": "husky install",
+    "husky-install": "husky install",
     "lint-staged": "npx lint-staged"
   },
   "repository": {
@@ -66,6 +65,7 @@
     "@types/body-parser": "^1.19.2",
     "@types/cors": "^2.8.13",
     "@types/express": "^4.17.17",
+    "@types/jsonwebtoken": "^9.0.5",
     "@types/multer": "^1.4.8",
     "@types/node": "^16.18.64",
     "@types/swagger-ui-express": "^4.1.3",
@@ -81,7 +81,7 @@
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.3.0",
-    "typescript": "^4.5.2"
+    "typescript": "^4.9.5"
   },
   "lint-staged": {
     "*.{js,ts}": "eslint --cache --fix",

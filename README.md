@@ -4,6 +4,8 @@
 
 - node 20.x.x
 - npm 9.x.x
+- [heroku-22 stack](https://devcenter.heroku.com/articles/heroku-22-stack) (only for deploys, not need to install locally)
+- [heroku buildpack pnpm](https://github.com/unfold/heroku-buildpack-pnpm)
 
 ## Project structure
 
@@ -30,6 +32,12 @@ Served by swagger on [staging](https://e-dream-76c98b08cc5d.herokuapp.com/api/v1
 
 ## Run locally
 
+Install pnpm, follow next [instructions](https://pnpm.io/installation). Using npm
+
+```bash
+npm install -g pnpm
+```
+
 Copy env file, replace data with correct environment info
 
 ```bash
@@ -39,19 +47,19 @@ cp .env.example .env
 Install all packages
 
 ```bash
-npm ci
+pnpm install
 ```
 
 Install husky
 
 ```bash
-npm run husky-install
+pnpm run husky-install
 ```
 
 Run on dev mode
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ### Run with docker
@@ -87,7 +95,7 @@ docker compose -f "docker-compose.yml" up -d --build
 You can create a new entity using
 
 ```bash
-npm run entity:create --name=EntityName
+pnpm run entity:create --name=EntityName
 ```
 
 #### Create a new migration
@@ -95,7 +103,7 @@ npm run entity:create --name=EntityName
 You can create a new migration using
 
 ```bash
-npm run migration:create --name=MigrationName
+pnpm run migration:create --name=MigrationName
 ```
 
 #### Generate a migration
@@ -103,7 +111,7 @@ npm run migration:create --name=MigrationName
 Automatic migration generation creates a new migration file and writes all sql queries that must be executed to update the database
 
 ```bash
-npm run migration:generate --name=MigrationName
+pnpm run migration:generate --name=MigrationName
 ```
 
 #### Run migrations
@@ -111,7 +119,7 @@ npm run migration:generate --name=MigrationName
 To execute all pending migrations use following command
 
 ```bash
-npm run migration:run
+pnpm run migration:run
 ```
 
 #### Revert migrations
@@ -119,7 +127,7 @@ npm run migration:run
 To revert the most recently executed migration use the following command
 
 ```bash
-npm run migration:revert
+pnpm run migration:revert
 ```
 
 #### Show migrations
@@ -127,5 +135,5 @@ npm run migration:revert
 To show all migrations and whether they've been run or not use following command
 
 ```bash
-npm run migration:show
+pnpm run migration:show
 ```

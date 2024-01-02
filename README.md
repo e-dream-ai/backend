@@ -95,7 +95,7 @@ docker compose -f "docker-compose.yml" up -d --build
 You can create a new entity using
 
 ```bash
-pnpm run entity:create --name=EntityName
+pnpm run entity:create -- --name=EntityName
 ```
 
 #### Create a new migration
@@ -103,7 +103,7 @@ pnpm run entity:create --name=EntityName
 You can create a new migration using
 
 ```bash
-pnpm run migration:create --name=MigrationName
+pnpm run migration:create -- --name=MigrationName
 ```
 
 #### Generate a migration
@@ -111,7 +111,7 @@ pnpm run migration:create --name=MigrationName
 Automatic migration generation creates a new migration file and writes all sql queries that must be executed to update the database
 
 ```bash
-pnpm run migration:generate --name=MigrationName
+pnpm run migration:generate -- --name=MigrationName
 ```
 
 #### Run migrations

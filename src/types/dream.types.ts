@@ -4,4 +4,5 @@ export type UpdateDreamRequest = {
   name?: string;
   video?: string;
   thumbnail?: string;
+  activityLevel?: number;
 };

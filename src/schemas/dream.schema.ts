@@ -4,5 +4,6 @@ import { UpdateDreamRequest } from "types/dream.types";
 export const updateDreamSchema = {
   body: Joi.object<UpdateDreamRequest>().keys({
     name: Joi.string().max(100),
+    activityLevel: Joi.number(),
   }),
 };

@@ -61,6 +61,9 @@ export class Dream {
   })
   playlistItems: PlaylistItem[];
 
+  @Column({ default: 1.0, type: "decimal" })
+  activityLevel?: number;
+
   @CreateDateColumn()
   created_at: Date;
 

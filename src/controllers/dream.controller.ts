@@ -81,12 +81,12 @@ export const handleCreateDream = async (
   const user = res.locals.user;
   const videoBuffer = req.file?.buffer;
   const bucketName = env.AWS_BUCKET_NAME;
+  const dreamRepository = appDataSource.getRepository(Dream);
+  let dream: Dream | undefined;
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
-
     // create dream
-    const dream = new Dream();
+    dream = new Dream();
     dream.user = user!;
     await dreamRepository.save(dream);
     const dreamUUID = dream.uuid;
@@ -127,6 +127,7 @@ export const handleCreateDream = async (
       .status(httpStatus.CREATED)
       .json(jsonResponse({ success: true, data: { dream: createdDream } }));
   } catch (error) {
+    if (dream) await dreamRepository.softRemove(dream);
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({

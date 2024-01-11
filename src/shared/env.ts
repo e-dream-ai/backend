@@ -26,6 +26,11 @@ export const env = cleanEnv(process.env, {
   AWS_BUCKET_URL: str(),
 
   /**
+   * SQS
+   */
+  AWS_SQS_URL: str(),
+
+  /**
    * TYPEORM
    */
   TYPEORM_CONNECTION: str(),

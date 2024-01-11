@@ -1,11 +1,21 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  SendMessageCommand,
+  SendMessageCommandInput,
+} from "@aws-sdk/client-sqs";
 import { s3Client } from "clients/s3.client";
+import { sqsClient } from "clients/sqs.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
+import {
+  PROCESS_VIDEO_QUEUE,
+  PROCESS_VIDEO_QUEUE_ATTRIBUTES,
+  SQS_DATA_TYPES,
+} from "constants/sqs.constants";
 import appDataSource from "database/app-data-source";
 import { Dream, FeedItem, Vote } from "entities";
 import httpStatus from "http-status";
@@ -225,6 +235,66 @@ export const handleGetMyDreams = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dreams, count } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles process dream
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream processed
+ * BAD_REQUEST 400 - error processing dream
+ *
+ */
+export const handleProcessDream = async (
+  req: RequestType<UpdateDreamRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = String(req.params.uuid);
+  const queueUrl = env.AWS_SQS_URL;
+
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+    });
+
+    const input: SendMessageCommandInput = {
+      QueueUrl: queueUrl,
+      MessageGroupId: dream.user.cognitoId,
+      MessageBody: PROCESS_VIDEO_QUEUE.MESSAGE_BODY,
+      MessageAttributes: {
+        [PROCESS_VIDEO_QUEUE_ATTRIBUTES.UUID]: {
+          StringValue: dream.uuid,
+          DataType: SQS_DATA_TYPES.STRING,
+        },
+        [PROCESS_VIDEO_QUEUE_ATTRIBUTES.VIDEO]: {
+          StringValue: dream.video ?? "",
+          DataType: SQS_DATA_TYPES.STRING,
+        },
+      },
+    };
+
+    const command = new SendMessageCommand(input);
+    const response = await sqsClient.send(command);
+
+    console.log({ response });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: {} }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(

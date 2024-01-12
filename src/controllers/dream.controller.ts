@@ -1,31 +1,22 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import {
-  SendMessageCommand,
-  SendMessageCommandInput,
-} from "@aws-sdk/client-sqs";
 import { s3Client } from "clients/s3.client";
-import { sqsClient } from "clients/sqs.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
-import {
-  PROCESS_VIDEO_QUEUE,
-  PROCESS_VIDEO_QUEUE_ATTRIBUTES,
-  SQS_DATA_TYPES,
-} from "constants/sqs.constants";
 import appDataSource from "database/app-data-source";
 import { Dream, FeedItem, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
-import { UpdateDreamRequest } from "types/dream.types";
+import { DreamStatusType, UpdateDreamRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { processDreamSQS } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { jsonResponse } from "utils/responses.util";
 
@@ -117,7 +108,13 @@ export const handleCreateDream = async (
 
     //update dream
     dream.video = generateBucketObjectURL(filePath);
+    dream.status = DreamStatusType.QUEUE;
     const createdDream = await dreamRepository.save(dream);
+
+    /**
+     * process dream
+     */
+    await processDreamSQS(dream);
 
     /**
      * create feed item when dream is created
@@ -262,7 +259,6 @@ export const handleProcessDream = async (
   res: ResponseType,
 ) => {
   const dreamUUID: string = String(req.params.uuid);
-  const queueUrl = env.AWS_SQS_URL;
 
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
@@ -271,26 +267,19 @@ export const handleProcessDream = async (
       relations: { user: true },
     });
 
-    const input: SendMessageCommandInput = {
-      QueueUrl: queueUrl,
-      MessageGroupId: dream.user.cognitoId,
-      MessageBody: PROCESS_VIDEO_QUEUE.MESSAGE_BODY,
-      MessageAttributes: {
-        [PROCESS_VIDEO_QUEUE_ATTRIBUTES.UUID]: {
-          StringValue: dream.uuid,
-          DataType: SQS_DATA_TYPES.STRING,
-        },
-        [PROCESS_VIDEO_QUEUE_ATTRIBUTES.VIDEO]: {
-          StringValue: dream.video ?? "",
-          DataType: SQS_DATA_TYPES.STRING,
-        },
-      },
-    };
-
-    const command = new SendMessageCommand(input);
-    const response = await sqsClient.send(command);
-
-    console.log({ response });
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+    await processDreamSQS(dream);
+    await dreamRepository.save({
+      ...dream,
+      status: DreamStatusType.QUEUE,
+    });
 
     return res
       .status(httpStatus.OK)

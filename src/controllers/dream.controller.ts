@@ -11,11 +11,12 @@ import { Dream, FeedItem, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
-import { UpdateDreamRequest } from "types/dream.types";
+import { DreamStatusType, UpdateDreamRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { processDreamSQS } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { jsonResponse } from "utils/responses.util";
 
@@ -107,7 +108,13 @@ export const handleCreateDream = async (
 
     //update dream
     dream.video = generateBucketObjectURL(filePath);
+    dream.status = DreamStatusType.QUEUE;
     const createdDream = await dreamRepository.save(dream);
+
+    /**
+     * process dream
+     */
+    await processDreamSQS(dream);
 
     /**
      * create feed item when dream is created
@@ -225,6 +232,162 @@ export const handleGetMyDreams = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dreams, count } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles process dream
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream processed
+ * BAD_REQUEST 400 - error processing dream
+ *
+ */
+export const handleProcessDream = async (
+  req: RequestType<UpdateDreamRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = String(req.params.uuid);
+
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+    await processDreamSQS(dream);
+    await dreamRepository.save({
+      ...dream,
+      status: DreamStatusType.QUEUE,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: {} }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles set dream status processing
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream status changed
+ * BAD_REQUEST 400 - error updating dream
+ *
+ */
+export const handleSetDreamStatusProcessing = async (
+  req: RequestType<UpdateDreamRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = String(req.params.uuid);
+
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+
+    await dreamRepository.save({
+      ...dream,
+      status: DreamStatusType.PROCESSING,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: {} }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles set dream status processing
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream status changed
+ * BAD_REQUEST 400 - error updating dream
+ *
+ */
+export const handleSetDreamStatusProcessed = async (
+  req: RequestType<UpdateDreamRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = String(req.params.uuid);
+
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+
+    await dreamRepository.save({
+      ...dream,
+      status: DreamStatusType.PROCESSED,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: {} }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(

@@ -38,6 +38,27 @@ dreamRouter.get(
   dreamController.handleGetDream,
 );
 
+dreamRouter.post(
+  "/:uuid/process-dream",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  dreamController.handleProcessDream,
+);
+
+dreamRouter.post(
+  "/:uuid/status/processing",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  dreamController.handleSetDreamStatusProcessing,
+);
+
+dreamRouter.post(
+  "/:uuid/status/processed",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  dreamController.handleSetDreamStatusProcessed,
+);
+
 dreamRouter.put(
   "/:uuid",
   requireAuth,

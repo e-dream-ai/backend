@@ -15,6 +15,7 @@ import { FeedItem } from "./FeedItem.entity";
 import { PlaylistItem } from "./PlaylistItem.entity";
 import { User } from "./User.entity";
 import { Vote } from "./Vote.entity";
+import { DreamStatusType } from "types/dream.types";
 
 @Entity()
 export class Dream {
@@ -40,8 +41,18 @@ export class Dream {
   @Column({ nullable: true, type: "varchar" })
   name?: string | null;
 
+  @Column({
+    type: "enum",
+    enum: DreamStatusType,
+    default: DreamStatusType.NONE,
+  })
+  status: DreamStatusType;
+
   @Column({ nullable: true, type: "varchar" })
   video?: string | null;
+
+  @Column({ nullable: true, type: "varchar" })
+  processed_video?: string | null;
 
   @Column({ nullable: true, type: "varchar" })
   thumbnail?: string | null;

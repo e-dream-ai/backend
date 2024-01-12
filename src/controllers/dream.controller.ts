@@ -296,6 +296,110 @@ export const handleProcessDream = async (
 };
 
 /**
+ * Handles set dream status processing
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream status changed
+ * BAD_REQUEST 400 - error updating dream
+ *
+ */
+export const handleSetDreamStatusProcessing = async (
+  req: RequestType<UpdateDreamRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = String(req.params.uuid);
+
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+
+    await dreamRepository.save({
+      ...dream,
+      status: DreamStatusType.PROCESSING,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: {} }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles set dream status processing
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream status changed
+ * BAD_REQUEST 400 - error updating dream
+ *
+ */
+export const handleSetDreamStatusProcessed = async (
+  req: RequestType<UpdateDreamRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = String(req.params.uuid);
+
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+
+    await dreamRepository.save({
+      ...dream,
+      status: DreamStatusType.PROCESSED,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: {} }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
  * Handles update dream
  *
  * @param {RequestType} req - Request object

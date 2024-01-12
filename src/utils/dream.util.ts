@@ -5,7 +5,6 @@ import {
 } from "@aws-sdk/client-sqs";
 import { sqsClient } from "clients/sqs.client";
 import {
-  PROCESS_VIDEO_QUEUE,
   PROCESS_VIDEO_QUEUE_ATTRIBUTES,
   SQS_DATA_TYPES,
 } from "constants/sqs.constants";
@@ -20,8 +19,8 @@ const queueUrl = env.AWS_SQS_URL;
 export const processDreamSQS = async (dream: Dream) => {
   const input: SendMessageCommandInput = {
     QueueUrl: queueUrl,
-    MessageGroupId: dream.user.cognitoId,
-    MessageBody: PROCESS_VIDEO_QUEUE.MESSAGE_BODY,
+    MessageGroupId: dream.uuid,
+    MessageBody: dream.uuid,
     MessageAttributes: {
       [PROCESS_VIDEO_QUEUE_ATTRIBUTES.UUID]: {
         StringValue: dream.uuid,
@@ -29,6 +28,10 @@ export const processDreamSQS = async (dream: Dream) => {
       },
       [PROCESS_VIDEO_QUEUE_ATTRIBUTES.VIDEO]: {
         StringValue: dream.video ?? "",
+        DataType: SQS_DATA_TYPES.STRING,
+      },
+      [PROCESS_VIDEO_QUEUE_ATTRIBUTES.USER_UUID]: {
+        StringValue: dream.user.cognitoId ?? "",
         DataType: SQS_DATA_TYPES.STRING,
       },
     },

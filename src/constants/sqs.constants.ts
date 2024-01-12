@@ -1,10 +1,7 @@
-export const PROCESS_VIDEO_QUEUE = {
-  MESSAGE_BODY: "PROCESS_VIDEO",
-};
-
 export const PROCESS_VIDEO_QUEUE_ATTRIBUTES = {
   UUID: "UUID",
   VIDEO: "VIDEO",
+  USER_UUID: "USER_UUID",
 };
 
 export const SQS_DATA_TYPES = {

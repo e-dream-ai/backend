@@ -16,7 +16,7 @@ import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
-import { processDreamSQS } from "utils/dream.util";
+import { processDreamRequest } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { jsonResponse } from "utils/responses.util";
 
@@ -114,7 +114,7 @@ export const handleCreateDream = async (
     /**
      * process dream
      */
-    await processDreamSQS(dream);
+    await processDreamRequest(dream);
 
     /**
      * create feed item when dream is created
@@ -275,7 +275,7 @@ export const handleProcessDream = async (
         }),
       );
     }
-    await processDreamSQS(dream);
+    await processDreamRequest(dream);
     await dreamRepository.save({
       ...dream,
       status: DreamStatusType.QUEUE,

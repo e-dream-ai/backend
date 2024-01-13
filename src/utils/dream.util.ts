@@ -9,8 +9,12 @@ import {
   SQS_DATA_TYPES,
 } from "constants/sqs.constants";
 import env from "shared/env";
+import axios from "axios";
+import { ContentType, getRequestHeaders } from "constants/api.constants";
 
 const queueUrl = env.AWS_SQS_URL;
+
+const PROCESS_VIDEO_SERVER_URL = env.PROCESS_VIDEO_SERVER_URL;
 
 /**
  * Send dream to sqs queue
@@ -39,4 +43,25 @@ export const processDreamSQS = async (dream: Dream) => {
 
   const command = new SendMessageCommand(input);
   await sqsClient.send(command);
+};
+
+/**
+ * Send dream process video
+ * @param dream - dream should include contain user data
+ */
+export const processDreamRequest = async (dream: Dream) => {
+  const data = {
+    user_uuid: dream.user.cognitoId,
+    dream_uuid: dream.uuid,
+  };
+  return axios
+    .post(`${PROCESS_VIDEO_SERVER_URL}/process-video`, data, {
+      headers: getRequestHeaders({
+        contentType: ContentType.json,
+      }),
+    })
+    .then((res) => {
+      return res.data;
+    })
+    .catch((error) => console.error(error));
 };

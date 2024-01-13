@@ -31,6 +31,11 @@ export const env = cleanEnv(process.env, {
   AWS_SQS_URL: str(),
 
   /**
+   * PROCESS VIDEO SERVER
+   */
+  PROCESS_VIDEO_SERVER_URL: str(),
+
+  /**
    * TYPEORM
    */
   TYPEORM_CONNECTION: str(),

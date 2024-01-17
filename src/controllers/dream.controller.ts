@@ -118,7 +118,7 @@ export const handleCreateDream = async (
     /**
      * update dream
      */
-    dream.video = generateBucketObjectURL(filePath);
+    dream.original_video = generateBucketObjectURL(filePath);
     dream.status = DreamStatusType.QUEUE;
     const createdDream = await dreamRepository.save(dream);
 
@@ -406,7 +406,7 @@ export const handleSetDreamStatusProcessed = async (
     const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.PROCESSED,
-      processed_video: generateBucketObjectURL(videoFilePath),
+      video: generateBucketObjectURL(videoFilePath),
       thumbnail: generateBucketObjectURL(thumbnailFilePath),
     });
 
@@ -609,7 +609,7 @@ export const handleUpdateVideoDream = async (
 
     const updatedDream: Dream = await dreamRepository.save({
       ...dream,
-      video: videoBuffer ? generateBucketObjectURL(filePath) : null,
+      original_video: videoBuffer ? generateBucketObjectURL(filePath) : null,
     });
 
     return res

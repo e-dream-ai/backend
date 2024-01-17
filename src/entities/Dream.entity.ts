@@ -52,7 +52,7 @@ export class Dream {
   video?: string | null;
 
   @Column({ nullable: true, type: "varchar" })
-  processed_video?: string | null;
+  original_video?: string | null;
 
   @Column({ nullable: true, type: "varchar" })
   thumbnail?: string | null;

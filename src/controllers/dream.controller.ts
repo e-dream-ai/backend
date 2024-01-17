@@ -1,7 +1,11 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
-import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
+import {
+  FILE_EXTENSIONS,
+  MYME_TYPES,
+  MYME_TYPES_EXTENSIONS,
+} from "constants/file.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
@@ -106,15 +110,17 @@ export const handleCreateDream = async (
 
     await s3Client.send(command);
 
-    //update dream
-    dream.video = generateBucketObjectURL(filePath);
-    dream.status = DreamStatusType.QUEUE;
-    const createdDream = await dreamRepository.save(dream);
-
     /**
      * process dream
      */
     await processDreamRequest(dream);
+
+    /**
+     * update dream
+     */
+    dream.video = generateBucketObjectURL(filePath);
+    dream.status = DreamStatusType.QUEUE;
+    const createdDream = await dreamRepository.save(dream);
 
     /**
      * create feed item when dream is created
@@ -275,15 +281,21 @@ export const handleProcessDream = async (
         }),
       );
     }
+
+    /**
+     * process dream
+     */
+
     await processDreamRequest(dream);
-    await dreamRepository.save({
+
+    const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.QUEUE,
     });
 
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: {} }));
+      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
@@ -328,14 +340,14 @@ export const handleSetDreamStatusProcessing = async (
       );
     }
 
-    await dreamRepository.save({
+    const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.PROCESSING,
     });
 
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: {} }));
+      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
@@ -380,14 +392,78 @@ export const handleSetDreamStatusProcessed = async (
       );
     }
 
-    await dreamRepository.save({
+    /**
+     * Save processed dream data
+     */
+
+    const user = dream.user;
+    const videoFileName = `${dreamUUID}.${FILE_EXTENSIONS.MP4}`;
+    const videoFilePath = `${user?.cognitoId}/${dreamUUID}/${videoFileName}`;
+    const thumbnailFileName = `${dreamUUID}.${FILE_EXTENSIONS.PNG}`;
+    const thumbnailFilePath = `${user?.cognitoId}/${dreamUUID}/thumbnails/${thumbnailFileName}`;
+
+    const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.PROCESSED,
+      processed_video: generateBucketObjectURL(videoFilePath),
+      thumbnail: generateBucketObjectURL(thumbnailFilePath),
     });
 
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: {} }));
+      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles set dream status processing
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream status changed
+ * BAD_REQUEST 400 - error updating dream
+ *
+ */
+export const handleSetDreamStatusFailed = async (
+  req: RequestType<UpdateDreamRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = String(req.params.uuid);
+
+  try {
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
+        }),
+      );
+    }
+
+    const updatedDream = await dreamRepository.save({
+      ...dream,
+      status: DreamStatusType.FAILED,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(

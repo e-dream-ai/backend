@@ -59,6 +59,13 @@ dreamRouter.post(
   dreamController.handleSetDreamStatusProcessed,
 );
 
+dreamRouter.post(
+  "/:uuid/status/failed",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  dreamController.handleSetDreamStatusFailed,
+);
+
 dreamRouter.put(
   "/:uuid",
   requireAuth,

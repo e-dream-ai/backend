@@ -397,7 +397,8 @@ export const handleSetDreamStatusProcessed = async (
      */
 
     const user = dream.user;
-    const videoFileName = `${dreamUUID}.${FILE_EXTENSIONS.MP4}`;
+    const processedSufix = "_processed";
+    const videoFileName = `${dreamUUID}${processedSufix}.${FILE_EXTENSIONS.MP4}`;
     const videoFilePath = `${user?.cognitoId}/${dreamUUID}/${videoFileName}`;
     const thumbnailFileName = `${dreamUUID}.${FILE_EXTENSIONS.PNG}`;
     const thumbnailFilePath = `${user?.cognitoId}/${dreamUUID}/thumbnails/${thumbnailFileName}`;

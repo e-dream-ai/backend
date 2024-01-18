@@ -16,6 +16,8 @@ import { PlaylistItem } from "./PlaylistItem.entity";
 import { User } from "./User.entity";
 import { Vote } from "./Vote.entity";
 import { DreamStatusType } from "types/dream.types";
+import { ColumnNumericTransformer } from "transformers/numeric.transformer";
+import { ColumnVideoTransformer } from "transformers/video.transformer";
 
 @Entity()
 export class Dream {
@@ -48,7 +50,11 @@ export class Dream {
   })
   status: DreamStatusType;
 
-  @Column({ nullable: true, type: "varchar" })
+  @Column({
+    nullable: true,
+    type: "varchar",
+    transformer: new ColumnVideoTransformer(),
+  })
   video?: string | null;
 
   @Column({ nullable: true, type: "varchar" })
@@ -72,7 +78,11 @@ export class Dream {
   })
   playlistItems: PlaylistItem[];
 
-  @Column({ default: 1.0, type: "decimal" })
+  @Column({
+    default: 1.0,
+    type: "decimal",
+    transformer: new ColumnNumericTransformer(),
+  })
   activityLevel?: number;
 
   @CreateDateColumn()

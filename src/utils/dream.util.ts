@@ -17,6 +17,7 @@ const queueUrl = env.AWS_SQS_URL;
 const PROCESS_VIDEO_SERVER_URL = env.PROCESS_VIDEO_SERVER_URL;
 
 /**
+ * Feature currently unused due to sqs queue being replaced by redis queue
  * Send dream to sqs queue
  * @param dream - dream should include contain user data
  */
@@ -46,7 +47,7 @@ export const processDreamSQS = async (dream: Dream) => {
 };
 
 /**
- * Send dream process video
+ * Send dream process video request
  * @param dream - dream should include contain user data
  */
 export const processDreamRequest = async (dream: Dream) => {

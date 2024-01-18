@@ -182,13 +182,6 @@ export const handleGetDream = async (
         );
     }
 
-    /**
-     * Remove video property if null
-     */
-    if (dream?.video === null) {
-      delete dream.video;
-    }
-
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: dream } }));

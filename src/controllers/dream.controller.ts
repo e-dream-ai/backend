@@ -20,8 +20,9 @@ import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
-import { processDreamRequest } from "utils/dream.util";
+import { getDreamSelectedColumns, processDreamRequest } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
+import { isBrowserRequest } from "utils/request.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -37,6 +38,7 @@ import { jsonResponse } from "utils/responses.util";
  */
 export const handleGetDreams = async (req: RequestType, res: ResponseType) => {
   try {
+    const isBrowser = isBrowserRequest(req);
     const take = Math.min(
       Number(req.query.take) || PAGINATION.TAKE,
       PAGINATION.TAKE,
@@ -49,6 +51,7 @@ export const handleGetDreams = async (req: RequestType, res: ResponseType) => {
       where: { user: { id: userId } },
       relations: { user: true },
       order: { created_at: "DESC" },
+      select: getDreamSelectedColumns({ originalVideo: isBrowser }),
       take,
       skip,
     });
@@ -166,12 +169,15 @@ export const handleGetDream = async (
   req: RequestType<UpdateDreamRequest>,
   res: ResponseType,
 ) => {
+  const isBrowser = isBrowserRequest(req);
+  const user = res.locals.user;
   const dreamUUID: string = String(req.params?.uuid);
   try {
     const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true, playlistItems: true },
+      select: getDreamSelectedColumns({ originalVideo: true }),
     });
 
     if (!dream) {
@@ -180,6 +186,16 @@ export const handleGetDream = async (
         .json(
           jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
         );
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed || !isBrowser) {
+      delete dream.original_video;
     }
 
     return res

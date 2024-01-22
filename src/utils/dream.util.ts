@@ -11,6 +11,7 @@ import {
 import env from "shared/env";
 import axios from "axios";
 import { ContentType, getRequestHeaders } from "constants/api.constants";
+import { FindOptionsSelect } from "typeorm";
 
 const queueUrl = env.AWS_SQS_URL;
 
@@ -65,4 +66,30 @@ export const processDreamRequest = async (dream: Dream) => {
       return res.data;
     })
     .catch((error) => console.error(error));
+};
+
+export const getDreamSelectedColumns = ({
+  originalVideo,
+}: {
+  originalVideo: boolean;
+}): FindOptionsSelect<Dream> => {
+  const columns = [
+    "id",
+    "uuid",
+    "name",
+    "video",
+    "thumbnail",
+    "user",
+    "upvotes",
+    "downvotes",
+    "activityLevel",
+    "status",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+  ];
+
+  if (originalVideo) columns.push("original_video");
+
+  return columns as FindOptionsSelect<Dream>;
 };

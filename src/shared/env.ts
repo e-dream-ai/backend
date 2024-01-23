@@ -29,7 +29,7 @@ export const env = cleanEnv(process.env, {
    * Currently unused
    * SQS
    */
-  AWS_SQS_URL: str(),
+  // AWS_SQS_URL: str(),
 
   /**
    * PROCESS VIDEO SERVER

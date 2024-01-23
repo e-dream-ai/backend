@@ -13,7 +13,7 @@ import axios from "axios";
 import { ContentType, getRequestHeaders } from "constants/api.constants";
 import { FindOptionsSelect } from "typeorm";
 
-const queueUrl = env.AWS_SQS_URL;
+const queueUrl = ""; // env.AWS_SQS_URL;
 
 const PROCESS_VIDEO_SERVER_URL = env.PROCESS_VIDEO_SERVER_URL;
 

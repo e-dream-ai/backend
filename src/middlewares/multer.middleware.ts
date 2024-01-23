@@ -6,7 +6,7 @@ import { jsonResponse } from "utils/responses.util";
 export const multerInstance = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 1024 * 1024 * 1024, // limit file size to 1024MB
+    fileSize: 32 * 1024 * 1024 * 1024, // limit file size to 1024MB
   },
 });
 

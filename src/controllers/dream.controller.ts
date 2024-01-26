@@ -1,6 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
+
 import {
   FILE_EXTENSIONS,
   MYME_TYPES,
@@ -24,6 +25,7 @@ import { getDreamSelectedColumns, processDreamRequest } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { isBrowserRequest } from "utils/request.util";
 import { jsonResponse } from "utils/responses.util";
+import { generatePresignedPost } from "utils/s3.util";
 
 /**
  * Handles get dreams
@@ -59,6 +61,114 @@ export const handleGetDreams = async (req: RequestType, res: ResponseType) => {
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dreams: dreams, count } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles create dream signed URL
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream created
+ * BAD_REQUEST 400 - error creating dream
+ *
+ */
+export const handleCreateDreamSignedURL = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  // setting vars
+  try {
+    return res
+      .status(httpStatus.CREATED)
+      .json(jsonResponse({ success: true, data: {} }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles create dream presigned post
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream created
+ * BAD_REQUEST 400 - error creating dream
+ *
+ */
+export const handleCreatePresignedPost = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  // setting vars
+  const user = res.locals.user;
+  const dreamRepository = appDataSource.getRepository(Dream);
+  let dream;
+
+  try {
+    // create dream
+    dream = new Dream();
+    dream.user = user!;
+    await dreamRepository.save(dream);
+    const dreamUUID = dream.uuid;
+
+    const fileMymeType = req.file?.mimetype;
+    const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
+    const fileName = `${dreamUUID}.${fileExtension}`;
+    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+    const { url, fields } = await generatePresignedPost(filePath);
+    return res
+      .status(httpStatus.CREATED)
+      .json(jsonResponse({ success: true, data: { url, fields } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles confirm dream presigned URL
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream created
+ * BAD_REQUEST 400 - error creating dream
+ *
+ */
+export const handleConfirmPresignedPost = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  // setting vars
+  try {
+    return res
+      .status(httpStatus.CREATED)
+      .json(jsonResponse({ success: true, data: {} }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(

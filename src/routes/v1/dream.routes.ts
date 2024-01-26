@@ -17,6 +17,30 @@ dreamRouter.get(
 );
 
 dreamRouter.post(
+  "/create-signed-url",
+  requireAuth,
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  multerSingleFileMiddleware,
+  dreamController.handleCreateDreamSignedURL,
+);
+
+dreamRouter.post(
+  "/create-presigned-post",
+  requireAuth,
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  multerSingleFileMiddleware,
+  dreamController.handleCreatePresignedPost,
+);
+
+dreamRouter.post(
+  "/confirm-presigned-post",
+  requireAuth,
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  multerSingleFileMiddleware,
+  dreamController.handleConfirmPresignedPost,
+);
+
+dreamRouter.post(
   "/",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),

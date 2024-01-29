@@ -18,7 +18,6 @@ export const generateSignedUrl = async (objectKey: string) => {
     Key: objectKey,
   });
 
-  // @ts-expect-error client works fine, is a type error compatibility with aws packages
   const url = await getSignedUrl(s3Client, command, {
     expiresIn: 3600,
   });
@@ -33,7 +32,6 @@ export const generateSignedUrl = async (objectKey: string) => {
 export const generatePresignedPost = async (objectKey: string) => {
   const bucketName = env.AWS_BUCKET_NAME;
 
-  // @ts-expect-error client works fine, is a type error compatibility with aws packages
   const { url, fields } = await createPresignedPost(s3Client, {
     Bucket: bucketName,
     Key: objectKey,

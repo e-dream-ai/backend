@@ -204,7 +204,7 @@ export const handleConfirmPresignedPost = async (
     /**
      * update dream
      */
-    const fileExtension = MYME_TYPES.MP4;
+    const fileExtension = FILE_EXTENSIONS.MP4;
     const fileName = `${dreamUUID}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
 

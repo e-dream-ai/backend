@@ -47,7 +47,5 @@ export const generatePresignedPost = async (objectKey: string) => {
     Expires: 3600, //Seconds before the presigned post expires. 3600 by default.
   });
 
-  console.log({ url, fields });
-
   return { url, fields };
 };

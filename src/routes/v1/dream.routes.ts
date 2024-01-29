@@ -33,7 +33,7 @@ dreamRouter.post(
 );
 
 dreamRouter.post(
-  "/confirm-presigned-post",
+  "/:uuid/confirm-presigned-post",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   multerSingleFileMiddleware,

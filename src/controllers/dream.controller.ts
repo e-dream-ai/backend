@@ -121,7 +121,7 @@ export const handleCreatePresignedPost = async (
   // setting vars
   const user = res.locals.user;
   const dreamRepository = appDataSource.getRepository(Dream);
-  let dream;
+  let dream: Dream | undefined;
 
   try {
     // create dream
@@ -137,7 +137,9 @@ export const handleCreatePresignedPost = async (
     const { url, fields } = await generatePresignedPost(filePath);
     return res
       .status(httpStatus.CREATED)
-      .json(jsonResponse({ success: true, data: { url, fields } }));
+      .json(
+        jsonResponse({ success: true, data: { url, fields, uuid: dreamUUID } }),
+      );
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
@@ -164,13 +166,80 @@ export const handleConfirmPresignedPost = async (
   req: RequestType,
   res: ResponseType,
 ) => {
-  // setting vars
+  const user = res.locals.user;
+  const dreamUUID: string = String(req.params?.uuid);
+  const dreamRepository = appDataSource.getRepository(Dream);
+  let dream: Dream | undefined;
   try {
+    const findDreamResult = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true, playlistItems: true },
+      select: getDreamSelectedColumns({ originalVideo: true }),
+    });
+    dream = findDreamResult[0];
+
+    if (!dream) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+        );
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    /**
+     * update dream
+     */
+    const fileExtension = MYME_TYPES.MP4;
+    const fileName = `${dreamUUID}.${fileExtension}`;
+    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+
+    dream.original_video = generateBucketObjectURL(filePath);
+    dream.status = DreamStatusType.QUEUE;
+    const createdDream = await dreamRepository.save(dream);
+
+    /**
+     * process dream
+     */
+    await processDreamRequest(dream);
+
+    /**
+     * create feed item when dream is created
+     */
+    const feedRepository = appDataSource.getRepository(FeedItem);
+
+    const feedItem = new FeedItem();
+    feedItem.type = FeedItemType.DREAM;
+    feedItem.user = createdDream.user;
+    feedItem.dreamItem = createdDream;
+    feedItem.created_at = createdDream.created_at;
+    feedItem.updated_at = createdDream.updated_at;
+
+    await feedRepository.save(feedItem);
+
     return res
       .status(httpStatus.CREATED)
-      .json(jsonResponse({ success: true, data: {} }));
+      .json(jsonResponse({ success: true, data: { dream: createdDream } }));
   } catch (error) {
     APP_LOGGER.error(error);
+    if (dream) {
+      dream.status = DreamStatusType.FAILED;
+      await dreamRepository.save(dream);
+    }
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,
@@ -253,8 +322,8 @@ export const handleCreateDream = async (
       .status(httpStatus.CREATED)
       .json(jsonResponse({ success: true, data: { dream: createdDream } }));
   } catch (error) {
-    if (dream) await dreamRepository.softRemove(dream);
     APP_LOGGER.error(error);
+    if (dream) await dreamRepository.softRemove(dream);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
       jsonResponse({
         success: false,

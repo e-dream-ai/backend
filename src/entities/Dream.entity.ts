@@ -1,4 +1,5 @@
 import {
+  AfterLoad,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -18,6 +19,7 @@ import { Vote } from "./Vote.entity";
 import { DreamStatusType } from "types/dream.types";
 import { ColumnNumericTransformer } from "transformers/numeric.transformer";
 import { ColumnVideoTransformer } from "transformers/video.transformer";
+import env from "shared/env";
 
 @Entity()
 export class Dream {
@@ -84,6 +86,14 @@ export class Dream {
     transformer: new ColumnNumericTransformer(),
   })
   activityLevel?: number;
+
+  // computed frontend url field
+  frontendUrl: string;
+
+  @AfterLoad()
+  computeFrontendUrl() {
+    this.frontendUrl = `${env.FRONTEND_URL}/dream/${this.uuid}`;
+  }
 
   @CreateDateColumn()
   created_at: Date;

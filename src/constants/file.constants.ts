@@ -12,6 +12,25 @@ export const FILE_EXTENSIONS = {
   PNG: "png",
 };
 
+export const ALLOWED_VIDEO_TYPES = [
+  "mp4",
+  "avi",
+  "mov",
+  "wmv",
+  "mkv",
+  "flv",
+  "mpeg",
+  "webm",
+  "ogv",
+  "3gp",
+  "3g2",
+  "h264",
+  "hevc",
+  "divx",
+  "xvid",
+  "avchd",
+];
+
 export const MYME_TYPES_EXTENSIONS = {
   [MYME_TYPES.MP4]: FILE_EXTENSIONS.MP4,
   [MYME_TYPES.JPG]: FILE_EXTENSIONS.JPG,

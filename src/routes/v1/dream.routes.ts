@@ -5,7 +5,11 @@ import { multerSingleFileMiddleware } from "middlewares/multer.middleware";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
-import { updateDreamSchema } from "schemas/dream.schema";
+import {
+  confirmDreamSchema,
+  createPresignedDreamSchema,
+  updateDreamSchema,
+} from "schemas/dream.schema";
 
 const dreamRouter = Router();
 
@@ -28,7 +32,7 @@ dreamRouter.post(
   "/create-presigned-post",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
-  multerSingleFileMiddleware,
+  validatorMiddleware(createPresignedDreamSchema),
   dreamController.handleCreatePresignedPost,
 );
 
@@ -36,7 +40,7 @@ dreamRouter.post(
   "/:uuid/confirm-presigned-post",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
-  multerSingleFileMiddleware,
+  validatorMiddleware(confirmDreamSchema),
   dreamController.handleConfirmPresignedPost,
 );
 

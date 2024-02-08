@@ -16,7 +16,12 @@ import { Dream, FeedItem, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
-import { DreamStatusType, UpdateDreamRequest } from "types/dream.types";
+import {
+  ConfirmDreamRequest,
+  CreatePresignedDreamRequest,
+  DreamStatusType,
+  UpdateDreamRequest,
+} from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
@@ -115,7 +120,7 @@ export const handleCreateDreamSignedURL = async (
  *
  */
 export const handleCreatePresignedPost = async (
-  req: RequestType,
+  req: RequestType<CreatePresignedDreamRequest>,
   res: ResponseType,
 ) => {
   // setting vars
@@ -125,13 +130,14 @@ export const handleCreatePresignedPost = async (
 
   try {
     // create dream
+    const name = req.body.name;
+    const extension = req.body.extension;
     dream = new Dream();
+    dream.name = name;
     dream.user = user!;
     await dreamRepository.save(dream);
     const dreamUUID = dream.uuid;
-
-    const fileMymeType = req.file?.mimetype;
-    const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
+    const fileExtension = extension;
     const fileName = `${dreamUUID}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
     const { url, fields } = await generatePresignedPost(filePath);
@@ -163,7 +169,7 @@ export const handleCreatePresignedPost = async (
  *
  */
 export const handleConfirmPresignedPost = async (
-  req: RequestType,
+  req: RequestType<ConfirmDreamRequest>,
   res: ResponseType,
 ) => {
   const user = res.locals.user;
@@ -204,11 +210,15 @@ export const handleConfirmPresignedPost = async (
     /**
      * update dream
      */
-    const fileExtension = FILE_EXTENSIONS.MP4;
+
+    const extension = req.body.extension;
+    const name = req.body.name || dreamUUID;
+    const fileExtension = extension;
     const fileName = `${dreamUUID}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
 
     dream.original_video = generateBucketObjectURL(filePath);
+    dream.name = name;
     dream.status = DreamStatusType.QUEUE;
     const createdDream = await dreamRepository.save(dream);
 

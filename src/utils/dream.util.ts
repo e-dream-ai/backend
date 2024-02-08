@@ -52,9 +52,11 @@ export const processDreamSQS = async (dream: Dream) => {
  * @param dream - dream should include contain user data
  */
 export const processDreamRequest = async (dream: Dream) => {
+  const extension = getFileExtension(dream.original_video || "");
   const data = {
     user_uuid: dream.user.cognitoId,
     dream_uuid: dream.uuid,
+    extension,
   };
   return axios
     .post(`${PROCESS_VIDEO_SERVER_URL}/process-video`, data, {
@@ -92,4 +94,13 @@ export const getDreamSelectedColumns = ({
   if (originalVideo) columns.push("original_video");
 
   return columns as FindOptionsSelect<Dream>;
+};
+
+export const getFileExtension = (fileName: string): string => {
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex !== -1) {
+    return fileName.slice(dotIndex + 1).toLowerCase();
+  } else {
+    return ""; // No extension found
+  }
 };

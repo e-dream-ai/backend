@@ -23,6 +23,7 @@ import {
 } from "types/playlist.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
+import { getPlaylistSelectedColumns } from "utils/playlist.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -106,6 +107,7 @@ export const handleGetPlaylist = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
+      select: getPlaylistSelectedColumns(),
       relations: {
         user: true,
         items: { playlistItem: { user: true }, dreamItem: { user: true } },
@@ -213,6 +215,7 @@ export const handleUpdatePlaylist = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
+      select: getPlaylistSelectedColumns(),
       relations: {
         user: true,
         items: { playlistItem: { user: true }, dreamItem: { user: true } },
@@ -286,6 +289,7 @@ export const handleUpdateThumbnailPlaylist = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id: id! },
+      select: getPlaylistSelectedColumns(),
       relations: { user: true },
     });
 
@@ -374,6 +378,7 @@ export const handleDeletePlaylist = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
+      select: getPlaylistSelectedColumns(),
       relations: { user: true, playlistItems: true, feedItem: true },
     });
 
@@ -447,6 +452,7 @@ export const handleOrderPlaylist = async (
     const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
     const [playlist] = await playlistRepository.find({
       where: { id },
+      select: getPlaylistSelectedColumns(),
       relations: { user: true, items: true },
     });
 
@@ -524,6 +530,7 @@ export const handleAddPlaylistItem = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
+      select: getPlaylistSelectedColumns(),
       relations: { user: true },
     });
 
@@ -657,6 +664,7 @@ export const handleRemovePlaylistItem = async (
     const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
+      select: getPlaylistSelectedColumns(),
       relations: { user: true },
     });
 

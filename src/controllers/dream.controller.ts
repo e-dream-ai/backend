@@ -57,8 +57,8 @@ export const handleGetDreams = async (req: RequestType, res: ResponseType) => {
     const [dreams, count] = await dreamRepository.findAndCount({
       where: { user: { id: userId } },
       relations: { user: true },
-      order: { created_at: "DESC" },
       select: getDreamSelectedColumns({ originalVideo: isBrowser }),
+      order: { created_at: "DESC" },
       take,
       skip,
     });
@@ -180,7 +180,7 @@ export const handleConfirmPresignedPost = async (
     const findDreamResult = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true, playlistItems: true },
-      select: getDreamSelectedColumns({ originalVideo: true }),
+      select: getDreamSelectedColumns(),
     });
     dream = findDreamResult[0];
 
@@ -383,6 +383,9 @@ export const handleGetDream = async (
       userRole: user?.role?.name,
     });
 
+    /**
+     * remove original video if is not admin or owner or browser requested
+     */
     if (!isAllowed || !isBrowser) {
       delete dream.original_video;
     }
@@ -428,6 +431,7 @@ export const handleGetMyDreams = async (
     const [dreams, count] = await dreamRepository.findAndCount({
       where: { user: { id: user?.id } },
       relations: { user: true },
+      select: getDreamSelectedColumns(),
       order: { created_at: "DESC" },
       take,
       skip,
@@ -469,6 +473,7 @@ export const handleProcessDream = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
+      select: getDreamSelectedColumns(),
     });
 
     if (!dream) {
@@ -527,6 +532,7 @@ export const handleSetDreamStatusProcessing = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
+      select: getDreamSelectedColumns(),
     });
 
     if (!dream) {
@@ -579,6 +585,7 @@ export const handleSetDreamStatusProcessed = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
+      select: getDreamSelectedColumns(),
     });
 
     if (!dream) {
@@ -644,6 +651,7 @@ export const handleSetDreamStatusFailed = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
+      select: getDreamSelectedColumns(),
     });
 
     if (!dream) {
@@ -697,6 +705,7 @@ export const handleUpdateDream = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
+      select: getDreamSelectedColumns(),
     });
 
     if (!dream) {
@@ -761,6 +770,7 @@ export const handleUpdateVideoDream = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
+      select: getDreamSelectedColumns(),
     });
 
     if (!dream) {
@@ -847,6 +857,7 @@ export const handleUpdateThumbnailDream = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
+      select: getDreamSelectedColumns(),
     });
 
     if (!dream) {
@@ -987,6 +998,7 @@ export const handleUpvoteDream = async (
     const [updatedDream] = await dreamRepository.find({
       where: { uuid: dreamUUID!, votes: { user: { id: user?.id } } },
       relations: { user: true, votes: true },
+      select: getDreamSelectedColumns(),
     });
 
     return res
@@ -1080,6 +1092,7 @@ export const handleDownvoteDream = async (
     const [updatedDream] = await dreamRepository.find({
       where: { uuid: dreamUUID!, votes: { user: { id: user?.id } } },
       relations: { user: true, votes: true },
+      select: getDreamSelectedColumns(),
     });
 
     return res
@@ -1117,7 +1130,11 @@ export const handleDeleteDream = async (
     const dreamRepository = appDataSource.getRepository(Dream);
     const dream = await dreamRepository.findOne({
       where: { uuid },
-      relations: { user: true, playlistItems: true, feedItem: true },
+      relations: {
+        user: true,
+        playlistItems: true,
+        feedItem: true,
+      },
     });
 
     if (!dream) {

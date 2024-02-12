@@ -18,6 +18,7 @@ import { UpdateUserRoleRequest } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { jsonResponse } from "utils/responses.util";
+import { getUserSelectedColumns } from "utils/user.util";
 
 /**
  * Handles get users
@@ -39,12 +40,12 @@ export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
     const search = req.query.search ? String(req.query.search) : undefined;
     const userRepository = appDataSource.getRepository(User);
+    const whereSentence = {
+      name: ILike(`%${search}%`),
+    } as FindOptionsWhere<User>;
     const [users, count] = await userRepository.findAndCount({
-      where: search
-        ? ({
-          email: ILike(`%${search}%`),
-        } as FindOptionsWhere<User>)
-        : undefined,
+      where: search ? whereSentence : undefined,
+      select: getUserSelectedColumns(),
       order: { created_at: "DESC" },
       take,
       skip,
@@ -78,14 +79,16 @@ export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
 export const handleGetUser = async (req: RequestType, res: ResponseType) => {
   try {
     const id = Number(req.params.id) || 0;
+    const user = res.locals.user;
 
     const userRepository = appDataSource.getRepository(User);
-    const user = await userRepository.findOne({
+    const foundUser = await userRepository.findOne({
       where: { id },
+      select: getUserSelectedColumns({ userEmail: true }),
       relations: { role: true },
     });
 
-    if (!user) {
+    if (!foundUser) {
       return res.status(httpStatus.NOT_FOUND).json(
         jsonResponse({
           success: false,
@@ -94,9 +97,26 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
       );
     }
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { user } }));
+    const isAllowed = canExecuteAction({
+      isOwner: user?.id === foundUser?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    /**
+     * remove user email if is not admin or owner
+     */
+    const responseUser = {
+      ...foundUser,
+      email: isAllowed ? foundUser.email : undefined,
+    };
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { user: responseUser },
+      }),
+    );
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
@@ -127,6 +147,7 @@ export const handleUpdateUser = async (req: RequestType, res: ResponseType) => {
     const userRepository = appDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { id },
+      select: getUserSelectedColumns(),
     });
 
     if (!user) {
@@ -191,6 +212,7 @@ export const handleUpdateUserAvatar = async (
     const userRepository = appDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { id: id! },
+      select: getUserSelectedColumns(),
     });
 
     if (!user) {
@@ -278,6 +300,7 @@ export const handleUpdateRole = async (
 
     const user = await userRepository.findOne({
       where: { id },
+      select: getUserSelectedColumns(),
       relations: { role: true },
     });
 

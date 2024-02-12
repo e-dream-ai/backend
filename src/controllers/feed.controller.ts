@@ -7,6 +7,7 @@ import { APP_LOGGER } from "shared/logger";
 import { FindOptionsWhere, ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { GetFeedRequest } from "types/feed.types";
+import { getFeedSelectedColumns } from "utils/feed.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -46,13 +47,12 @@ export const handleGetFeed = async (
       type: type,
     };
     const isSearchEnabled = Boolean(userId) || Boolean(search) || Boolean(type);
+    const whereSentence = isSearchEnabled
+      ? ([dreamItemSearch, playlistItemSearch] as FindOptionsWhere<FeedItem>[])
+      : undefined;
     const [feed, count] = await feedRepository.findAndCount({
-      where: isSearchEnabled
-        ? ([
-          dreamItemSearch,
-          playlistItemSearch,
-        ] as FindOptionsWhere<FeedItem>[])
-        : undefined,
+      where: whereSentence,
+      select: getFeedSelectedColumns(),
       relations: { user: true, dreamItem: true, playlistItem: true },
       order: { created_at: "DESC" },
       take,
@@ -99,6 +99,7 @@ export const handleGetMyDreams = async (
     const feedRepository = appDataSource.getRepository(FeedItem);
     const [feed, count] = await feedRepository.findAndCount({
       where: { user: { id: user?.id } },
+      select: getFeedSelectedColumns(),
       relations: { user: true, dreamItem: true, playlistItem: true },
       order: { created_at: "DESC" },
       take,

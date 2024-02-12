@@ -12,6 +12,7 @@ import env from "shared/env";
 import axios from "axios";
 import { ContentType, getRequestHeaders } from "constants/api.constants";
 import { FindOptionsSelect } from "typeorm";
+import { getUserSelectedColumns } from "./user.util";
 
 const queueUrl = ""; // env.AWS_SQS_URL;
 
@@ -72,28 +73,27 @@ export const processDreamRequest = async (dream: Dream) => {
 
 export const getDreamSelectedColumns = ({
   originalVideo,
+  userEmail,
 }: {
-  originalVideo: boolean;
-}): FindOptionsSelect<Dream> => {
-  const columns = [
-    "id",
-    "uuid",
-    "name",
-    "video",
-    "thumbnail",
-    "user",
-    "upvotes",
-    "downvotes",
-    "activityLevel",
-    "status",
-    "created_at",
-    "updated_at",
-    "deleted_at",
-  ];
-
-  if (originalVideo) columns.push("original_video");
-
-  return columns as FindOptionsSelect<Dream>;
+  originalVideo?: boolean;
+  userEmail?: boolean;
+} = {}): FindOptionsSelect<Dream> => {
+  return {
+    id: true,
+    uuid: true,
+    name: true,
+    video: true,
+    thumbnail: true,
+    upvotes: true,
+    downvotes: true,
+    activityLevel: true,
+    status: true,
+    created_at: true,
+    updated_at: true,
+    deleted_at: true,
+    user: getUserSelectedColumns({ userEmail }),
+    original_video: originalVideo,
+  };
 };
 
 export const getFileExtension = (fileName: string): string => {

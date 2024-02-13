@@ -473,7 +473,10 @@ export const handleProcessDream = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
-      select: getDreamSelectedColumns(),
+      /**
+       * originalVideo needed to process dream
+       */
+      select: getDreamSelectedColumns({ originalVideo: true }),
     });
 
     if (!dream) {

@@ -61,6 +61,7 @@
     "pino": "^8.15.0",
     "pino-pretty": "^10.2.0",
     "reflect-metadata": "^0.1.13",
+    "socket.io": "^4.7.4",
     "swagger-ui-express": "^5.0.0",
     "typeorm": "0.3.17",
     "utility-types": "^3.10.0"

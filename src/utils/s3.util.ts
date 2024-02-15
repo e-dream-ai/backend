@@ -31,12 +31,15 @@ export const generateSignedUrl = async (objectKey: string) => {
  */
 export const generatePresignedPost = async (objectKey: string) => {
   const bucketName = env.AWS_BUCKET_NAME;
+  const MIN_UPLOAD_SIZE = 1024 * 1024 * 5;
+  const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024 * 50;
 
   const { url, fields } = await createPresignedPost(s3Client, {
     Bucket: bucketName,
     Key: objectKey,
     Conditions: [
       ["eq", "$acl", BUCKET_ACL], // acl condition
+      ["content-length-range",  MIN_UPLOAD_SIZE, MAX_UPLOAD_SIZE],
     ],
     Fields: {
       key: objectKey,

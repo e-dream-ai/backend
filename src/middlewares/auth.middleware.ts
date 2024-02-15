@@ -1,17 +1,19 @@
-import { AUTH_MESSAGES } from "constants/messages/auth.constant";
-import { fetchUser } from "controllers/auth.controller";
 import { NextFunction } from "express";
 import httpStatus from "http-status";
 import jwt, { JsonWebTokenError } from "jsonwebtoken";
 import jwksClient, { DecodedToken } from "jwks-rsa";
+import { Socket } from "socket.io";
+import { ExtendedError } from "socket.io/dist/namespace";
 import env from "shared/env";
+import { AUTH_MESSAGES } from "constants/messages/auth.constant";
+import { fetchUser } from "controllers/auth.controller";
 import { APP_LOGGER } from "shared/logger";
 import { JwtPayloadType } from "types/auth.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { getErrorCode, getErrorMessage } from "utils/aws/auth-errors";
 import { jsonResponse } from "utils/responses.util";
 
-const validateToken = async (token: string): Promise<JwtPayloadType> => {
+export const validateToken = async (token: string): Promise<JwtPayloadType> => {
   const jwksUri = `https://cognito-idp.${env.AWS_REGION}.amazonaws.com/${env.AWS_COGNITO_USER_POOL_ID}/.well-known/jwks.json`;
   const verifyIssuerUri = `https://cognito-idp.${env.AWS_REGION}.amazonaws.com/${env.AWS_COGNITO_USER_POOL_ID}`;
 
@@ -73,6 +75,33 @@ const authMiddleware = async (
   }
 
   next();
+};
+
+export const socketAuthMiddleware = async (
+  socket: Socket,
+  next: (err?: ExtendedError | undefined) => void,
+) => {
+  try {
+    const token = socket.handshake.query.token;
+    /**
+     * If is not string or empty throw error
+     */
+    if (typeof token !== "string" || !token) {
+      return next(new Error("Authentication error"));
+    }
+    const accessToken = String(token)?.split(" ")[1];
+    // Validate the token
+    const validatedToken = await validateToken(String(accessToken));
+    const { username } = validatedToken;
+    const user = await fetchUser(username);
+    socket.data.user = user;
+    if (validatedToken) {
+      return next();
+    }
+    return next(new Error("Authentication error"));
+  } catch (error) {
+    APP_LOGGER.error(error);
+  }
 };
 
 export default authMiddleware;

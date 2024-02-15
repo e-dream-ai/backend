@@ -1,54 +1,30 @@
-import bodyParser from "body-parser";
-import swaggerDocument from "constants/swagger.json";
-import cors from "cors";
-import appDataSource from "database/app-data-source";
-import express, { NextFunction, Request, Response } from "express";
-import httpStatus from "http-status";
-import authMiddleware from "middlewares/auth.middleware";
-import { errorMiddleware } from "middlewares/error.middleware";
-import authRouter from "routes/v1/auth.router";
+import http from "http";
+import express from "express";
+import { Server } from "socket.io";
 import env from "shared/env";
-import swaggerUi from "swagger-ui-express";
-
-import { GENERAL_MESSAGES } from "constants/messages/general.constants";
-import dreamRouter from "routes/v1/dream.routes";
-import feedRouter from "routes/v1/feed.router";
-import playlistRouter from "routes/v1/playlist.router";
-import userRouter from "routes/v1/user.router";
-import { jsonResponse } from "utils/responses.util";
-import { APP_LOGGER } from "./shared/logger";
+import appDataSource from "database/app-data-source";
+import { APP_LOGGER } from "shared/logger";
+import {
+  registerMiddlewares,
+  socketRegisterMiddlewares,
+} from "middlewares/middleware";
+import { registerRoutes } from "routes/v1/router";
+import { remoteControlConnectionListener } from "socket/remote-control";
 
 const app: express.Application = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Replace with your client's origin
+    methods: ["GET", "POST"],
+  },
+});
 const port = env.PORT ?? 8080;
 const version = env.npm_package_version;
-const swaggerPath = "/api/v1/api-docs";
 
-const customHeaders = (req: Request, res: Response, next: NextFunction) => {
-  app.disable("x-powered-by");
-  res.setHeader("X-Powered-By", `e-dream.ai ${version}`);
-  next();
-};
-
-// parse json request body
-app.use(bodyParser.json());
-
-// cors middleware
-app.use(cors());
-
-// parse urlencoded request body
-app.use(express.urlencoded({ extended: true }));
-
-// custom headers
-app.use(customHeaders);
-
-// auth middleware
-app.use(authMiddleware);
-
-// swagger ui
-app.use(swaggerPath, swaggerUi.serve);
-app.get(swaggerPath, swaggerUi.setup(swaggerDocument));
-
-// establish database connection
+/**
+ * establish database connection
+ */
 appDataSource
   .initialize()
   .then(() => {
@@ -60,45 +36,28 @@ appDataSource
   });
 
 /**
+ * Register middlewares
+ */
+registerMiddlewares(app);
+
+/**
  * Register routes
  */
+registerRoutes(app);
 
-// main route
-app.get(["/", "/api/v1"], (req: Request, res: Response) => {
-  res.status(httpStatus.OK).send({
-    message: `e-dream.ai is running api at version ${version}`,
-  });
-});
+const remoteControlNamespace = io.of("remote-control");
 
-// register user router
-app.use("/api/v1/auth", authRouter);
+/**
+ * Register socket middlewares
+ */
+socketRegisterMiddlewares(remoteControlNamespace);
 
-// register auth router
-app.use("/api/v1/user", userRouter);
-
-// register dream router
-app.use("/api/v1/dream", dreamRouter);
-
-// register playlist router
-app.use("/api/v1/playlist", playlistRouter);
-
-// register playlist router
-app.use("/api/v1/feed", feedRouter);
-
-app.all("*", (req, res) => {
-  res.status(httpStatus.NOT_FOUND);
-  if (req.accepts("json")) {
-    res.json(
-      jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-    );
-  } else {
-    res.type("txt").send(GENERAL_MESSAGES.NOT_FOUND_404);
-  }
-});
-
-app.use(errorMiddleware);
+/**
+ * Register remote control connection listener
+ */
+remoteControlNamespace.on("connection", remoteControlConnectionListener);
 
 // start express server
-app.listen(port, async () => {
+server.listen(port, async () => {
   APP_LOGGER.info(`e-dream.ai api ${version} started on port ${port}`);
 });

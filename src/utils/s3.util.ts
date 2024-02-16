@@ -32,7 +32,7 @@ export const generateSignedUrl = async (objectKey: string) => {
 export const generatePresignedPost = async (objectKey: string) => {
   const bucketName = env.AWS_BUCKET_NAME;
   const MIN_UPLOAD_SIZE = 1024 * 1024 * 5;
-  const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024 * 50;
+  const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024 * 500;
 
   const { url, fields } = await createPresignedPost(s3Client, {
     Bucket: bucketName,

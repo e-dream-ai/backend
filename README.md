@@ -137,3 +137,17 @@ To show all migrations and whether they've been run or not use following command
 ```bash
 pnpm run migration:show
 ```
+
+## Socket.io
+
+### Remote control namespace
+
+Logical grouping of sockets to partition the "`remote-control`" communication channel
+
+### User remote control room
+
+Provide a way to organize sockets into groups, allowing you to broadcast messages to multiple clients at once and direct it only for the user sessions. Room name "`user-cognito-uuid`".
+
+### Auth middleware
+
+Verifies the identity of clients connecting to the server via sockets and adds user data to logic

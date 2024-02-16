@@ -6,7 +6,7 @@ import appDataSource from "database/app-data-source";
 import { APP_LOGGER } from "shared/logger";
 import {
   registerMiddlewares,
-  socketRegisterMiddlewares,
+  // socketRegisterMiddlewares,
 } from "middlewares/middleware";
 import { registerRoutes } from "routes/v1/router";
 import { remoteControlConnectionListener } from "socket/remote-control";
@@ -50,7 +50,7 @@ const remoteControlNamespace = io.of("remote-control");
 /**
  * Register socket middlewares
  */
-socketRegisterMiddlewares(remoteControlNamespace);
+// socketRegisterMiddlewares(remoteControlNamespace);
 
 /**
  * Register remote control connection listener

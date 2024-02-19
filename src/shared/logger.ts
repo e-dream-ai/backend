@@ -11,7 +11,7 @@ if (env.NODE_ENV === "production") {
    */
   APP_LOGGER = pino({ enabled: false });
 } else {
-  APP_LOGGER = pino(pretty());
+  APP_LOGGER = pino(pretty({ minimumLevel: "info" }));
 }
 
 export { APP_LOGGER };

@@ -81,6 +81,7 @@ export const socketAuthMiddleware = async (
   socket: Socket,
   next: (err?: ExtendedError | undefined) => void,
 ) => {
+  console.info("Connection attempt has begun");
   try {
     const token = socket.handshake.query.token;
     /**
@@ -100,6 +101,7 @@ export const socketAuthMiddleware = async (
     }
     return next(new Error("Authentication error"));
   } catch (error) {
+    console.error("Connection attempt failed: not authorized connection");
     APP_LOGGER.error(error);
   }
 };

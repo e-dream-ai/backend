@@ -7,14 +7,27 @@ export type UpdateDreamRequest = {
   activityLevel?: number;
 };
 
+export type CreatePresignedDreamRequest = {
+  name: string;
+  extension: string;
+};
+
 export type ConfirmDreamRequest = {
   name: string;
   extension: string;
 };
 
-export type CreatePresignedDreamRequest = {
+export type CreateMultipartUploadDreamRequest = {
   name: string;
   extension: string;
+  parts: number;
+};
+
+export type CompleteMultipartUploadDreamRequest = {
+  name: string;
+  extension: string;
+  uploadId: string;
+  parts: number;
 };
 
 export enum DreamStatusType {

@@ -6,7 +6,9 @@ import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import {
+  completeMultipartUploadDreamSchema,
   confirmDreamSchema,
+  createMultipartUploadDreamSchema,
   createPresignedDreamSchema,
   updateDreamSchema,
 } from "schemas/dream.schema";
@@ -42,6 +44,22 @@ dreamRouter.post(
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(confirmDreamSchema),
   dreamController.handleConfirmPresignedPost,
+);
+
+dreamRouter.post(
+  "/create-multipart-upload",
+  requireAuth,
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(createMultipartUploadDreamSchema),
+  dreamController.handleCreateMultipartUpload,
+);
+
+dreamRouter.post(
+  "/:uuid/complete-multipart-upload",
+  requireAuth,
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(completeMultipartUploadDreamSchema),
+  dreamController.handleCompleteMultipartUpload,
 );
 
 dreamRouter.post(

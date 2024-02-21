@@ -1,7 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
-
 import {
   FILE_EXTENSIONS,
   MYME_TYPES,
@@ -17,7 +16,9 @@ import httpStatus from "http-status";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 import {
+  CompleteMultipartUploadDreamRequest,
   ConfirmDreamRequest,
+  CreateMultipartUploadDreamRequest,
   CreatePresignedDreamRequest,
   DreamStatusType,
   UpdateDreamRequest,
@@ -30,7 +31,14 @@ import { getDreamSelectedColumns, processDreamRequest } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { isBrowserRequest } from "utils/request.util";
 import { jsonResponse } from "utils/responses.util";
-import { generatePresignedPost } from "utils/s3.util";
+import {
+  completeMultipartUpload,
+  createMultipartUpload,
+  generatePresignedPost,
+  getSignedUrlForPost,
+} from "utils/s3.util";
+
+const dreamRepository = appDataSource.getRepository(Dream);
 
 /**
  * Handles get dreams
@@ -52,7 +60,6 @@ export const handleGetDreams = async (req: RequestType, res: ResponseType) => {
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
     const userId = Number(req.query.userId) || undefined;
-    const dreamRepository = appDataSource.getRepository(Dream);
 
     const [dreams, count] = await dreamRepository.findAndCount({
       where: { user: { id: userId } },
@@ -125,7 +132,6 @@ export const handleCreatePresignedPost = async (
 ) => {
   // setting vars
   const user = res.locals.user;
-  const dreamRepository = appDataSource.getRepository(Dream);
   let dream: Dream | undefined;
 
   try {
@@ -174,7 +180,6 @@ export const handleConfirmPresignedPost = async (
 ) => {
   const user = res.locals.user;
   const dreamUUID: string = String(req.params?.uuid);
-  const dreamRepository = appDataSource.getRepository(Dream);
   let dream: Dream | undefined;
   try {
     const findDreamResult = await dreamRepository.find({
@@ -260,6 +265,171 @@ export const handleConfirmPresignedPost = async (
 };
 
 /**
+ * Handles create multipart upload with presigned urls to post
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream created
+ * BAD_REQUEST 400 - error creating dream
+ *
+ */
+export const handleCreateMultipartUpload = async (
+  req: RequestType<CreateMultipartUploadDreamRequest>,
+  res: ResponseType,
+) => {
+  // setting vars
+  const user = res.locals.user;
+  let dream: Dream | undefined;
+
+  try {
+    // create dream
+    const name = req.body.name;
+    const extension = req.body.extension;
+    const parts = req.body.parts ?? 1;
+    dream = new Dream();
+    dream.name = name;
+    dream.user = user!;
+    await dreamRepository.save(dream);
+    const dreamUUID = dream.uuid;
+    const fileExtension = extension;
+    const fileName = `${dreamUUID}.${fileExtension}`;
+    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+    const uploadId = await createMultipartUpload(filePath);
+    const arrayUrls = Array.from({ length: parts });
+    const urls = await Promise.all(
+      arrayUrls.map(
+        async (_, index) =>
+          await getSignedUrlForPost(filePath, uploadId!, index + 1),
+      ),
+    );
+    return res.status(httpStatus.CREATED).json(
+      jsonResponse({
+        success: true,
+        data: { urls, uuid: dreamUUID, uploadId },
+      }),
+    );
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles create multipart upload with presigned urls to post
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream created
+ * BAD_REQUEST 400 - error creating dream
+ *
+ */
+export const handleCompleteMultipartUpload = async (
+  req: RequestType<CompleteMultipartUploadDreamRequest>,
+  res: ResponseType,
+) => {
+  const user = res.locals.user;
+  const dreamUUID: string = String(req.params?.uuid);
+  let dream: Dream | undefined;
+  try {
+    const findDreamResult = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true, playlistItems: true },
+      select: getDreamSelectedColumns(),
+    });
+    dream = findDreamResult[0];
+
+    if (!dream) {
+      return res
+        .status(httpStatus.NOT_FOUND)
+        .json(
+          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
+        );
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    /**
+     * dream props
+     */
+
+    const extension = req.body.extension;
+    const name = req.body.name || dreamUUID;
+    const uploadId = req.body.uploadId;
+    const parts = req.body.parts;
+    const fileExtension = extension;
+    const fileName = `${dreamUUID}.${fileExtension}`;
+    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+
+    await completeMultipartUpload(filePath, uploadId!, parts!);
+
+    /**
+     * update dream
+     */
+    dream.original_video = generateBucketObjectURL(filePath);
+    dream.name = name;
+    dream.status = DreamStatusType.QUEUE;
+    const createdDream = await dreamRepository.save(dream);
+
+    /**
+     * process dream
+     */
+    await processDreamRequest(dream);
+
+    /**
+     * create feed item when dream is created
+     */
+    const feedRepository = appDataSource.getRepository(FeedItem);
+
+    const feedItem = new FeedItem();
+    feedItem.type = FeedItemType.DREAM;
+    feedItem.user = createdDream.user;
+    feedItem.dreamItem = createdDream;
+    feedItem.created_at = createdDream.created_at;
+    feedItem.updated_at = createdDream.updated_at;
+
+    await feedRepository.save(feedItem);
+
+    return res
+      .status(httpStatus.CREATED)
+      .json(jsonResponse({ success: true, data: { dream: createdDream } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    if (dream) {
+      dream.status = DreamStatusType.FAILED;
+      await dreamRepository.save(dream);
+    }
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
  * Handles create dream
  *
  * @param {RequestType} req - Request object
@@ -278,7 +448,6 @@ export const handleCreateDream = async (
   const user = res.locals.user;
   const videoBuffer = req.file?.buffer;
   const bucketName = env.AWS_BUCKET_NAME;
-  const dreamRepository = appDataSource.getRepository(Dream);
   let dream: Dream | undefined;
 
   try {
@@ -362,7 +531,6 @@ export const handleGetDream = async (
   const user = res.locals.user;
   const dreamUUID: string = String(req.params?.uuid);
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true, playlistItems: true },
@@ -427,7 +595,6 @@ export const handleGetMyDreams = async (
   const user = res.locals.user;
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const [dreams, count] = await dreamRepository.findAndCount({
       where: { user: { id: user?.id } },
       relations: { user: true },
@@ -469,7 +636,6 @@ export const handleProcessDream = async (
   const dreamUUID: string = String(req.params.uuid);
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
@@ -531,7 +697,6 @@ export const handleSetDreamStatusProcessing = async (
   const dreamUUID: string = String(req.params.uuid);
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
@@ -584,7 +749,6 @@ export const handleSetDreamStatusProcessed = async (
   const dreamUUID: string = String(req.params.uuid);
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
@@ -650,7 +814,6 @@ export const handleSetDreamStatusFailed = async (
   const dreamUUID: string = String(req.params.uuid);
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
@@ -704,7 +867,6 @@ export const handleUpdateDream = async (
   const user = res.locals.user;
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
@@ -769,7 +931,6 @@ export const handleUpdateVideoDream = async (
   const user = res.locals.user;
   const dreamUUID: string = String(req.params.uuid);
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
@@ -856,7 +1017,6 @@ export const handleUpdateThumbnailDream = async (
   const dreamUUID: string = String(req.params.uuid);
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
@@ -945,7 +1105,6 @@ export const handleUpvoteDream = async (
     shouldIncreaseUpvotes = true;
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const voteRepository = appDataSource.getRepository(Vote);
 
     const [dream] = await dreamRepository.find({
@@ -1039,7 +1198,6 @@ export const handleDownvoteDream = async (
     shouldDecreaseUpvotes = false;
 
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const voteRepository = appDataSource.getRepository(Vote);
 
     const [dream] = await dreamRepository.find({
@@ -1130,7 +1288,6 @@ export const handleDeleteDream = async (
   const uuid: string = String(req.params?.uuid) || "";
   const user = res.locals.user;
   try {
-    const dreamRepository = appDataSource.getRepository(Dream);
     const dream = await dreamRepository.findOne({
       where: { uuid },
       relations: {

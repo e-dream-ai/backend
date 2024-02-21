@@ -39,6 +39,7 @@ export const createMultipartUpload = async (objectKey: string) => {
   const command = new CreateMultipartUploadCommand({
     Bucket: BUCKET_NAME,
     Key: objectKey,
+    ACL: BUCKET_ACL,
   });
 
   const response = await s3Client.send(command);

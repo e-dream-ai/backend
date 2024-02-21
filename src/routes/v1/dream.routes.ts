@@ -55,7 +55,7 @@ dreamRouter.post(
 );
 
 dreamRouter.post(
-  "/complete-multipart-upload",
+  "/:uuid/complete-multipart-upload",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(completeMultipartUploadDreamSchema),

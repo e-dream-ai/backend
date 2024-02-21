@@ -1,3 +1,5 @@
+import { CompletedPart } from "@aws-sdk/client-s3";
+
 export type CreateDreamRequest = object;
 
 export type UpdateDreamRequest = {
@@ -27,7 +29,7 @@ export type CompleteMultipartUploadDreamRequest = {
   name: string;
   extension: string;
   uploadId: string;
-  parts: number;
+  parts: Array<CompletedPart>;
 };
 
 export enum DreamStatusType {

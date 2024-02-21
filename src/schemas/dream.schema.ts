@@ -1,5 +1,6 @@
-import { ALLOWED_VIDEO_TYPES } from "constants/file.constants";
 import Joi from "joi";
+import { CompletedPart } from "@aws-sdk/client-s3";
+import { ALLOWED_VIDEO_TYPES } from "constants/file.constants";
 import {
   CompleteMultipartUploadDreamRequest,
   ConfirmDreamRequest,
@@ -39,7 +40,7 @@ export const createMultipartUploadDreamSchema = {
     extension: Joi.string()
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
-    parts: Joi.number().greater(1).required(),
+    parts: Joi.number().greater(0).integer().required(),
   }),
 };
 
@@ -50,6 +51,6 @@ export const completeMultipartUploadDreamSchema = {
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
     uploadId: Joi.string().required(),
-    parts: Joi.number().greater(1).required(),
+    parts: Joi.array<CompletedPart>().required(),
   }),
 };

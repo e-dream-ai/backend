@@ -1,4 +1,4 @@
-import { CompletedPart, PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
 import {
@@ -304,9 +304,12 @@ export const handleCreateMultipartUpload = async (
           await getSignedUrlForPost(filePath, uploadId!, index + 1),
       ),
     );
-    return res
-      .status(httpStatus.CREATED)
-      .json(jsonResponse({ success: true, data: { urls, uuid: dreamUUID } }));
+    return res.status(httpStatus.CREATED).json(
+      jsonResponse({
+        success: true,
+        data: { urls, uuid: dreamUUID, uploadId },
+      }),
+    );
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
@@ -379,14 +382,7 @@ export const handleCompleteMultipartUpload = async (
     const fileName = `${dreamUUID}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
 
-    const partsArray: CompletedPart[] = Array.from(
-      { length: parts! },
-      (_, index) => ({
-        PartNumber: index + 1,
-      }),
-    );
-
-    await completeMultipartUpload(filePath, uploadId!, partsArray);
+    await completeMultipartUpload(filePath, uploadId!, parts!);
 
     /**
      * update dream

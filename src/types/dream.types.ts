@@ -20,6 +20,7 @@ export type ConfirmDreamRequest = {
 };
 
 export type CreateMultipartUploadDreamRequest = {
+  uuid?: string;
   name: string;
   extension: string;
   parts: number;

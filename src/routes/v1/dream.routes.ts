@@ -62,14 +62,6 @@ dreamRouter.post(
   dreamController.handleCompleteMultipartUpload,
 );
 
-dreamRouter.post(
-  "/",
-  requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
-  multerSingleFileMiddleware,
-  dreamController.handleCreateDream,
-);
-
 dreamRouter.get(
   "/my-dreams",
   requireAuth,
@@ -118,14 +110,6 @@ dreamRouter.put(
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(updateDreamSchema),
   dreamController.handleUpdateDream,
-);
-
-dreamRouter.put(
-  "/:uuid/video",
-  requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
-  multerSingleFileMiddleware,
-  dreamController.handleUpdateVideoDream,
 );
 
 dreamRouter.put(

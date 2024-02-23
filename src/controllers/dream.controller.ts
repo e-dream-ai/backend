@@ -6,7 +6,6 @@ import {
   MYME_TYPES,
   MYME_TYPES_EXTENSIONS,
 } from "constants/file.constants";
-import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
@@ -14,7 +13,6 @@ import appDataSource from "database/app-data-source";
 import { Dream, FeedItem, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
-import { APP_LOGGER } from "shared/logger";
 import {
   CompleteMultipartUploadDreamRequest,
   ConfirmDreamRequest,
@@ -30,7 +28,11 @@ import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { getDreamSelectedColumns, processDreamRequest } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { isBrowserRequest } from "utils/request.util";
-import { jsonResponse } from "utils/responses.util";
+import {
+  jsonResponse,
+  handleInternalServerError,
+  handleNotFound,
+} from "utils/responses.util";
 import {
   completeMultipartUpload,
   createMultipartUpload,
@@ -73,14 +75,9 @@ export const handleGetDreams = async (req: RequestType, res: ResponseType) => {
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dreams: dreams, count } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -104,14 +101,9 @@ export const handleCreateDreamSignedURL = async (
     return res
       .status(httpStatus.CREATED)
       .json(jsonResponse({ success: true, data: {} }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -152,14 +144,9 @@ export const handleCreatePresignedPost = async (
       .json(
         jsonResponse({ success: true, data: { url, fields, uuid: dreamUUID } }),
       );
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -190,11 +177,7 @@ export const handleConfirmPresignedPost = async (
     dream = findDreamResult[0];
 
     if (!dream) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -241,26 +224,19 @@ export const handleConfirmPresignedPost = async (
     feedItem.type = FeedItemType.DREAM;
     feedItem.user = createdDream.user;
     feedItem.dreamItem = createdDream;
-    feedItem.created_at = createdDream.created_at;
-    feedItem.updated_at = createdDream.updated_at;
 
     await feedRepository.save(feedItem);
 
     return res
       .status(httpStatus.CREATED)
       .json(jsonResponse({ success: true, data: { dream: createdDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
+  } catch (err) {
     if (dream) {
       dream.status = DreamStatusType.FAILED;
       await dreamRepository.save(dream);
     }
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -281,21 +257,37 @@ export const handleCreateMultipartUpload = async (
 ) => {
   // setting vars
   const user = res.locals.user;
-  let dream: Dream | undefined;
+  let dream: Dream;
 
   try {
-    // create dream
+    const dreamUUID = req.body.uuid;
     const name = req.body.name;
     const extension = req.body.extension;
     const parts = req.body.parts ?? 1;
-    dream = new Dream();
-    dream.name = name;
-    dream.user = user!;
-    await dreamRepository.save(dream);
-    const dreamUUID = dream.uuid;
+
+    if (!dreamUUID) {
+      // create dream
+      dream = new Dream();
+      dream.name = name;
+      dream.user = user!;
+      await dreamRepository.save(dream);
+    } else {
+      // find dream
+      [dream] = await dreamRepository.find({
+        where: { uuid: dreamUUID! },
+        relations: { user: true, playlistItems: true },
+        select: getDreamSelectedColumns({ originalVideo: true }),
+      });
+    }
+
+    if (!dream) {
+      return handleNotFound(req, res);
+    }
+
+    const uuid = dream.uuid;
     const fileExtension = extension;
-    const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+    const fileName = `${uuid}.${fileExtension}`;
+    const filePath = `${user?.cognitoId}/${uuid}/${fileName}`;
     const uploadId = await createMultipartUpload(filePath);
     const arrayUrls = Array.from({ length: parts });
     const urls = await Promise.all(
@@ -307,17 +299,12 @@ export const handleCreateMultipartUpload = async (
     return res.status(httpStatus.CREATED).json(
       jsonResponse({
         success: true,
-        data: { urls, uuid: dreamUUID, uploadId },
+        data: { urls, dream: dream, uploadId },
       }),
     );
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -348,11 +335,7 @@ export const handleCompleteMultipartUpload = async (
     dream = findDreamResult[0];
 
     if (!dream) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -401,114 +384,28 @@ export const handleCompleteMultipartUpload = async (
      * create feed item when dream is created
      */
     const feedRepository = appDataSource.getRepository(FeedItem);
+    let feedItem = await feedRepository.findOne({
+      where: { dreamItem: { uuid: dream.uuid } },
+    });
 
-    const feedItem = new FeedItem();
-    feedItem.type = FeedItemType.DREAM;
-    feedItem.user = createdDream.user;
-    feedItem.dreamItem = createdDream;
-    feedItem.created_at = createdDream.created_at;
-    feedItem.updated_at = createdDream.updated_at;
-
-    await feedRepository.save(feedItem);
+    if (!feedItem) {
+      feedItem = new FeedItem();
+      feedItem.type = FeedItemType.DREAM;
+      feedItem.user = createdDream.user;
+      feedItem.dreamItem = createdDream;
+      await feedRepository.save(feedItem);
+    }
 
     return res
       .status(httpStatus.CREATED)
       .json(jsonResponse({ success: true, data: { dream: createdDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
+  } catch (err) {
     if (dream) {
       dream.status = DreamStatusType.FAILED;
       await dreamRepository.save(dream);
     }
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
-  }
-};
-
-/**
- * Handles create dream
- *
- * @param {RequestType} req - Request object
- * @param {Response} res - Response object
- *
- * @returns {Response} Returns response
- * OK 200 - dream created
- * BAD_REQUEST 400 - error creating dream
- *
- */
-export const handleCreateDream = async (
-  req: RequestType,
-  res: ResponseType,
-) => {
-  // setting vars
-  const user = res.locals.user;
-  const videoBuffer = req.file?.buffer;
-  const bucketName = env.AWS_BUCKET_NAME;
-  let dream: Dream | undefined;
-
-  try {
-    // create dream
-    dream = new Dream();
-    dream.user = user!;
-    await dreamRepository.save(dream);
-    const dreamUUID = dream.uuid;
-
-    const fileMymeType = req.file?.mimetype;
-    const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
-    const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
-
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: filePath,
-      Body: videoBuffer,
-      ACL: BUCKET_ACL,
-    });
-
-    await s3Client.send(command);
-
-    /**
-     * process dream
-     */
-    await processDreamRequest(dream);
-
-    /**
-     * update dream
-     */
-    dream.original_video = generateBucketObjectURL(filePath);
-    dream.status = DreamStatusType.QUEUE;
-    const createdDream = await dreamRepository.save(dream);
-
-    /**
-     * create feed item when dream is created
-     */
-    const feedRepository = appDataSource.getRepository(FeedItem);
-
-    const feedItem = new FeedItem();
-    feedItem.type = FeedItemType.DREAM;
-    feedItem.user = createdDream.user;
-    feedItem.dreamItem = createdDream;
-    feedItem.created_at = createdDream.created_at;
-    feedItem.updated_at = createdDream.updated_at;
-
-    await feedRepository.save(feedItem);
-
-    return res
-      .status(httpStatus.CREATED)
-      .json(jsonResponse({ success: true, data: { dream: createdDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    if (dream) await dreamRepository.softRemove(dream);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -538,11 +435,7 @@ export const handleGetDream = async (
     });
 
     if (!dream) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -561,14 +454,9 @@ export const handleGetDream = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: dream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -607,14 +495,9 @@ export const handleGetMyDreams = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dreams, count } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -646,12 +529,7 @@ export const handleProcessDream = async (
     });
 
     if (!dream) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     /**
@@ -668,14 +546,9 @@ export const handleProcessDream = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -704,12 +577,7 @@ export const handleSetDreamStatusProcessing = async (
     });
 
     if (!dream) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const updatedDream = await dreamRepository.save({
@@ -720,14 +588,9 @@ export const handleSetDreamStatusProcessing = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -756,12 +619,7 @@ export const handleSetDreamStatusProcessed = async (
     });
 
     if (!dream) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     /**
@@ -785,14 +643,9 @@ export const handleSetDreamStatusProcessed = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -821,12 +674,7 @@ export const handleSetDreamStatusFailed = async (
     });
 
     if (!dream) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const updatedDream = await dreamRepository.save({
@@ -837,14 +685,9 @@ export const handleSetDreamStatusFailed = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -874,12 +717,7 @@ export const handleUpdateDream = async (
     });
 
     if (!dream) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -902,99 +740,9 @@ export const handleUpdateDream = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
-  }
-};
-
-/**
- * Handles update video dream
- *
- * @param {RequestType} req - Request object
- * @param {Response} res - Response object
- *
- * @returns {Response} Returns response
- * OK 200 - video dream updated
- * BAD_REQUEST 400 - error updating video dream
- *
- */
-export const handleUpdateVideoDream = async (
-  req: RequestType,
-  res: ResponseType,
-) => {
-  const user = res.locals.user;
-  const dreamUUID: string = String(req.params.uuid);
-  try {
-    const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID! },
-      relations: { user: true },
-      select: getDreamSelectedColumns(),
-    });
-
-    if (!dream) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
-        }),
-      );
-    }
-
-    const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
-      allowedRoles: [ROLES.ADMIN_GROUP],
-      userRole: user?.role?.name,
-    });
-
-    if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
-    }
-
-    // update dream
-    const videoBuffer = req.file?.buffer;
-    const bucketName = env.AWS_BUCKET_NAME;
-    const fileMymeType = req.file?.mimetype;
-    const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
-    const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
-
-    if (videoBuffer) {
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: filePath,
-        Body: videoBuffer,
-        ACL: BUCKET_ACL,
-      });
-      await s3Client.send(command);
-    }
-
-    const updatedDream: Dream = await dreamRepository.save({
-      ...dream,
-      original_video: videoBuffer ? generateBucketObjectURL(filePath) : null,
-    });
-
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -1024,12 +772,7 @@ export const handleUpdateThumbnailDream = async (
     });
 
     if (!dream) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -1073,14 +816,9 @@ export const handleUpdateThumbnailDream = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -1112,12 +850,7 @@ export const handleUpvoteDream = async (
     });
 
     if (!dream) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     let [vote] = await voteRepository.find({
@@ -1166,14 +899,9 @@ export const handleUpvoteDream = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -1205,12 +933,7 @@ export const handleDownvoteDream = async (
     });
 
     if (!dream) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: DREAM_MESSAGES.DREAM_NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     let [vote] = await voteRepository.find({
@@ -1259,14 +982,9 @@ export const handleDownvoteDream = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -1298,11 +1016,7 @@ export const handleDeleteDream = async (
     });
 
     if (!dream) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -1323,21 +1037,12 @@ export const handleDeleteDream = async (
     const affected = await dreamRepository.softRemove(dream);
 
     if (!affected) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };

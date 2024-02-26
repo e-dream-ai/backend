@@ -4,6 +4,7 @@ import {
   UploadPartCommand,
   CompleteMultipartUploadCommand,
   CompletedPart,
+  AbortMultipartUploadCommand,
 } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -93,6 +94,26 @@ export const completeMultipartUpload = async (
     MultipartUpload: {
       Parts: parts,
     },
+  });
+
+  const response = await s3Client.send(command);
+  return response;
+};
+
+/**
+ *
+ * @param {string} objectKey - object key on s3
+ * @param {string} uploadId - multipart upload id
+ * @returns {string} ID for the initiated multipart upload
+ */
+export const abortMultipartUpload = async (
+  objectKey: string,
+  uploadId: string,
+) => {
+  const command = new AbortMultipartUploadCommand({
+    Bucket: BUCKET_NAME,
+    Key: objectKey,
+    UploadId: uploadId,
   });
 
   const response = await s3Client.send(command);

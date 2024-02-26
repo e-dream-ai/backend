@@ -33,6 +33,11 @@ export type CompleteMultipartUploadDreamRequest = {
   parts: Array<CompletedPart>;
 };
 
+export type AbortMultipartUploadDreamRequest = {
+  extension: string;
+  uploadId: string;
+};
+
 export enum DreamStatusType {
   NONE = "none",
   QUEUE = "queue",

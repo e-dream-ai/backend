@@ -14,6 +14,7 @@ import { Dream, FeedItem, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import {
+  AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
   ConfirmDreamRequest,
   CreateMultipartUploadDreamRequest,
@@ -34,6 +35,7 @@ import {
   handleNotFound,
 } from "utils/responses.util";
 import {
+  abortMultipartUpload,
   completeMultipartUpload,
   createMultipartUpload,
   generatePresignedPost,
@@ -404,6 +406,76 @@ export const handleCompleteMultipartUpload = async (
       dream.status = DreamStatusType.FAILED;
       await dreamRepository.save(dream);
     }
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles abort multipart upload
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - upload aborted
+ * BAD_REQUEST 400 - error aborting upload
+ *
+ */
+export const handleAbortMultipartUpload = async (
+  req: RequestType<AbortMultipartUploadDreamRequest>,
+  res: ResponseType,
+) => {
+  const user = res.locals.user;
+  const dreamUUID: string = String(req.params?.uuid);
+  let dream: Dream | undefined;
+  try {
+    const findDreamResult = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true, playlistItems: true },
+      select: getDreamSelectedColumns(),
+    });
+    dream = findDreamResult[0];
+
+    if (!dream) {
+      return handleNotFound(req, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.UNAUTHORIZED,
+        }),
+      );
+    }
+
+    /**
+     * dream props
+     */
+    const extension = req.body.extension;
+    const uploadId = req.body.uploadId;
+    const fileExtension = extension;
+    const fileName = `${dreamUUID}.${fileExtension}`;
+    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+
+    await abortMultipartUpload(filePath, uploadId!);
+
+    /**
+     * update dream
+     */
+    dream.status = DreamStatusType.FAILED;
+    await dreamRepository.save(dream);
+    await dreamRepository.softDelete({ id: dream.id });
+
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
+  } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);
   }

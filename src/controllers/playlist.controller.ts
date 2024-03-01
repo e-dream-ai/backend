@@ -332,6 +332,8 @@ export const handleUpdateThumbnailPlaylist = async (
         Key: filePath,
         Body: thumbnailBuffer,
         ACL: BUCKET_ACL,
+        CacheControl: "no-cache",
+        Expires: new Date(),
       });
       await s3Client.send(command);
     }

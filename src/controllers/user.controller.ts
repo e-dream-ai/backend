@@ -254,6 +254,8 @@ export const handleUpdateUserAvatar = async (
         Key: filePath,
         Body: avatarBuffer,
         ACL: BUCKET_ACL,
+        CacheControl: "no-cache",
+        Expires: new Date(),
       });
       await s3Client.send(command);
     }

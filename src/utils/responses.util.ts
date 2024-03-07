@@ -32,3 +32,13 @@ export const handleNotFound = (req: RequestType, res: ResponseType) => {
     }),
   );
 };
+
+// Unauthorized Handler
+export const handleUnauthorized = (req: RequestType, res: ResponseType) => {
+  res.status(httpStatus.UNAUTHORIZED).json(
+    jsonResponse({
+      success: false,
+      message: GENERAL_MESSAGES.UNAUTHORIZED,
+    }),
+  );
+};

@@ -11,6 +11,7 @@ import {
   confirmDreamSchema,
   createMultipartUploadDreamSchema,
   createPresignedDreamSchema,
+  refreshMultipartUploadUrlSchema,
   updateDreamSchema,
 } from "schemas/dream.schema";
 
@@ -21,14 +22,6 @@ dreamRouter.get(
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   dreamController.handleGetDreams,
-);
-
-dreamRouter.post(
-  "/create-signed-url",
-  requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
-  multerSingleFileMiddleware,
-  dreamController.handleCreateDreamSignedURL,
 );
 
 dreamRouter.post(
@@ -53,6 +46,14 @@ dreamRouter.post(
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(createMultipartUploadDreamSchema),
   dreamController.handleCreateMultipartUpload,
+);
+
+dreamRouter.post(
+  "/:uuid/refresh-multipart-upload-url",
+  requireAuth,
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(refreshMultipartUploadUrlSchema),
+  dreamController.handleRefreshMultipartUploadUrl,
 );
 
 dreamRouter.post(

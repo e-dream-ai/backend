@@ -26,6 +26,12 @@ export type CreateMultipartUploadDreamRequest = {
   parts: number;
 };
 
+export type RefreshMultipartUploadUrlRequest = {
+  extension: string;
+  uploadId: string;
+  part: number;
+};
+
 export type CompleteMultipartUploadDreamRequest = {
   name: string;
   extension: string;

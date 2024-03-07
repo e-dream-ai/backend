@@ -6,7 +6,6 @@ import {
   MYME_TYPES,
   MYME_TYPES_EXTENSIONS,
 } from "constants/file.constants";
-import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
@@ -20,6 +19,7 @@ import {
   CreateMultipartUploadDreamRequest,
   CreatePresignedDreamRequest,
   DreamStatusType,
+  RefreshMultipartUploadUrlRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
@@ -33,16 +33,22 @@ import {
   jsonResponse,
   handleInternalServerError,
   handleNotFound,
+  handleUnauthorized,
 } from "utils/responses.util";
 import {
   abortMultipartUpload,
   completeMultipartUpload,
   createMultipartUpload,
   generatePresignedPost,
-  getSignedUrlForPost,
+  getUploadPartSignedUrl,
 } from "utils/s3.util";
 
+/**
+ * Repositories
+ */
 const dreamRepository = appDataSource.getRepository(Dream);
+const feedRepository = appDataSource.getRepository(FeedItem);
+const voteRepository = appDataSource.getRepository(Vote);
 
 /**
  * Handles get dreams
@@ -77,32 +83,6 @@ export const handleGetDreams = async (req: RequestType, res: ResponseType) => {
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dreams: dreams, count } }));
-  } catch (err) {
-    const error = err as Error;
-    return handleInternalServerError(error, req, res);
-  }
-};
-
-/**
- * Handles create dream signed URL
- *
- * @param {RequestType} req - Request object
- * @param {Response} res - Response object
- *
- * @returns {Response} Returns response
- * OK 200 - dream created
- * BAD_REQUEST 400 - error creating dream
- *
- */
-export const handleCreateDreamSignedURL = async (
-  req: RequestType,
-  res: ResponseType,
-) => {
-  // setting vars
-  try {
-    return res
-      .status(httpStatus.CREATED)
-      .json(jsonResponse({ success: true, data: {} }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);
@@ -189,12 +169,7 @@ export const handleConfirmPresignedPost = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     /**
@@ -220,7 +195,6 @@ export const handleConfirmPresignedPost = async (
     /**
      * create feed item when dream is created
      */
-    const feedRepository = appDataSource.getRepository(FeedItem);
 
     const feedItem = new FeedItem();
     feedItem.type = FeedItemType.DREAM;
@@ -295,13 +269,77 @@ export const handleCreateMultipartUpload = async (
     const urls = await Promise.all(
       arrayUrls.map(
         async (_, index) =>
-          await getSignedUrlForPost(filePath, uploadId!, index + 1),
+          await getUploadPartSignedUrl(filePath, uploadId!, index + 1),
       ),
     );
     return res.status(httpStatus.CREATED).json(
       jsonResponse({
         success: true,
         data: { urls, dream: dream, uploadId },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles refresh multipart upload presigned urls to post
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream created
+ * BAD_REQUEST 400 - error creating dream
+ *
+ */
+export const handleRefreshMultipartUploadUrl = async (
+  req: RequestType<RefreshMultipartUploadUrlRequest>,
+  res: ResponseType,
+) => {
+  // setting vars
+  const user = res.locals.user;
+
+  try {
+    const dreamUUID: string = String(req.params?.uuid);
+    const uploadId = req.body.uploadId;
+    const extension = req.body.extension;
+    const part = req.body.part;
+
+    // find dream
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true, playlistItems: true },
+      select: getDreamSelectedColumns({ originalVideo: true }),
+    });
+
+    if (!dream) {
+      return handleNotFound(req, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleUnauthorized(req, res);
+    }
+
+    const uuid = dream.uuid;
+    const fileExtension = extension;
+    const fileName = `${uuid}.${fileExtension}`;
+    const filePath = `${user?.cognitoId}/${uuid}/${fileName}`;
+
+    const url = await getUploadPartSignedUrl(filePath, uploadId!, part!);
+
+    return res.status(httpStatus.CREATED).json(
+      jsonResponse({
+        success: true,
+        data: { url, dream: dream, uploadId },
       }),
     );
   } catch (err) {
@@ -347,12 +385,7 @@ export const handleCompleteMultipartUpload = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     /**
@@ -385,7 +418,6 @@ export const handleCompleteMultipartUpload = async (
     /**
      * create feed item when dream is created
      */
-    const feedRepository = appDataSource.getRepository(FeedItem);
     let feedItem = await feedRepository.findOne({
       where: { dreamItem: { uuid: dream.uuid } },
     });
@@ -448,12 +480,7 @@ export const handleAbortMultipartUpload = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     /**
@@ -799,12 +826,7 @@ export const handleUpdateDream = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     const updatedDream = await dreamRepository.save({ ...dream, ...req.body });
@@ -854,12 +876,7 @@ export const handleUpdateThumbnailDream = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     // update dream
@@ -917,8 +934,6 @@ export const handleUpvoteDream = async (
     shouldIncreaseUpvotes = true;
 
   try {
-    const voteRepository = appDataSource.getRepository(Vote);
-
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
     });
@@ -1000,8 +1015,6 @@ export const handleDownvoteDream = async (
     shouldDecreaseUpvotes = false;
 
   try {
-    const voteRepository = appDataSource.getRepository(Vote);
-
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
     });
@@ -1100,12 +1113,7 @@ export const handleDeleteDream = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     const affected = await dreamRepository.softRemove(dream);

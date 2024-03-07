@@ -49,13 +49,13 @@ export const createMultipartUpload = async (objectKey: string) => {
 };
 
 /**
- *
+ * Generates signed url for a upload part
  * @param {string} objectKey - object key on s3
  * @param {string} uploadId - multipart upload id
  * @param {number} partNumber - upload part number
  * @returns {string} ID for the initiated multipart upload
  */
-export const getSignedUrlForPost = async (
+export const getUploadPartSignedUrl = async (
   objectKey: string,
   uploadId: string,
   partNumber: number,

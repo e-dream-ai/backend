@@ -7,6 +7,7 @@ import {
   ConfirmDreamRequest,
   CreateMultipartUploadDreamRequest,
   CreatePresignedDreamRequest,
+  RefreshMultipartUploadUrlRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
 
@@ -43,6 +44,16 @@ export const createMultipartUploadDreamSchema = {
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
     parts: Joi.number().greater(0).integer().required(),
+  }),
+};
+
+export const refreshMultipartUploadUrlSchema = {
+  body: Joi.object<RefreshMultipartUploadUrlRequest>().keys({
+    uploadId: Joi.string().required(),
+    part: Joi.number().required(),
+    extension: Joi.string()
+      .valid(...ALLOWED_VIDEO_TYPES)
+      .required(),
   }),
 };
 

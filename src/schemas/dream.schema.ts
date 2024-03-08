@@ -7,9 +7,20 @@ import {
   ConfirmDreamRequest,
   CreateMultipartUploadDreamRequest,
   CreatePresignedDreamRequest,
+  DreamStatusType,
+  GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
+
+export const getDreamsSchema = {
+  query: Joi.object<GetDreamsQuery>().keys({
+    status: Joi.string().valid(...Object.values(DreamStatusType)),
+    skip: Joi.number(),
+    take: Joi.number(),
+    userId: Joi.number(),
+  }),
+};
 
 export const updateDreamSchema = {
   body: Joi.object<UpdateDreamRequest>().keys({

@@ -19,6 +19,7 @@ import {
   CreateMultipartUploadDreamRequest,
   CreatePresignedDreamRequest,
   DreamStatusType,
+  GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
@@ -61,18 +62,23 @@ const voteRepository = appDataSource.getRepository(Vote);
  * BAD_REQUEST 400 - error getting dream
  *
  */
-export const handleGetDreams = async (req: RequestType, res: ResponseType) => {
+export const handleGetDreams = async (
+  req: RequestType<unknown, GetDreamsQuery>,
+  res: ResponseType,
+) => {
   try {
-    const isBrowser = isBrowserRequest(req);
+    const isBrowser = isBrowserRequest(req as RequestType);
     const take = Math.min(
       Number(req.query.take) || PAGINATION.TAKE,
       PAGINATION.TAKE,
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
+    const status =
+      (req.query.status as DreamStatusType) || DreamStatusType.PROCESSED;
     const userId = Number(req.query.userId) || undefined;
 
     const [dreams, count] = await dreamRepository.findAndCount({
-      where: { user: { id: userId } },
+      where: { user: { id: userId }, status },
       relations: { user: true },
       select: getDreamSelectedColumns({ originalVideo: isBrowser }),
       order: { created_at: "DESC" },

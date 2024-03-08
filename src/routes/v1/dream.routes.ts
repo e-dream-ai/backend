@@ -11,6 +11,7 @@ import {
   confirmDreamSchema,
   createMultipartUploadDreamSchema,
   createPresignedDreamSchema,
+  getDreamsSchema,
   refreshMultipartUploadUrlSchema,
   updateDreamSchema,
 } from "schemas/dream.schema";
@@ -21,6 +22,7 @@ dreamRouter.get(
   "/",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(getDreamsSchema),
   dreamController.handleGetDreams,
 );
 

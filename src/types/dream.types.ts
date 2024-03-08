@@ -2,6 +2,13 @@ import { CompletedPart } from "@aws-sdk/client-s3";
 
 export type CreateDreamRequest = object;
 
+export type GetDreamsQuery = {
+  status: DreamStatusType;
+  take: number;
+  skip: number;
+  userId: number;
+};
+
 export type UpdateDreamRequest = {
   name?: string;
   video?: string;

@@ -1,4 +1,4 @@
-import { Dream } from "entities";
+import { Dream, FeedItem } from "entities";
 import {
   SendMessageCommand,
   SendMessageCommandInput,
@@ -8,18 +8,21 @@ import {
   PROCESS_VIDEO_QUEUE_ATTRIBUTES,
   SQS_DATA_TYPES,
 } from "constants/sqs.constants";
+import appDataSource from "database/app-data-source";
 import env from "shared/env";
 import axios from "axios";
 import { ContentType, getRequestHeaders } from "constants/api.constants";
 import { FindOptionsSelect } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
+import { FeedItemType } from "types/feed-item.types";
 
 const queueUrl = ""; // env.AWS_SQS_URL;
 
 const PROCESS_VIDEO_SERVER_URL = env.PROCESS_VIDEO_SERVER_URL;
+const feedRepository = appDataSource.getRepository(FeedItem);
 
 /**
- * Feature currently unused due to sqs queue being replaced by redis queue
+ * @deprecated Currently unused due to sqs queue being replaced by redis queue
  * Send dream to sqs queue
  * @param dream - dream should include contain user data
  */
@@ -49,7 +52,7 @@ export const processDreamSQS = async (dream: Dream) => {
 };
 
 /**
- * Send dream process video request
+ * Send dream process request to video server
  * @param dream - dream should include contain user data
  */
 export const processDreamRequest = async (dream: Dream) => {
@@ -103,4 +106,23 @@ export const getFileExtension = (fileName: string): string => {
   } else {
     return ""; // No extension found
   }
+};
+
+export const createFeedItem = async (dream: Dream) => {
+  /**
+   * create feed item when dream is created
+   */
+  let feedItem = await feedRepository.findOne({
+    where: { dreamItem: { uuid: dream.uuid } },
+  });
+
+  if (!feedItem) {
+    feedItem = new FeedItem();
+    feedItem.type = FeedItemType.DREAM;
+    feedItem.user = dream?.user;
+    feedItem.dreamItem = dream;
+    await feedRepository.save(feedItem);
+  }
+
+  return feedItem;
 };

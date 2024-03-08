@@ -9,7 +9,7 @@ import {
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Dream, FeedItem, Vote } from "entities";
+import { Dream, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import {
@@ -24,10 +24,13 @@ import {
   UpdateDreamRequest,
 } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
-import { FeedItemType } from "types/feed-item.types";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
-import { getDreamSelectedColumns, processDreamRequest } from "utils/dream.util";
+import {
+  createFeedItem,
+  getDreamSelectedColumns,
+  processDreamRequest,
+} from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { isBrowserRequest } from "utils/request.util";
 import {
@@ -48,7 +51,6 @@ import {
  * Repositories
  */
 const dreamRepository = appDataSource.getRepository(Dream);
-const feedRepository = appDataSource.getRepository(FeedItem);
 const voteRepository = appDataSource.getRepository(Vote);
 
 /**
@@ -197,17 +199,6 @@ export const handleConfirmPresignedPost = async (
      * process dream
      */
     await processDreamRequest(dream);
-
-    /**
-     * create feed item when dream is created
-     */
-
-    const feedItem = new FeedItem();
-    feedItem.type = FeedItemType.DREAM;
-    feedItem.user = createdDream.user;
-    feedItem.dreamItem = createdDream;
-
-    await feedRepository.save(feedItem);
 
     return res
       .status(httpStatus.CREATED)
@@ -420,21 +411,6 @@ export const handleCompleteMultipartUpload = async (
      * process dream
      */
     await processDreamRequest(dream);
-
-    /**
-     * create feed item when dream is created
-     */
-    let feedItem = await feedRepository.findOne({
-      where: { dreamItem: { uuid: dream.uuid } },
-    });
-
-    if (!feedItem) {
-      feedItem = new FeedItem();
-      feedItem.type = FeedItemType.DREAM;
-      feedItem.user = createdDream.user;
-      feedItem.dreamItem = createdDream;
-      await feedRepository.save(feedItem);
-    }
 
     return res
       .status(httpStatus.CREATED)
@@ -744,6 +720,8 @@ export const handleSetDreamStatusProcessed = async (
       video: generateBucketObjectURL(videoFilePath),
       thumbnail: generateBucketObjectURL(thumbnailFilePath),
     });
+
+    await createFeedItem(updatedDream);
 
     return res
       .status(httpStatus.OK)

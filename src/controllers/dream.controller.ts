@@ -91,7 +91,7 @@ export const handleGetDreams = async (
       .json(jsonResponse({ success: true, data: { dreams: dreams, count } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 

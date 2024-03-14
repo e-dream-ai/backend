@@ -1,3 +1,4 @@
+import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { User } from "entities";
 import { remoteControlSchema } from "schemas/socket.schema";
 import { Socket } from "socket.io";
@@ -12,19 +13,10 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    * Temporal info log
    */
   console.info(`User ${user?.cognitoId} connected to socket.io`);
-  const roomId = "user-" + user.cognitoId;
-  socket.join(roomId);
-  socket.on(
-    NEW_REMOTE_CONTROL_EVENT,
-    remoteControlEventListener(socket, roomId, user),
-  );
+  socket.on(NEW_REMOTE_CONTROL_EVENT, remoteControlEventListener(socket, user));
 };
 
-export const remoteControlEventListener = (
-  socket: Socket,
-  roomId: string,
-  user: User,
-) => {
+export const remoteControlEventListener = (socket: Socket, user: User) => {
   return async (data: RemoteControlEvent) => {
     // Validate incoming message against the schema
     const { error } = remoteControlSchema.validate(data);
@@ -45,23 +37,38 @@ export const remoteControlEventListener = (
     /**
      * Set user current dream
      */
-    if (
-      event === REMOTE_CONTROLS.PLAY_DREAM ||
-      event === REMOTE_CONTROLS.PLAYING
-    ) {
-      const uuid = data.uuid;
-      const dream = await setUserCurrentDream(user, uuid);
-      if (!dream) socket.emit("Error", { error: "Not found" });
+    if ([REMOTE_CONTROLS.PLAY_DREAM, REMOTE_CONTROLS.PLAYING].includes(event)) {
+      const dream = await setUserCurrentDream(user, data.uuid);
+      if (!dream) {
+        socket.emit(GENERAL_MESSAGES.ERROR, {
+          error: GENERAL_MESSAGES.NOT_FOUND,
+        });
+      } else {
+        socket.broadcast.emit(user.cognitoId, data);
+      }
+      return;
     }
 
     /**
      * Set user current playlist
      */
     if (event === REMOTE_CONTROLS.PLAY_PLAYLIST) {
-      const id = data.id;
-      const playlist = await setUserCurrentPlaylist(user, id);
-      if (!playlist) socket.emit("Error", { error: "Not found" });
+      const playlist = await setUserCurrentPlaylist(user, data.id);
+      if (!playlist) {
+        socket.emit(GENERAL_MESSAGES.ERROR, {
+          error: GENERAL_MESSAGES.NOT_FOUND,
+        });
+      } else {
+        socket.broadcast.emit(user.cognitoId, data);
+      }
+      return;
     }
+
+    /**
+     * Joins a room to avoid send all messages to all users
+     */
+    const roomId = "user-" + user.cognitoId;
+    socket.join(roomId);
 
     socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
   };

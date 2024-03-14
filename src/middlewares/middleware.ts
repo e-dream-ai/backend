@@ -3,9 +3,8 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import { Namespace } from "socket.io/dist/namespace";
 import swaggerDocument from "constants/swagger.json";
-import authMiddleware, {
-  socketAuthMiddleware,
-} from "middlewares/auth.middleware";
+import authMiddleware from "middlewares/auth.middleware";
+import { socketAuthMiddleware } from "middlewares/socket.middleware";
 import env from "shared/env";
 import swaggerUi from "swagger-ui-express";
 

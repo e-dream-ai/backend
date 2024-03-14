@@ -85,7 +85,7 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
     const foundUser = await userRepository.findOne({
       where: { id },
       select: getUserSelectedColumns({ userEmail: true }),
-      relations: { role: true },
+      relations: { role: true, currentDream: true, currentPlaylist: true },
     });
 
     if (!foundUser) {

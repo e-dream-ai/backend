@@ -32,6 +32,15 @@ export const remoteControlEventListener = (socket: Socket, user: User) => {
       data,
     });
 
+    /**
+     * Joins a room to avoid send all messages to all users
+     */
+    const roomId = "user-" + user.cognitoId;
+    socket.join(roomId);
+
+    /**
+     * Get event
+     */
     const event = data.event;
 
     /**
@@ -43,10 +52,7 @@ export const remoteControlEventListener = (socket: Socket, user: User) => {
         socket.emit(GENERAL_MESSAGES.ERROR, {
           error: GENERAL_MESSAGES.NOT_FOUND,
         });
-      } else {
-        socket.broadcast.emit(user.cognitoId, data);
       }
-      return;
     }
 
     /**
@@ -58,18 +64,12 @@ export const remoteControlEventListener = (socket: Socket, user: User) => {
         socket.emit(GENERAL_MESSAGES.ERROR, {
           error: GENERAL_MESSAGES.NOT_FOUND,
         });
-      } else {
-        socket.broadcast.emit(user.cognitoId, data);
       }
-      return;
     }
 
     /**
-     * Joins a room to avoid send all messages to all users
+     * Emit boradcast {NEW_REMOTE_CONTROL_EVENT} event
      */
-    const roomId = "user-" + user.cognitoId;
-    socket.join(roomId);
-
     socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
   };
 };

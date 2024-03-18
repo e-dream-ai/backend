@@ -6,7 +6,6 @@ import {
   JoinColumn,
   ManyToOne,
   OneToMany,
-  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
@@ -50,14 +49,14 @@ export class User {
   /**
    * current dream
    */
-  @OneToOne(() => Dream, { nullable: true })
+  @ManyToOne(() => Dream, { nullable: true })
   @JoinColumn()
   currentDream?: Dream;
 
   /**
    * current playlist
    */
-  @OneToOne(() => Playlist, { nullable: true })
+  @ManyToOne(() => Playlist, { nullable: true })
   @JoinColumn()
   currentPlaylist?: Playlist;
 

@@ -21,6 +21,7 @@ import {
   DreamStatusType,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
+  UpdateDreamProcessedRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
@@ -689,10 +690,12 @@ export const handleSetDreamStatusProcessing = async (
  *
  */
 export const handleSetDreamStatusProcessed = async (
-  req: RequestType<UpdateDreamRequest>,
+  req: RequestType<UpdateDreamProcessedRequest>,
   res: ResponseType,
 ) => {
   const dreamUUID: string = String(req.params.uuid);
+  const processedVideoSize = req.body.processedVideoSize;
+  const processedVideoFrames = req.body.processedVideoFrames;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -721,6 +724,8 @@ export const handleSetDreamStatusProcessed = async (
       status: DreamStatusType.PROCESSED,
       video: generateBucketObjectURL(videoFilePath),
       thumbnail: generateBucketObjectURL(thumbnailFilePath),
+      processedVideoSize,
+      processedVideoFrames,
     });
 
     await createFeedItem(updatedDream);

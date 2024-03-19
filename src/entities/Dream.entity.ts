@@ -52,12 +52,27 @@ export class Dream {
   })
   status: DreamStatusType;
 
+  /**
+   * processed video
+   */
   @Column({
     nullable: true,
     type: "varchar",
     transformer: new ColumnVideoTransformer(),
   })
   video?: string | null;
+
+  /**
+   * Processed video size on bytes
+   */
+  @Column({ type: "integer", nullable: true, default: null })
+  processedVideoSize?: number | null;
+
+  /**
+   * Processed video frames
+   */
+  @Column({ type: "integer", nullable: true, default: null })
+  processedVideoFrames?: number | null;
 
   @Column({ nullable: true, type: "varchar" })
   original_video?: string | null;

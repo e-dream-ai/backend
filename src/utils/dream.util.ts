@@ -91,6 +91,8 @@ export const getDreamSelectedColumns = ({
     downvotes: true,
     activityLevel: true,
     status: true,
+    processedVideoSize: true,
+    processedVideoFrames: true,
     created_at: true,
     updated_at: true,
     deleted_at: true,

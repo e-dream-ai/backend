@@ -46,6 +46,7 @@ import {
   generatePresignedPost,
   getUploadPartSignedUrl,
 } from "utils/s3.util";
+import { truncateString } from "utils/string.util";
 
 /**
  * Repositories
@@ -234,7 +235,8 @@ export const handleCreateMultipartUpload = async (
 
   try {
     const dreamUUID = req.body.uuid;
-    const name = req.body.name;
+    // truncate string to 1000 characters
+    const name = truncateString(req.body.name, 1000, false);
     const extension = req.body.extension;
     const parts = req.body.parts ?? 1;
 

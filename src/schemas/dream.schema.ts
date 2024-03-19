@@ -50,7 +50,7 @@ export const confirmDreamSchema = {
 export const createMultipartUploadDreamSchema = {
   body: Joi.object<CreateMultipartUploadDreamRequest>().keys({
     uuid: Joi.string().uuid(),
-    name: Joi.string().max(100),
+    name: Joi.string(),
     extension: Joi.string()
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),

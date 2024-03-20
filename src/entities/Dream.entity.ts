@@ -65,7 +65,7 @@ export class Dream {
   /**
    * Processed video size on bytes
    */
-  @Column({ type: "integer", nullable: true, default: null })
+  @Column({ type: "bigint", nullable: true, default: null })
   processedVideoSize?: number | null;
 
   /**

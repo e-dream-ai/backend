@@ -24,14 +24,14 @@ export const getDreamsSchema = {
 
 export const updateDreamSchema = {
   body: Joi.object<UpdateDreamRequest>().keys({
-    name: Joi.string().max(100),
+    name: Joi.string(),
     activityLevel: Joi.number(),
   }),
 };
 
 export const createPresignedDreamSchema = {
   body: Joi.object<CreatePresignedDreamRequest>().keys({
-    name: Joi.string().max(100),
+    name: Joi.string(),
     extension: Joi.string()
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
@@ -40,7 +40,7 @@ export const createPresignedDreamSchema = {
 
 export const confirmDreamSchema = {
   body: Joi.object<ConfirmDreamRequest>().keys({
-    name: Joi.string().max(100),
+    name: Joi.string(),
     extension: Joi.string()
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
@@ -70,7 +70,7 @@ export const refreshMultipartUploadUrlSchema = {
 
 export const completeMultipartUploadDreamSchema = {
   body: Joi.object<CompleteMultipartUploadDreamRequest>().keys({
-    name: Joi.string().max(100),
+    name: Joi.string(),
     extension: Joi.string()
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),

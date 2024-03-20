@@ -120,7 +120,9 @@ export const handleCreatePresignedPost = async (
 
   try {
     // create dream
-    const name = req.body.name;
+    const name = req.body.name
+      ? truncateString(req.body.name, 1000, false)
+      : undefined;
     const extension = req.body.extension;
     dream = new Dream();
     dream.name = name;
@@ -187,7 +189,9 @@ export const handleConfirmPresignedPost = async (
      */
 
     const extension = req.body.extension;
-    const name = req.body.name || dreamUUID;
+    const name = req.body.name
+      ? truncateString(req.body.name, 1000, false)
+      : dreamUUID;
     const fileExtension = extension;
     const fileName = `${dreamUUID}.${fileExtension}`;
     const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
@@ -393,7 +397,9 @@ export const handleCompleteMultipartUpload = async (
      */
 
     const extension = req.body.extension;
-    const name = req.body.name || dreamUUID;
+    const name = req.body.name
+      ? truncateString(req.body.name, 1000, false)
+      : dreamUUID;
     const uploadId = req.body.uploadId;
     const parts = req.body.parts;
     const fileExtension = extension;

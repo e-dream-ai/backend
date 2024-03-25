@@ -29,6 +29,7 @@ export const REMOTE_CONTROLS = {
   PAUSE_2: "pause",
   CAPTURE: "capture",
   REPORT: "report",
+  RESET_PLAYLIST: "reset_playlist",
 };
 
 export type RemoteControlEvent = {

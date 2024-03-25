@@ -35,3 +35,8 @@ export const setUserCurrentPlaylist = async (
 
   return playlist;
 };
+
+export const removeUserCurrentPlaylist = async (user: User) => {
+  user.currentPlaylist = null;
+  await userRepository.save(user);
+};

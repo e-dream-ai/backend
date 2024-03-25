@@ -3,7 +3,11 @@ import { User } from "entities";
 import { remoteControlSchema } from "schemas/socket.schema";
 import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
-import { setUserCurrentDream, setUserCurrentPlaylist } from "utils/socket.util";
+import {
+  removeUserCurrentPlaylist,
+  setUserCurrentDream,
+  setUserCurrentPlaylist,
+} from "utils/socket.util";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
 
@@ -65,6 +69,17 @@ export const remoteControlEventListener = (socket: Socket, user: User) => {
           error: GENERAL_MESSAGES.NOT_FOUND,
         });
       }
+    }
+
+    /**
+     * Remove user current playlist
+     */
+    if (event === REMOTE_CONTROLS.RESET_PLAYLIST) {
+      await removeUserCurrentPlaylist(user);
+
+      socket.emit(GENERAL_MESSAGES.ERROR, {
+        error: GENERAL_MESSAGES.NOT_FOUND,
+      });
     }
 
     /**

@@ -51,14 +51,14 @@ export class User {
    */
   @ManyToOne(() => Dream, { nullable: true })
   @JoinColumn()
-  currentDream?: Dream;
+  currentDream?: Dream | null;
 
   /**
    * current playlist
    */
   @ManyToOne(() => Playlist, { nullable: true })
   @JoinColumn()
-  currentPlaylist?: Playlist;
+  currentPlaylist?: Playlist | null;
 
   @CreateDateColumn()
   created_at: Date;

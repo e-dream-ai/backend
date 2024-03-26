@@ -7,7 +7,7 @@ import { AVATAR } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { User } from "entities";
+import { Playlist, User } from "entities";
 import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
@@ -17,8 +17,12 @@ import { RequestType, ResponseType } from "types/express.types";
 import { UpdateUserRoleRequest } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
+import { getPlaylistSelectedColumns } from "utils/playlist.util";
 import { jsonResponse } from "utils/responses.util";
 import { getUserSelectedColumns } from "utils/user.util";
+
+const userRepository = appDataSource.getRepository(User);
+const playlistRepository = appDataSource.getRepository(Playlist);
 
 /**
  * Handles get users
@@ -39,7 +43,6 @@ export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
     const search = req.query.search ? String(req.query.search) : undefined;
-    const userRepository = appDataSource.getRepository(User);
     const whereSentence = {
       name: ILike(`%${search}%`),
     } as FindOptionsWhere<User>;
@@ -80,8 +83,6 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
   try {
     const id = Number(req.params.id) || 0;
     const user = res.locals.user;
-
-    const userRepository = appDataSource.getRepository(User);
     const foundUser = await userRepository.findOne({
       where: { id },
       select: getUserSelectedColumns({ userEmail: true }),
@@ -129,6 +130,65 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
 };
 
 /**
+ * Handles get user current playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlist
+ * NOT_FOUND 404 - error getting playlist
+ * BAD_REQUEST 400 - error getting playlist
+ *
+ */
+export const handleGetCurrentPlaylist = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  try {
+    const id = Number(req.params.id) || 0;
+    const foundUser = await userRepository.findOne({
+      where: { id },
+      select: getUserSelectedColumns({ userEmail: true }),
+      relations: { currentPlaylist: true },
+    });
+
+    if (!foundUser || !foundUser?.currentPlaylist) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.NOT_FOUND,
+        }),
+      );
+    }
+
+    const playlist = await playlistRepository.findOne({
+      where: { id: foundUser?.currentPlaylist?.id },
+      select: getPlaylistSelectedColumns(),
+      relations: {
+        user: true,
+        items: { playlistItem: { user: true }, dreamItem: { user: true } },
+      },
+    });
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { playlist },
+      }),
+    );
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
  * Handles update user
  *
  * @param {RequestType} req - Request object
@@ -143,8 +203,6 @@ export const handleUpdateUser = async (req: RequestType, res: ResponseType) => {
   try {
     const id = Number(req.params.id) || 0;
     const requestUser = res.locals.user;
-
-    const userRepository = appDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { id },
       select: getUserSelectedColumns(),
@@ -209,7 +267,6 @@ export const handleUpdateUserAvatar = async (
   const requestUser = res.locals.user;
 
   try {
-    const userRepository = appDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { id: id! },
       select: getUserSelectedColumns(),
@@ -297,9 +354,6 @@ export const handleUpdateRole = async (
   try {
     const id = Number(req.params.id) || 0;
     const requestRole = req.body.role;
-
-    const userRepository = appDataSource.getRepository(User);
-
     const user = await userRepository.findOne({
       where: { id },
       select: getUserSelectedColumns(),

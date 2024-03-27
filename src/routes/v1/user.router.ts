@@ -9,11 +9,24 @@ import { updateUserRoleSchema, updateUserSchema } from "schemas/user.schema";
 
 const userRouter = Router();
 
+/**
+ * Get user current playlist
+ */
 userRouter.get(
-  "/",
+  "/current/playlist",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
-  userController.handleGetUsers,
+  userController.handleGetCurrentPlaylist,
+);
+
+/**
+ * Get user current playlist
+ */
+userRouter.get(
+  "/current",
+  requireAuth,
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  userController.handleGetCurrentUser,
 );
 
 userRouter.get(
@@ -23,14 +36,11 @@ userRouter.get(
   userController.handleGetUser,
 );
 
-/**
- * Get user current playlist
- */
 userRouter.get(
-  "/:id/current-playlist",
+  "/",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
-  userController.handleGetCurrentPlaylist,
+  userController.handleGetUsers,
 );
 
 userRouter.put(

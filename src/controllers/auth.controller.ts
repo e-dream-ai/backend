@@ -304,7 +304,7 @@ export const fetchUser = async (username: string) => {
   const userRepository = appDataSource.getRepository(User);
   const user = await userRepository.findOne({
     where: { cognitoId: username },
-    relations: { role: true },
+    relations: { role: true, currentPlaylist: true, currentDream: true },
   });
   return user;
 };

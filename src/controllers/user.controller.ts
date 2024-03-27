@@ -130,6 +130,41 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
 };
 
 /**
+ * Handles get users
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - users
+ * BAD_REQUEST 400 - error getting users
+ *
+ */
+export const handleGetCurrentUser = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  try {
+    const user = res.locals.user;
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { user },
+      }),
+    );
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
  * Handles get user current playlist
  *
  * @param {RequestType} req - Request object
@@ -146,14 +181,10 @@ export const handleGetCurrentPlaylist = async (
   res: ResponseType,
 ) => {
   try {
-    const id = Number(req.params.id) || 0;
-    const foundUser = await userRepository.findOne({
-      where: { id },
-      select: getUserSelectedColumns({ userEmail: true }),
-      relations: { currentPlaylist: true },
-    });
+    const user = res.locals.user;
+    const currentPlaylistId = user?.currentPlaylist?.id;
 
-    if (!foundUser || !foundUser?.currentPlaylist) {
+    if (!currentPlaylistId) {
       return res.status(httpStatus.NOT_FOUND).json(
         jsonResponse({
           success: false,
@@ -163,13 +194,22 @@ export const handleGetCurrentPlaylist = async (
     }
 
     const playlist = await playlistRepository.findOne({
-      where: { id: foundUser?.currentPlaylist?.id },
+      where: { id: currentPlaylistId },
       select: getPlaylistSelectedColumns(),
       relations: {
         user: true,
         items: { playlistItem: { user: true }, dreamItem: { user: true } },
       },
     });
+
+    if (!playlist) {
+      return res.status(httpStatus.NOT_FOUND).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.NOT_FOUND,
+        }),
+      );
+    }
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

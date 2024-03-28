@@ -7,15 +7,21 @@ const userRepository = appDataSource.getRepository(User);
 const dreamRepository = appDataSource.getRepository(Dream);
 const playlistRepository = appDataSource.getRepository(Playlist);
 
-export const setUserCurrentDream = async (user: User, uuid?: string) => {
+export const setUserCurrentDream = async (
+  user: User,
+  uuid?: string,
+  persist = true,
+) => {
   const dream = await dreamRepository.findOne({
     where: { uuid },
   });
 
   if (!dream) return;
 
-  user.currentDream = dream;
-  await userRepository.save(user);
+  if (persist) {
+    user.currentDream = dream;
+    await userRepository.save(user);
+  }
 
   return dream;
 };

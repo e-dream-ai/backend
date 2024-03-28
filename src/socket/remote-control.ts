@@ -58,12 +58,19 @@ export const remoteControlEventListener = (
      * Set user current dream
      */
     if ([REMOTE_CONTROLS.PLAY_DREAM, REMOTE_CONTROLS.PLAYING].includes(event)) {
-      const dream = await setUserCurrentDream(user, data.uuid);
+      // if event is REMOTE_CONTROLS.PLAYING, current dream will be save on user's profile on DB
+      const dream = await setUserCurrentDream(
+        user,
+        data.uuid,
+        event === REMOTE_CONTROLS.PLAYING,
+      );
       if (!dream) {
         socket.emit(GENERAL_MESSAGES.ERROR, {
           error: GENERAL_MESSAGES.NOT_FOUND,
         });
       }
+
+      data = { ...data, name: dream?.name };
     }
 
     /**
@@ -76,6 +83,8 @@ export const remoteControlEventListener = (
           error: GENERAL_MESSAGES.NOT_FOUND,
         });
       }
+
+      data = { ...data, name: playlist?.name };
     }
 
     /**

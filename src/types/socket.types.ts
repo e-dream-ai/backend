@@ -34,7 +34,7 @@ export const REMOTE_CONTROLS = {
 
 export type RemoteControlEvent = {
   event: string;
-  name?: string;
+  name?: string | null;
   uuid?: string;
   id?: number;
   key?: string;

@@ -17,10 +17,23 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    * Temporal info log
    */
   console.info(`User ${user?.cognitoId} connected to socket.io`);
-  socket.on(NEW_REMOTE_CONTROL_EVENT, remoteControlEventListener(socket, user));
+  /**
+   * Joins a room to avoid send all messages to all users
+   */
+  const roomId = "REMOTE_CONTROL:" + user.cognitoId;
+  socket.join(roomId);
+
+  socket.on(
+    NEW_REMOTE_CONTROL_EVENT,
+    remoteControlEventListener(socket, user, roomId),
+  );
 };
 
-export const remoteControlEventListener = (socket: Socket, user: User) => {
+export const remoteControlEventListener = (
+  socket: Socket,
+  user: User,
+  roomId: string,
+) => {
   return async (data: RemoteControlEvent) => {
     // Validate incoming message against the schema
     const { error } = remoteControlSchema.validate(data);
@@ -35,12 +48,6 @@ export const remoteControlEventListener = (socket: Socket, user: User) => {
     console.info(`User ${user?.cognitoId} sent ${NEW_REMOTE_CONTROL_EVENT}`, {
       data,
     });
-
-    /**
-     * Joins a room to avoid send all messages to all users
-     */
-    const roomId = "user-" + user.cognitoId;
-    socket.join(roomId);
 
     /**
      * Get event

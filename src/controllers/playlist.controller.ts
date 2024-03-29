@@ -26,6 +26,9 @@ import { canExecuteAction } from "utils/permissions.util";
 import { getPlaylistSelectedColumns } from "utils/playlist.util";
 import { jsonResponse } from "utils/responses.util";
 
+const playlistRepository = appDataSource.getRepository(Playlist);
+const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
+
 /**
  * Handles get playlists
  *
@@ -49,15 +52,6 @@ export const handleGetMyPlaylists = async (
       PAGINATION.TAKE,
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
-    const playlistRepository = appDataSource.getRepository(Playlist);
-
-    // const [playlists, count] = await playlistRepository.findAndCount({
-    //   where: { user: { id: user?.id } },
-    //   order: { created_at: "DESC" },
-    //   relations: { user: true },
-    //   take,
-    //   skip,
-    // });
 
     const query = playlistRepository
       .createQueryBuilder("playlist")
@@ -104,7 +98,6 @@ export const handleGetPlaylist = async (
 ) => {
   const id: number = Number(req.params?.id) || 0;
   try {
-    const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
@@ -112,6 +105,7 @@ export const handleGetPlaylist = async (
         user: true,
         items: { playlistItem: { user: true }, dreamItem: { user: true } },
       },
+      order: { items: { order: "ASC" } },
     });
 
     if (!playlist) {
@@ -155,8 +149,6 @@ export const handleCreatePlaylist = async (
   const user = res.locals.user;
 
   try {
-    const playlistRepository = appDataSource.getRepository(Playlist);
-
     // create playlist
     const playlist = new Playlist();
     playlist.name = name;
@@ -212,7 +204,6 @@ export const handleUpdatePlaylist = async (
   const user = res.locals.user;
 
   try {
-    const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
@@ -220,6 +211,7 @@ export const handleUpdatePlaylist = async (
         user: true,
         items: { playlistItem: { user: true }, dreamItem: { user: true } },
       },
+      order: { items: { order: "ASC" } },
     });
 
     if (!playlist) {
@@ -286,7 +278,6 @@ export const handleUpdateThumbnailPlaylist = async (
   const id: number = Number(req.params.id) || 0;
 
   try {
-    const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id: id! },
       select: getPlaylistSelectedColumns(),
@@ -377,7 +368,6 @@ export const handleDeletePlaylist = async (
   const id: number = Number(req.params?.id) || 0;
   const user = res.locals.user;
   try {
-    const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
@@ -450,12 +440,11 @@ export const handleOrderPlaylist = async (
   const order = req.body.order!;
 
   try {
-    const playlistRepository = appDataSource.getRepository(Playlist);
-    const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
       relations: { user: true, items: true },
+      order: { items: { order: "ASC" } },
     });
 
     if (!playlist) {
@@ -529,11 +518,10 @@ export const handleAddPlaylistItem = async (
   const user = res.locals.user;
 
   try {
-    const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: { user: true },
+      relations: { user: true, items: true },
     });
 
     if (!playlist) {
@@ -566,8 +554,6 @@ export const handleAddPlaylistItem = async (
           jsonResponse({ success: false, message: GENERAL_MESSAGES.FORBIDDEN }),
         );
     }
-
-    const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 
     const playlistSearch =
       type === PlaylistItemType.DREAM
@@ -663,7 +649,6 @@ export const handleRemovePlaylistItem = async (
   const itemId: number = Number(req.params?.itemId) || 0;
   const user = res.locals.user;
   try {
-    const playlistRepository = appDataSource.getRepository(Playlist);
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
@@ -693,7 +678,6 @@ export const handleRemovePlaylistItem = async (
       );
     }
 
-    const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
     const { affected } = await playlistItemRepository.softDelete({
       id: itemId,
       playlist: { id: playlist.id },

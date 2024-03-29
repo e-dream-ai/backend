@@ -1,12 +1,12 @@
 import express, { Request, Response } from "express";
 import httpStatus from "http-status";
 import { errorMiddleware } from "middlewares/error.middleware";
-import authRouter from "routes/v1/auth.router";
+import authRouter from "routes/v1/auth.routes";
 import env from "shared/env";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import dreamRouter from "routes/v1/dream.routes";
-import feedRouter from "routes/v1/feed.router";
-import playlistRouter from "routes/v1/playlist.router";
+import feedRouter from "routes/v1/feed.routes";
+import playlistRouter from "routes/v1/playlist.routes";
 import userRouter from "routes/v1/user.router";
 import { jsonResponse } from "utils/responses.util";
 

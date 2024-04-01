@@ -471,17 +471,17 @@ export const handleOrderPlaylist = async (
       );
     }
 
-    playlist.items = await Promise.all(
-      playlist.items.map(async (item) => {
-        const reorderItem = order.find((i) => i.id === item.id);
-        if (!reorderItem) return item;
+    playlist.items = playlist.items.map((item) => {
+      const reorderItem = order.find((i) => i.id === item.id);
+      if (!reorderItem) return item;
 
-        return await playlistItemRepository.save({
-          ...item,
-          order: reorderItem.order!,
-        });
-      }),
-    );
+      return {
+        ...item,
+        order: reorderItem.order!,
+      };
+    });
+
+    await playlistRepository.save(playlist);
 
     return res
       .status(httpStatus.OK)

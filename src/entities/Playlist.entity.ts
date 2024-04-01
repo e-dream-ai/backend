@@ -40,7 +40,9 @@ export class Playlist {
   /**
    * Items which belong to current playlist
    */
-  @OneToMany(() => PlaylistItem, (playlistItem) => playlistItem.playlist)
+  @OneToMany(() => PlaylistItem, (playlistItem) => playlistItem.playlist, {
+    cascade: true,
+  })
   items: PlaylistItem[];
 
   /**

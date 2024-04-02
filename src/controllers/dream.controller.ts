@@ -702,6 +702,7 @@ export const handleSetDreamStatusProcessed = async (
   const dreamUUID: string = String(req.params.uuid);
   const processedVideoSize = req.body.processedVideoSize;
   const processedVideoFrames = req.body.processedVideoFrames;
+  const processedVideoFPS = req.body.processedVideoFPS;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -732,6 +733,7 @@ export const handleSetDreamStatusProcessed = async (
       thumbnail: generateBucketObjectURL(thumbnailFilePath),
       processedVideoSize,
       processedVideoFrames,
+      processedVideoFPS,
     });
 
     await createFeedItem(updatedDream);

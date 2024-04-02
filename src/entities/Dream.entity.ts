@@ -74,6 +74,12 @@ export class Dream {
   @Column({ type: "integer", nullable: true, default: null })
   processedVideoFrames?: number | null;
 
+  /**
+   * Processed video frames per second FPS
+   */
+  @Column({ type: "integer", nullable: true, default: null })
+  processedVideoFPS?: number | null;
+
   @Column({ nullable: true, type: "varchar" })
   original_video?: string | null;
 

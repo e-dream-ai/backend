@@ -1,6 +1,7 @@
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { User } from "entities";
 import { remoteControlSchema } from "schemas/socket.schema";
+import { APP_LOGGER } from "shared/logger";
 import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import {
@@ -16,7 +17,8 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   /**
    * Temporal info log
    */
-  console.info(`User ${user?.cognitoId} connected to socket.io`);
+  APP_LOGGER.info(`User ${user?.cognitoId} connected to socket.io`);
+
   /**
    * Joins a room to avoid send all messages to all users
    */
@@ -45,9 +47,13 @@ export const remoteControlEventListener = (
     /**
      * Temporal info log
      */
-    console.info(`User ${user?.cognitoId} sent ${NEW_REMOTE_CONTROL_EVENT}`, {
-      data,
-    });
+
+    APP_LOGGER.info(
+      `User ${user?.cognitoId} sent ${NEW_REMOTE_CONTROL_EVENT}`,
+      {
+        data,
+      },
+    );
 
     /**
      * Get event

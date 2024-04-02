@@ -10,10 +10,10 @@ if (env.NODE_ENV === "production") {
    * Disable logging on production
    */
   APP_LOGGER = pino({ enabled: false });
-} else if (env.NODE_ENV === "development") {
+} else if (env.NODE_ENV === "stage") {
   APP_LOGGER = pino(pretty({ minimumLevel: "info" }));
 } else {
-  APP_LOGGER = pino({ level: "info" });
+  APP_LOGGER = pino(pretty({ minimumLevel: "trace" }));
 }
 
 export { APP_LOGGER };

@@ -15,6 +15,7 @@ import { ContentType, getRequestHeaders } from "constants/api.constants";
 import { FindOptionsSelect } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import { FeedItemType } from "types/feed-item.types";
+import { APP_LOGGER } from "shared/logger";
 
 const queueUrl = ""; // env.AWS_SQS_URL;
 
@@ -71,7 +72,7 @@ export const processDreamRequest = async (dream: Dream) => {
     .then((res) => {
       return res.data;
     })
-    .catch((error) => console.error(error));
+    .catch((error) => APP_LOGGER.error(error));
 };
 
 export const getDreamSelectedColumns = ({

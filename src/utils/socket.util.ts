@@ -12,37 +12,34 @@ export const setUserCurrentDream = async (
   uuid?: string,
   persist = true,
 ) => {
-  const dream = await dreamRepository.findOne({
+  const dreamExists = await dreamRepository.findOne({
     where: { uuid },
   });
 
-  if (!dream) return;
+  if (!dreamExists) return;
 
   if (persist) {
-    user.currentDream = dream;
-    await userRepository.save(user);
+    await userRepository.update(user?.id, { currentDream: dreamExists });
   }
 
-  return dream;
+  return dreamExists;
 };
 
 export const setUserCurrentPlaylist = async (
   user: User,
   playlistId?: number,
 ) => {
-  const playlist = await playlistRepository.findOne({
+  const playlistExists = await playlistRepository.findOne({
     where: { id: playlistId },
   });
 
-  if (!playlist) return;
+  if (!playlistExists) return;
 
-  user.currentPlaylist = playlist;
-  await userRepository.save(user);
+  await userRepository.update(user?.id, { currentPlaylist: playlistExists });
 
-  return playlist;
+  return playlistExists;
 };
 
 export const removeUserCurrentPlaylist = async (user: User) => {
-  user.currentPlaylist = null;
-  await userRepository.save(user);
+  await userRepository.update(user?.id, { currentPlaylist: null });
 };

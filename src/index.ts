@@ -12,10 +12,13 @@ import { registerRoutes } from "routes/v1/router";
 import { remoteControlConnectionListener } from "socket/remote-control";
 import Bugsnag from "@bugsnag/js";
 import BugsnagPluginExpress from "@bugsnag/plugin-express";
+import { getReleaseStage } from "utils/bugsnag.util";
 
 Bugsnag.start({
   apiKey: "eb986254778e3ae5b0f7045ec7fdb9ec",
   plugins: [BugsnagPluginExpress],
+  enabledReleaseStages: ["production", "development"],
+  releaseStage: getReleaseStage(),
 });
 
 const app: express.Application = express();
@@ -40,7 +43,6 @@ appDataSource
   })
   .catch((err) => {
     APP_LOGGER.error("Error during postgres connection", err);
-    console.error(err);
   });
 
 if (env.NODE_ENV !== "development") {

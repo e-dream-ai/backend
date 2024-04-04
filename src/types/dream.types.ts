@@ -14,6 +14,7 @@ export type UpdateDreamRequest = {
   video?: string;
   thumbnail?: string;
   activityLevel?: number;
+  featureRank?: number;
 };
 
 export type UpdateDreamProcessedRequest = {

@@ -77,9 +77,11 @@ export const processDreamRequest = async (dream: Dream) => {
 
 export const getDreamSelectedColumns = ({
   originalVideo,
+  featureRank,
   userEmail,
 }: {
   originalVideo?: boolean;
+  featureRank?: boolean;
   userEmail?: boolean;
 } = {}): FindOptionsSelect<Dream> => {
   return {
@@ -98,8 +100,9 @@ export const getDreamSelectedColumns = ({
     created_at: true,
     updated_at: true,
     deleted_at: true,
-    user: getUserSelectedColumns({ userEmail }),
     original_video: originalVideo,
+    featureRank: featureRank,
+    user: getUserSelectedColumns({ userEmail }),
   };
 };
 

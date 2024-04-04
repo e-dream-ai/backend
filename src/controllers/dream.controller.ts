@@ -48,6 +48,7 @@ import {
   getUploadPartSignedUrl,
 } from "utils/s3.util";
 import { truncateString } from "utils/string.util";
+import { isAdmin } from "utils/user.util";
 
 /**
  * Repositories
@@ -521,7 +522,10 @@ export const handleGetDream = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true, playlistItems: true },
-      select: getDreamSelectedColumns({ originalVideo: true }),
+      select: getDreamSelectedColumns({
+        originalVideo: true,
+        featureRank: true,
+      }),
     });
 
     if (!dream) {
@@ -539,6 +543,14 @@ export const handleGetDream = async (
      */
     if (!isAllowed || !isBrowser) {
       delete dream.original_video;
+    }
+
+    /*
+     * Check if the user is an admin
+     * remove fields from the updateData object if is not an admin
+     */
+    if (!isAdmin(user)) {
+      delete dream.featureRank;
     }
 
     return res
@@ -811,7 +823,7 @@ export const handleUpdateDream = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
-      select: getDreamSelectedColumns(),
+      select: getDreamSelectedColumns({ featureRank: true }),
     });
 
     if (!dream) {
@@ -828,7 +840,24 @@ export const handleUpdateDream = async (
       return handleUnauthorized(req, res);
     }
 
-    const updatedDream = await dreamRepository.save({ ...dream, ...req.body });
+    /*
+     * Check if the user is an admin
+     * remove fields from the updateData object if is not an admin
+     */
+    if (!isAdmin(user)) {
+      delete dream.featureRank;
+    }
+
+    // Define an object to hold the fields that are allowed to be updated
+    const updateData: Partial<UpdateDreamRequest> = { ...req.body };
+
+    await dreamRepository.update(dream.id, {
+      ...updateData,
+    });
+
+    const updatedDream = await dreamRepository.findOne({
+      where: { id: dream.id },
+    });
 
     return res
       .status(httpStatus.OK)

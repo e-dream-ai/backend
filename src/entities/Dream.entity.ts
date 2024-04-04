@@ -80,6 +80,13 @@ export class Dream {
   @Column({ type: "integer", nullable: true, default: null })
   processedVideoFPS?: number | null;
 
+  /**
+   * featureRank
+   * default 0
+   */
+  @Column({ type: "integer", default: 0 })
+  featureRank?: number;
+
   @Column({ nullable: true, type: "varchar" })
   original_video?: string | null;
 

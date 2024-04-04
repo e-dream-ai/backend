@@ -1,3 +1,4 @@
+import { ROLES } from "constants/role.constants";
 import { User } from "entities";
 import { FindOptionsSelect } from "typeorm";
 
@@ -18,3 +19,11 @@ export const getUserSelectedColumns = ({
     email: userEmail,
   };
 };
+
+/**
+ * Checks if the given user is an admin.
+ * @param user The user object to check.
+ * @returns True if the user is an admin, false otherwise.
+ */
+export const isAdmin = (user?: User): boolean =>
+  user?.role?.name === ROLES.ADMIN_GROUP;

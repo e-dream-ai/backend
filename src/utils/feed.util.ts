@@ -2,6 +2,7 @@ import { FeedItem } from "entities";
 import { FindOptionsSelect } from "typeorm";
 import { getDreamSelectedColumns } from "./dream.util";
 import { getUserSelectedColumns } from "./user.util";
+import { getPlaylistSelectedColumns } from "./playlist.util";
 
 export const getFeedSelectedColumns = ({
   userEmail,
@@ -12,7 +13,7 @@ export const getFeedSelectedColumns = ({
     id: true,
     type: true,
     dreamItem: getDreamSelectedColumns(),
-    // playlistItem: true,
+    playlistItem: getPlaylistSelectedColumns(),
     created_at: true,
     updated_at: true,
     deleted_at: true,

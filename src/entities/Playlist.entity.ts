@@ -1,4 +1,5 @@
 import {
+  AfterLoad,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -61,4 +62,18 @@ export class Playlist {
 
   @DeleteDateColumn()
   deleted_at: Date;
+
+  @AfterLoad()
+  computeThumbnail() {
+    if (this.thumbnail) {
+      return;
+    }
+
+    const newThumbnail = this?.items?.find((item) => item?.dreamItem?.thumbnail)
+      ?.dreamItem?.thumbnail;
+
+    if (newThumbnail) {
+      this.thumbnail = newThumbnail;
+    }
+  }
 }

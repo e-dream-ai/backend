@@ -118,11 +118,6 @@ export class Dream {
   // computed frontend url field
   frontendUrl: string;
 
-  @AfterLoad()
-  computeFrontendUrl() {
-    this.frontendUrl = `${env.FRONTEND_URL}/dream/${this.uuid}`;
-  }
-
   @CreateDateColumn()
   created_at: Date;
 
@@ -131,4 +126,9 @@ export class Dream {
 
   @DeleteDateColumn()
   deleted_at: Date;
+
+  @AfterLoad()
+  computeFrontendUrl() {
+    this.frontendUrl = `${env.FRONTEND_URL}/dream/${this.uuid}`;
+  }
 }

@@ -53,7 +53,11 @@ export const handleGetFeed = async (
     const [feed, count] = await feedRepository.findAndCount({
       where: whereSentence,
       select: getFeedSelectedColumns(),
-      relations: { user: true, dreamItem: true, playlistItem: true },
+      relations: {
+        user: true,
+        dreamItem: true,
+        playlistItem: { items: { playlistItem: true, dreamItem: true } },
+      },
       order: { created_at: "DESC" },
       take,
       skip,

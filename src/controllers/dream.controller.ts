@@ -75,7 +75,7 @@ export const handleGetDreams = async (
     const isBrowser = isBrowserRequest(req as RequestType);
     const take = Math.min(
       Number(req.query.take) || PAGINATION.TAKE,
-      PAGINATION.TAKE,
+      PAGINATION.MAX_TAKE,
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
     const status =
@@ -579,7 +579,7 @@ export const handleGetMyDreams = async (
 ) => {
   const take = Math.min(
     Number(req.query.take) || PAGINATION.TAKE,
-    PAGINATION.TAKE,
+    PAGINATION.MAX_TAKE,
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const user = res.locals.user;

@@ -39,7 +39,7 @@ export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
   try {
     const take = Math.min(
       Number(req.query.take) || PAGINATION.TAKE,
-      PAGINATION.TAKE,
+      PAGINATION.MAX_TAKE,
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
     const search = req.query.search ? String(req.query.search) : undefined;

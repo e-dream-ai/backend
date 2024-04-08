@@ -49,7 +49,7 @@ export const handleGetMyPlaylists = async (
   try {
     const take = Math.min(
       Number(req.query.take) || PAGINATION.TAKE,
-      PAGINATION.TAKE,
+      PAGINATION.MAX_TAKE,
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
 

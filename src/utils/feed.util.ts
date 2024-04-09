@@ -13,7 +13,7 @@ export const getFeedSelectedColumns = ({
     id: true,
     type: true,
     dreamItem: getDreamSelectedColumns({ featureRank: true }),
-    playlistItem: getPlaylistSelectedColumns(),
+    playlistItem: getPlaylistSelectedColumns({ featureRank: true }),
     created_at: true,
     updated_at: true,
     deleted_at: true,

@@ -35,8 +35,8 @@ export const handleGetRankedFeed = async (
   try {
     const feedRepository = appDataSource.getRepository(FeedItem);
     const whereSentence: FindOptionsWhere<FeedItem> = {
-      type: FeedItemType.DREAM,
-      dreamItem: { featureRank: MoreThan(1) },
+      type: FeedItemType.PLAYLIST,
+      playlistItem: { featureRank: MoreThan(1) },
     };
 
     const [feed, count] = await feedRepository.findAndCount({
@@ -48,7 +48,7 @@ export const handleGetRankedFeed = async (
         playlistItem: { items: { playlistItem: true, dreamItem: true } },
       },
       order: {
-        dreamItem: {
+        playlistItem: {
           featureRank: "DESC",
         },
       },
@@ -59,6 +59,7 @@ export const handleGetRankedFeed = async (
     //Remove feature rank column
     feed.forEach((item: FeedItem) => {
       delete item?.dreamItem?.featureRank;
+      delete item?.playlistItem?.featureRank;
     });
 
     return res

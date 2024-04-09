@@ -24,7 +24,12 @@ import {
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { getPlaylistSelectedColumns } from "utils/playlist.util";
-import { jsonResponse } from "utils/responses.util";
+import {
+  handleNotFound,
+  handleUnauthorized,
+  jsonResponse,
+} from "utils/responses.util";
+import { isAdmin } from "utils/user.util";
 
 const playlistRepository = appDataSource.getRepository(Playlist);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
@@ -97,10 +102,11 @@ export const handleGetPlaylist = async (
   res: ResponseType,
 ) => {
   const id: number = Number(req.params?.id) || 0;
+  const user = res.locals.user;
   try {
     const [playlist] = await playlistRepository.find({
       where: { id },
-      select: getPlaylistSelectedColumns(),
+      select: getPlaylistSelectedColumns({ featureRank: true }),
       relations: {
         user: true,
         items: { playlistItem: { user: true }, dreamItem: { user: true } },
@@ -109,11 +115,15 @@ export const handleGetPlaylist = async (
     });
 
     if (!playlist) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
+    }
+
+    /*
+     * Check if the user is an admin
+     * remove fields from the updateData object if is not an admin
+     */
+    if (!isAdmin(user)) {
+      delete playlist.featureRank;
     }
 
     return res
@@ -206,7 +216,7 @@ export const handleUpdatePlaylist = async (
   try {
     const [playlist] = await playlistRepository.find({
       where: { id },
-      select: getPlaylistSelectedColumns(),
+      select: getPlaylistSelectedColumns({ featureRank: true }),
       relations: {
         user: true,
         items: { playlistItem: { user: true }, dreamItem: { user: true } },
@@ -215,12 +225,7 @@ export const handleUpdatePlaylist = async (
     });
 
     if (!playlist) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -230,17 +235,21 @@ export const handleUpdatePlaylist = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
-    const updatedPlaylist = await playlistRepository.save({
-      ...playlist,
-      ...req.body,
+    // Define an object to hold the fields that are allowed to be updated
+    const updateData: Partial<UpdatePlaylistRequest> = { ...req.body };
+
+    await playlistRepository.update(playlist.id, {
+      ...updateData,
+    });
+
+    const updatedPlaylist = await playlistRepository.findOne({
+      where: { id: playlist.id },
+      relations: {
+        user: true,
+      },
     });
 
     return res
@@ -285,12 +294,7 @@ export const handleUpdateThumbnailPlaylist = async (
     });
 
     if (!playlist) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -300,12 +304,7 @@ export const handleUpdateThumbnailPlaylist = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     // update playlist
@@ -375,11 +374,7 @@ export const handleDeletePlaylist = async (
     });
 
     if (!playlist) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -389,22 +384,13 @@ export const handleDeletePlaylist = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     const affected = await playlistRepository.softRemove(playlist);
 
     if (!affected) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
@@ -448,12 +434,7 @@ export const handleOrderPlaylist = async (
     });
 
     if (!playlist) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -463,12 +444,7 @@ export const handleOrderPlaylist = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     playlist.items = playlist.items.map((item) => {
@@ -525,11 +501,7 @@ export const handleAddPlaylistItem = async (
     });
 
     if (!playlist) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -539,12 +511,7 @@ export const handleAddPlaylistItem = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     if (PlaylistItemType.PLAYLIST && id === itemId) {
@@ -585,12 +552,7 @@ export const handleAddPlaylistItem = async (
       });
 
       if (!dreamToAdd) {
-        return res.status(httpStatus.NOT_FOUND).json(
-          jsonResponse({
-            success: false,
-            message: GENERAL_MESSAGES.NOT_FOUND,
-          }),
-        );
+        return handleNotFound(req, res);
       }
 
       playlistItem.dreamItem = dreamToAdd;
@@ -600,12 +562,7 @@ export const handleAddPlaylistItem = async (
       });
 
       if (!playlistToAdd) {
-        return res.status(httpStatus.NOT_FOUND).json(
-          jsonResponse({
-            success: false,
-            message: GENERAL_MESSAGES.NOT_FOUND,
-          }),
-        );
+        return handleNotFound(req, res);
       }
 
       playlistItem.playlistItem = playlistToAdd;
@@ -656,11 +613,7 @@ export const handleRemovePlaylistItem = async (
     });
 
     if (!playlist) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -670,12 +623,7 @@ export const handleRemovePlaylistItem = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     const { affected } = await playlistItemRepository.softDelete({
@@ -684,11 +632,7 @@ export const handleRemovePlaylistItem = async (
     });
 
     if (!affected) {
-      return res
-        .status(httpStatus.NOT_FOUND)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.NOT_FOUND }),
-        );
+      return handleNotFound(req, res);
     }
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));

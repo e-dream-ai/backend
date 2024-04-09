@@ -10,6 +10,7 @@ export type CreatePlaylistRequest = {
 
 export type UpdatePlaylistRequest = {
   name: string;
+  featureRank?: number;
 };
 
 export type OrderPlaylist = {

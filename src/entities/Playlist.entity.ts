@@ -54,6 +54,13 @@ export class Playlist {
   })
   playlistItems: PlaylistItem[];
 
+  /**
+   * featureRank
+   * default 0
+   */
+  @Column({ type: "integer", default: 0 })
+  featureRank?: number;
+
   @CreateDateColumn()
   created_at: Date;
 

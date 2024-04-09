@@ -4,8 +4,10 @@ import { getUserSelectedColumns } from "./user.util";
 
 export const getPlaylistSelectedColumns = ({
   userEmail,
+  featureRank,
 }: {
   userEmail?: boolean;
+  featureRank?: boolean;
 } = {}): FindOptionsSelect<Playlist> => {
   return {
     id: true,
@@ -16,6 +18,7 @@ export const getPlaylistSelectedColumns = ({
     created_at: true,
     updated_at: true,
     deleted_at: true,
+    featureRank,
     user: getUserSelectedColumns({ userEmail }),
   };
 };

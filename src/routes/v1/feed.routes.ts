@@ -9,6 +9,13 @@ import { feedSchema } from "schemas/feed.schema";
 const feedRouter = Router();
 
 feedRouter.get(
+  "/ranked",
+  requireAuth,
+  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  feedController.handleGetRankedFeed,
+);
+
+feedRouter.get(
   "/",
   requireAuth,
   checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),

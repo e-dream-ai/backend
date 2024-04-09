@@ -4,14 +4,79 @@ import appDataSource from "database/app-data-source";
 import { FeedItem } from "entities/FeedItem.entity";
 import httpStatus from "http-status";
 import { APP_LOGGER } from "shared/logger";
-import { FindOptionsWhere, ILike } from "typeorm";
+import { FindOptionsWhere, ILike, MoreThan } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
+import { FeedItemType } from "types/feed-item.types";
 import { GetFeedRequest } from "types/feed.types";
 import { getFeedSelectedColumns } from "utils/feed.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
- * Handles get my dreams
+ * Handles get ranked feed
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dreams gotten
+ * BAD_REQUEST 400 - error getting dreams
+ *
+ */
+export const handleGetRankedFeed = async (
+  req: RequestType<unknown, GetFeedRequest>,
+  res: ResponseType,
+) => {
+  const take = Math.min(
+    Number(req.query.take) || PAGINATION.TAKE,
+    PAGINATION.MAX_TAKE,
+  );
+  const skip = Number(req.query.skip) || PAGINATION.SKIP;
+
+  try {
+    const feedRepository = appDataSource.getRepository(FeedItem);
+    const whereSentence: FindOptionsWhere<FeedItem> = {
+      type: FeedItemType.DREAM,
+      dreamItem: { featureRank: MoreThan(1) },
+    };
+
+    const [feed, count] = await feedRepository.findAndCount({
+      where: whereSentence,
+      select: getFeedSelectedColumns(),
+      relations: {
+        user: true,
+        dreamItem: true,
+        playlistItem: { items: { playlistItem: true, dreamItem: true } },
+      },
+      order: {
+        dreamItem: {
+          featureRank: "DESC",
+        },
+      },
+      take,
+      skip,
+    });
+
+    //Remove feature rank column
+    feed.forEach((item: FeedItem) => {
+      delete item?.dreamItem?.featureRank;
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { feed, count } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
+
+/**
+ * Handles get feed
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object

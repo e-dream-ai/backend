@@ -226,7 +226,10 @@ export const handleUpdatePlaylist = async (
       relations: {
         user: true,
         displayedOwner: true,
-        items: { playlistItem: { user: true }, dreamItem: { user: true } },
+        items: {
+          playlistItem: { user: true, displayedOwner: true },
+          dreamItem: { user: true, displayedOwner: true },
+        },
       },
       order: { items: { order: "ASC" } },
     });
@@ -289,7 +292,10 @@ export const handleUpdatePlaylist = async (
       relations: {
         user: true,
         displayedOwner: true,
-        items: { playlistItem: { user: true }, dreamItem: { user: true } },
+        items: {
+          playlistItem: { user: true, displayedOwner: true },
+          dreamItem: { user: true, displayedOwner: true },
+        },
       },
     });
 
@@ -331,7 +337,7 @@ export const handleUpdateThumbnailPlaylist = async (
     const [playlist] = await playlistRepository.find({
       where: { id: id! },
       select: getPlaylistSelectedColumns(),
-      relations: { user: true },
+      relations: { user: true, displayedOwner: true },
     });
 
     if (!playlist) {
@@ -411,7 +417,12 @@ export const handleDeletePlaylist = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: { user: true, playlistItems: true, feedItem: true },
+      relations: {
+        user: true,
+        displayedOwner: true,
+        playlistItems: true,
+        feedItem: true,
+      },
     });
 
     if (!playlist) {
@@ -470,7 +481,14 @@ export const handleOrderPlaylist = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: { user: true, items: true },
+      relations: {
+        user: true,
+        displayedOwner: true,
+        items: {
+          playlistItem: { user: true, displayedOwner: true },
+          dreamItem: { user: true, displayedOwner: true },
+        },
+      },
       order: { items: { order: "ASC" } },
     });
 
@@ -538,7 +556,14 @@ export const handleAddPlaylistItem = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: { user: true, items: true },
+      relations: {
+        user: true,
+        displayedOwner: true,
+        items: {
+          playlistItem: { user: true, displayedOwner: true },
+          dreamItem: { user: true, displayedOwner: true },
+        },
+      },
     });
 
     if (!playlist) {
@@ -650,7 +675,7 @@ export const handleRemovePlaylistItem = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: { user: true },
+      relations: { user: true, displayedOwner: true },
     });
 
     if (!playlist) {

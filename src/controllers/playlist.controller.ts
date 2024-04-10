@@ -8,7 +8,7 @@ import { PAGINATION } from "constants/pagination.constants";
 import { PLAYLIST_PREFIX } from "constants/playlist.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Dream, FeedItem, Playlist, PlaylistItem } from "entities";
+import { Dream, FeedItem, Playlist, PlaylistItem, User } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
@@ -33,6 +33,8 @@ import { isAdmin } from "utils/user.util";
 
 const playlistRepository = appDataSource.getRepository(Playlist);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
+const feedItemRepository = appDataSource.getRepository(FeedItem);
+const userRepository = appDataSource.getRepository(User);
 
 /**
  * Handles get playlists
@@ -239,7 +241,33 @@ export const handleUpdatePlaylist = async (
     }
 
     // Define an object to hold the fields that are allowed to be updated
-    const updateData: Partial<UpdatePlaylistRequest> = { ...req.body };
+    let updateData: Partial<Playlist> = {
+      ...(req.body as Omit<UpdatePlaylistRequest, "user">),
+    };
+
+    let newUser: User | null = null;
+    if (isAdmin(user) && req.body.user) {
+      newUser = await userRepository.findOneBy({ id: req.body.user });
+    }
+
+    if (newUser) {
+      updateData = { ...updateData, user: newUser };
+      /**
+       * update feed item user too
+       */
+      await feedItemRepository.update(
+        { playlistItem: { id: playlist.id } },
+        { user: newUser },
+      );
+    }
+
+    if (!isAdmin(user)) {
+      /*
+       * Check if the user is an admin
+       * remove fields from the updateData object if is not an admin
+       */
+      updateData = { ...updateData };
+    }
 
     await playlistRepository.update(playlist.id, {
       ...updateData,
@@ -247,8 +275,10 @@ export const handleUpdatePlaylist = async (
 
     const updatedPlaylist = await playlistRepository.findOne({
       where: { id: playlist.id },
+      select: getPlaylistSelectedColumns({ featureRank: true }),
       relations: {
         user: true,
+        items: { playlistItem: { user: true }, dreamItem: { user: true } },
       },
     });
 

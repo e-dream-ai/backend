@@ -103,6 +103,7 @@ export const getDreamSelectedColumns = ({
     original_video: originalVideo,
     featureRank: featureRank,
     user: getUserSelectedColumns({ userEmail }),
+    displayedOwner: getUserSelectedColumns(),
   };
 };
 

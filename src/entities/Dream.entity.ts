@@ -35,6 +35,13 @@ export class Dream {
   user: User;
 
   /**
+   * displayed owner
+   */
+  @ManyToOne(() => User, (user) => user.dreams, { nullable: true })
+  @JoinColumn()
+  displayedOwner?: User | null;
+
+  /**
    * Feed Item
    */
   @OneToOne(() => FeedItem, (feedItem) => feedItem.dreamItem, {

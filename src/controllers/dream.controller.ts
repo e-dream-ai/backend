@@ -9,7 +9,7 @@ import {
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Dream, Vote } from "entities";
+import { Dream, FeedItem, User, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import {
@@ -54,6 +54,8 @@ import { isAdmin } from "utils/user.util";
  * Repositories
  */
 const dreamRepository = appDataSource.getRepository(Dream);
+const userRepository = appDataSource.getRepository(User);
+const feedItemRepository = appDataSource.getRepository(FeedItem);
 const voteRepository = appDataSource.getRepository(Vote);
 
 /**
@@ -84,7 +86,7 @@ export const handleGetDreams = async (
 
     const [dreams, count] = await dreamRepository.findAndCount({
       where: { user: { id: userId }, status },
-      relations: { user: true },
+      relations: { user: true, displayedOwner: true },
       select: getDreamSelectedColumns({ originalVideo: isBrowser }),
       order: { created_at: "DESC" },
       take,
@@ -521,7 +523,7 @@ export const handleGetDream = async (
   try {
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true, playlistItems: true },
+      relations: { user: true, displayedOwner: true, playlistItems: true },
       select: getDreamSelectedColumns({
         originalVideo: true,
         featureRank: true,
@@ -822,7 +824,7 @@ export const handleUpdateDream = async (
   try {
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true },
+      relations: { user: true, displayedOwner: true },
       select: getDreamSelectedColumns({ featureRank: true }),
     });
 
@@ -849,7 +851,30 @@ export const handleUpdateDream = async (
     }
 
     // Define an object to hold the fields that are allowed to be updated
-    const updateData: Partial<UpdateDreamRequest> = { ...req.body };
+    let updateData: Partial<Dream> = {
+      ...(req.body as Omit<UpdateDreamRequest, "displayedOwner">),
+    };
+
+    let displayedOwner: User | null = null;
+    if (isAdmin(user) && req.body.displayedOwner) {
+      displayedOwner = await userRepository.findOneBy({
+        id: req.body.displayedOwner,
+      });
+    }
+
+    /**
+     * update displayed owner for dream and feed item
+     */
+    if (displayedOwner) {
+      updateData = { ...updateData, displayedOwner: displayedOwner };
+      /**
+       * update feed item user too
+       */
+      await feedItemRepository.update(
+        { dreamItem: { id: dream.id } },
+        { user: displayedOwner },
+      );
+    }
 
     await dreamRepository.update(dream.id, {
       ...updateData,
@@ -857,6 +882,10 @@ export const handleUpdateDream = async (
 
     const updatedDream = await dreamRepository.findOne({
       where: { id: dream.id },
+      relations: {
+        user: true,
+        displayedOwner: true,
+      },
     });
 
     return res

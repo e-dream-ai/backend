@@ -15,6 +15,7 @@ export type UpdateDreamRequest = {
   thumbnail?: string;
   activityLevel?: number;
   featureRank?: number;
+  displayedOwner?: number;
 };
 
 export type UpdateDreamProcessedRequest = {

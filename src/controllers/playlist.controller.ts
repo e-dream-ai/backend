@@ -111,7 +111,11 @@ export const handleGetPlaylist = async (
       select: getPlaylistSelectedColumns({ featureRank: true }),
       relations: {
         user: true,
-        items: { playlistItem: { user: true }, dreamItem: { user: true } },
+        displayedOwner: true,
+        items: {
+          playlistItem: { user: true, displayedOwner: true },
+          dreamItem: { user: true, displayedOwner: true },
+        },
       },
       order: { items: { order: "ASC" } },
     });
@@ -221,6 +225,7 @@ export const handleUpdatePlaylist = async (
       select: getPlaylistSelectedColumns({ featureRank: true }),
       relations: {
         user: true,
+        displayedOwner: true,
         items: { playlistItem: { user: true }, dreamItem: { user: true } },
       },
       order: { items: { order: "ASC" } },
@@ -242,22 +247,27 @@ export const handleUpdatePlaylist = async (
 
     // Define an object to hold the fields that are allowed to be updated
     let updateData: Partial<Playlist> = {
-      ...(req.body as Omit<UpdatePlaylistRequest, "user">),
+      ...(req.body as Omit<UpdatePlaylistRequest, "displayedOwner">),
     };
 
-    let newUser: User | null = null;
-    if (isAdmin(user) && req.body.user) {
-      newUser = await userRepository.findOneBy({ id: req.body.user });
+    let displayedOwner: User | null = null;
+    if (isAdmin(user) && req.body.displayedOwner) {
+      displayedOwner = await userRepository.findOneBy({
+        id: req.body.displayedOwner,
+      });
     }
 
-    if (newUser) {
-      updateData = { ...updateData, user: newUser };
+    /**
+     * update displayed owner for playlist and feed item
+     */
+    if (displayedOwner) {
+      updateData = { ...updateData, displayedOwner: displayedOwner };
       /**
        * update feed item user too
        */
       await feedItemRepository.update(
         { playlistItem: { id: playlist.id } },
-        { user: newUser },
+        { user: displayedOwner },
       );
     }
 
@@ -278,6 +288,7 @@ export const handleUpdatePlaylist = async (
       select: getPlaylistSelectedColumns({ featureRank: true }),
       relations: {
         user: true,
+        displayedOwner: true,
         items: { playlistItem: { user: true }, dreamItem: { user: true } },
       },
     });

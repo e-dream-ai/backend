@@ -122,7 +122,12 @@ export const handleGetFeed = async (
       relations: {
         user: true,
         dreamItem: true,
-        playlistItem: { items: { playlistItem: true, dreamItem: true } },
+        playlistItem: {
+          items: {
+            playlistItem: { items: { dreamItem: true, playlistItem: true } },
+            dreamItem: true,
+          },
+        },
       },
       order: { created_at: "DESC" },
       take,

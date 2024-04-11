@@ -1,5 +1,5 @@
 import { Playlist } from "entities";
-import { FindOptionsSelect } from "typeorm";
+import { FindOptionsSelect, FindOptionsRelations } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 
 export const getPlaylistSelectedColumns = ({
@@ -23,3 +23,19 @@ export const getPlaylistSelectedColumns = ({
     displayedOwner: getUserSelectedColumns(),
   };
 };
+
+export const getPlaylistFindOptionsRelations =
+  (): FindOptionsRelations<Playlist> => {
+    return {
+      user: true,
+      displayedOwner: true,
+      items: {
+        playlistItem: {
+          user: true,
+          displayedOwner: true,
+          items: { dreamItem: true, playlistItem: true },
+        },
+        dreamItem: { user: true, displayedOwner: true },
+      },
+    };
+  };

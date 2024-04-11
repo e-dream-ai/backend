@@ -23,7 +23,10 @@ import {
 } from "types/playlist.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
-import { getPlaylistSelectedColumns } from "utils/playlist.util";
+import {
+  getPlaylistFindOptionsRelations,
+  getPlaylistSelectedColumns,
+} from "utils/playlist.util";
 import {
   handleNotFound,
   handleForbidden,
@@ -109,14 +112,7 @@ export const handleGetPlaylist = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      relations: {
-        user: true,
-        displayedOwner: true,
-        items: {
-          playlistItem: { user: true, displayedOwner: true },
-          dreamItem: { user: true, displayedOwner: true },
-        },
-      },
+      relations: getPlaylistFindOptionsRelations(),
       order: { items: { order: "ASC" } },
     });
 
@@ -223,14 +219,7 @@ export const handleUpdatePlaylist = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      relations: {
-        user: true,
-        displayedOwner: true,
-        items: {
-          playlistItem: { user: true, displayedOwner: true },
-          dreamItem: { user: true, displayedOwner: true },
-        },
-      },
+      relations: getPlaylistFindOptionsRelations(),
       order: { items: { order: "ASC" } },
     });
 
@@ -289,14 +278,7 @@ export const handleUpdatePlaylist = async (
     const updatedPlaylist = await playlistRepository.findOne({
       where: { id: playlist.id },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      relations: {
-        user: true,
-        displayedOwner: true,
-        items: {
-          playlistItem: { user: true, displayedOwner: true },
-          dreamItem: { user: true, displayedOwner: true },
-        },
-      },
+      relations: getPlaylistFindOptionsRelations(),
     });
 
     return res
@@ -337,7 +319,7 @@ export const handleUpdateThumbnailPlaylist = async (
     const [playlist] = await playlistRepository.find({
       where: { id: id! },
       select: getPlaylistSelectedColumns(),
-      relations: { user: true, displayedOwner: true },
+      relations: getPlaylistFindOptionsRelations(),
     });
 
     if (!playlist) {
@@ -417,12 +399,7 @@ export const handleDeletePlaylist = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: {
-        user: true,
-        displayedOwner: true,
-        playlistItems: true,
-        feedItem: true,
-      },
+      relations: getPlaylistFindOptionsRelations(),
     });
 
     if (!playlist) {
@@ -481,14 +458,7 @@ export const handleOrderPlaylist = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: {
-        user: true,
-        displayedOwner: true,
-        items: {
-          playlistItem: { user: true, displayedOwner: true },
-          dreamItem: { user: true, displayedOwner: true },
-        },
-      },
+      relations: getPlaylistFindOptionsRelations(),
       order: { items: { order: "ASC" } },
     });
 
@@ -556,14 +526,7 @@ export const handleAddPlaylistItem = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: {
-        user: true,
-        displayedOwner: true,
-        items: {
-          playlistItem: { user: true, displayedOwner: true },
-          dreamItem: { user: true, displayedOwner: true },
-        },
-      },
+      relations: getPlaylistFindOptionsRelations(),
     });
 
     if (!playlist) {
@@ -675,7 +638,7 @@ export const handleRemovePlaylistItem = async (
     const [playlist] = await playlistRepository.find({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: { user: true, displayedOwner: true },
+      relations: getPlaylistFindOptionsRelations(),
     });
 
     if (!playlist) {

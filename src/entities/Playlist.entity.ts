@@ -77,14 +77,24 @@ export class Playlist {
   @DeleteDateColumn()
   deleted_at: Date;
 
+  /**
+   * take child item thumbnail if is not set on current playlist
+   */
   @AfterLoad()
   computeThumbnail() {
     if (this.thumbnail) {
       return;
     }
 
-    const newThumbnail = this?.items?.find((item) => item?.dreamItem?.thumbnail)
-      ?.dreamItem?.thumbnail;
+    const itemWithThumbnail = this?.items?.find(
+      (item) =>
+        Boolean(item?.dreamItem?.thumbnail) ||
+        Boolean(item?.playlistItem?.thumbnail),
+    );
+
+    const newThumbnail =
+      itemWithThumbnail?.dreamItem?.thumbnail ??
+      itemWithThumbnail?.playlistItem?.thumbnail;
 
     if (newThumbnail) {
       this.thumbnail = newThumbnail;

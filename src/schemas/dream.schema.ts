@@ -26,6 +26,8 @@ export const updateDreamSchema = {
   body: Joi.object<UpdateDreamRequest>().keys({
     name: Joi.string(),
     activityLevel: Joi.number(),
+    featureRank: Joi.number(),
+    displayedOwner: Joi.number().greater(0),
   }),
 };
 

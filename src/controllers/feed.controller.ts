@@ -4,7 +4,7 @@ import appDataSource from "database/app-data-source";
 import { FeedItem } from "entities/FeedItem.entity";
 import httpStatus from "http-status";
 import { APP_LOGGER } from "shared/logger";
-import { FindOptionsWhere, ILike, MoreThan } from "typeorm";
+import { FindOptionsWhere, ILike, MoreThanOrEqual } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { GetFeedRequest } from "types/feed.types";
@@ -36,7 +36,7 @@ export const handleGetRankedFeed = async (
     const feedRepository = appDataSource.getRepository(FeedItem);
     const whereSentence: FindOptionsWhere<FeedItem> = {
       type: FeedItemType.PLAYLIST,
-      playlistItem: { featureRank: MoreThan(1) },
+      playlistItem: { featureRank: MoreThanOrEqual(1) },
     };
 
     const [feed, count] = await feedRepository.findAndCount({

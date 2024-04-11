@@ -38,7 +38,7 @@ import {
   jsonResponse,
   handleInternalServerError,
   handleNotFound,
-  handleUnauthorized,
+  handleForbidden,
 } from "utils/responses.util";
 import {
   abortMultipartUpload,
@@ -184,7 +184,7 @@ export const handleConfirmPresignedPost = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     /**
@@ -333,7 +333,7 @@ export const handleRefreshMultipartUploadUrl = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     const uuid = dream.uuid;
@@ -392,7 +392,7 @@ export const handleCompleteMultipartUpload = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     /**
@@ -474,7 +474,7 @@ export const handleAbortMultipartUpload = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     /**
@@ -839,7 +839,7 @@ export const handleUpdateDream = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     /*
@@ -933,7 +933,7 @@ export const handleUpdateThumbnailDream = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     // update dream
@@ -1170,7 +1170,7 @@ export const handleDeleteDream = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     const affected = await dreamRepository.softRemove(dream);

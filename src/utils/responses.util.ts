@@ -42,3 +42,13 @@ export const handleUnauthorized = (req: RequestType, res: ResponseType) => {
     }),
   );
 };
+
+// Forbidden Handler
+export const handleForbidden = (req: RequestType, res: ResponseType) => {
+  res.status(httpStatus.FORBIDDEN).json(
+    jsonResponse({
+      success: false,
+      message: GENERAL_MESSAGES.FORBIDDEN,
+    }),
+  );
+};

@@ -26,7 +26,7 @@ import { canExecuteAction } from "utils/permissions.util";
 import { getPlaylistSelectedColumns } from "utils/playlist.util";
 import {
   handleNotFound,
-  handleUnauthorized,
+  handleForbidden,
   jsonResponse,
 } from "utils/responses.util";
 import { isAdmin } from "utils/user.util";
@@ -245,7 +245,7 @@ export const handleUpdatePlaylist = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     // Define an object to hold the fields that are allowed to be updated
@@ -351,7 +351,7 @@ export const handleUpdateThumbnailPlaylist = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     // update playlist
@@ -436,7 +436,7 @@ export const handleDeletePlaylist = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     const affected = await playlistRepository.softRemove(playlist);
@@ -503,7 +503,7 @@ export const handleOrderPlaylist = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     playlist.items = playlist.items.map((item) => {
@@ -577,7 +577,7 @@ export const handleAddPlaylistItem = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     if (PlaylistItemType.PLAYLIST && id === itemId) {
@@ -689,7 +689,7 @@ export const handleRemovePlaylistItem = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     const { affected } = await playlistItemRepository.softDelete({

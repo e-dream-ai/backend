@@ -33,6 +33,9 @@ export const getPlaylistFindOptionsRelations =
         playlistItem: {
           user: true,
           displayedOwner: true,
+          /**
+           * will be optimize on https://github.com/e-dream-ai/backend/issues/87
+           */
           items: { dreamItem: true, playlistItem: true },
         },
         dreamItem: { user: true, displayedOwner: true },

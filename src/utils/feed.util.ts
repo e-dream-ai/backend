@@ -27,6 +27,9 @@ export const getFeedFindOptionsRelations =
       user: true,
       dreamItem: true,
       playlistItem: {
+        /**
+         * will be optimize on https://github.com/e-dream-ai/backend/issues/87
+         */
         items: {
           playlistItem: { items: { dreamItem: true, playlistItem: true } },
           dreamItem: true,

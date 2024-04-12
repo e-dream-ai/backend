@@ -1,5 +1,5 @@
 import { FeedItem } from "entities";
-import { FindOptionsSelect } from "typeorm";
+import { FindOptionsRelations, FindOptionsSelect } from "typeorm";
 import { getDreamSelectedColumns } from "./dream.util";
 import { getUserSelectedColumns } from "./user.util";
 import { getPlaylistSelectedColumns } from "./playlist.util";
@@ -20,3 +20,17 @@ export const getFeedSelectedColumns = ({
     user: getUserSelectedColumns({ userEmail }),
   };
 };
+
+export const getFeedFindOptionsRelations =
+  (): FindOptionsRelations<FeedItem> => {
+    return {
+      user: true,
+      dreamItem: true,
+      playlistItem: {
+        items: {
+          playlistItem: { items: { dreamItem: true, playlistItem: true } },
+          dreamItem: true,
+        },
+      },
+    };
+  };

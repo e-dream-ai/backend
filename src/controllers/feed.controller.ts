@@ -8,7 +8,10 @@ import { FindOptionsWhere, ILike, MoreThanOrEqual } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { GetFeedRequest } from "types/feed.types";
-import { getFeedSelectedColumns } from "utils/feed.util";
+import {
+  getFeedFindOptionsRelations,
+  getFeedSelectedColumns,
+} from "utils/feed.util";
 import { jsonResponse } from "utils/responses.util";
 
 /**
@@ -42,11 +45,7 @@ export const handleGetRankedFeed = async (
     const [feed, count] = await feedRepository.findAndCount({
       where: whereSentence,
       select: getFeedSelectedColumns(),
-      relations: {
-        user: true,
-        dreamItem: true,
-        playlistItem: { items: { playlistItem: true, dreamItem: true } },
-      },
+      relations: getFeedFindOptionsRelations(),
       order: {
         playlistItem: {
           featureRank: "DESC",
@@ -119,16 +118,7 @@ export const handleGetFeed = async (
     const [feed, count] = await feedRepository.findAndCount({
       where: whereSentence,
       select: getFeedSelectedColumns(),
-      relations: {
-        user: true,
-        dreamItem: true,
-        playlistItem: {
-          items: {
-            playlistItem: { items: { dreamItem: true, playlistItem: true } },
-            dreamItem: true,
-          },
-        },
-      },
+      relations: getFeedFindOptionsRelations(),
       order: { created_at: "DESC" },
       take,
       skip,
@@ -175,7 +165,7 @@ export const handleGetMyDreams = async (
     const [feed, count] = await feedRepository.findAndCount({
       where: { user: { id: user?.id } },
       select: getFeedSelectedColumns(),
-      relations: { user: true, dreamItem: true, playlistItem: true },
+      relations: getFeedFindOptionsRelations(),
       order: { created_at: "DESC" },
       take,
       skip,

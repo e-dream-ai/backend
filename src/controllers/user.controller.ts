@@ -17,7 +17,10 @@ import { RequestType, ResponseType } from "types/express.types";
 import { UpdateUserRoleRequest } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
-import { getPlaylistSelectedColumns } from "utils/playlist.util";
+import {
+  getPlaylistFindOptionsRelations,
+  getPlaylistSelectedColumns,
+} from "utils/playlist.util";
 import { jsonResponse } from "utils/responses.util";
 import { getUserSelectedColumns } from "utils/user.util";
 
@@ -196,10 +199,7 @@ export const handleGetCurrentPlaylist = async (
     const playlist = await playlistRepository.findOne({
       where: { id: currentPlaylistId },
       select: getPlaylistSelectedColumns(),
-      relations: {
-        user: true,
-        items: { playlistItem: { user: true }, dreamItem: { user: true } },
-      },
+      relations: getPlaylistFindOptionsRelations(),
     });
 
     if (!playlist) {

@@ -14,18 +14,71 @@ import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 import { FindOptionsWhere, ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
-import { UpdateUserRoleRequest } from "types/user.types";
+import { UpdateUserRequest, UpdateUserRoleRequest } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
   getPlaylistFindOptionsRelations,
   getPlaylistSelectedColumns,
 } from "utils/playlist.util";
-import { jsonResponse } from "utils/responses.util";
-import { getUserSelectedColumns } from "utils/user.util";
+import {
+  handleForbidden,
+  handleNotFound,
+  jsonResponse,
+} from "utils/responses.util";
+import {
+  getRoleSelectedColumns,
+  getUserSelectedColumns,
+  isAdmin,
+} from "utils/user.util";
 
 const userRepository = appDataSource.getRepository(User);
+const roleRepository = appDataSource.getRepository(Role);
 const playlistRepository = appDataSource.getRepository(Playlist);
+
+/**
+ * Handles get roles
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - roles
+ * BAD_REQUEST 400 - error getting roles
+ *
+ */
+export const handleGetRoles = async (req: RequestType, res: ResponseType) => {
+  try {
+    const take = Math.min(
+      Number(req.query.take) || PAGINATION.TAKE,
+      PAGINATION.MAX_TAKE,
+    );
+    const skip = Number(req.query.skip) || PAGINATION.SKIP;
+    const search = req.query.search ? String(req.query.search) : undefined;
+    const whereSentence = {
+      name: ILike(`%${search}%`),
+    } as FindOptionsWhere<Role>;
+    const [roles, count] = await roleRepository.findAndCount({
+      where: search ? whereSentence : undefined,
+      select: getRoleSelectedColumns(),
+      order: { created_at: "DESC" },
+      take,
+      skip,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { roles, count } }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+      jsonResponse({
+        success: false,
+        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+      }),
+    );
+  }
+};
 
 /**
  * Handles get users
@@ -101,7 +154,7 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
       );
     }
 
-    const isAllowed = canExecuteAction({
+    const isAllowedViewEmail = canExecuteAction({
       isOwner: user?.id === foundUser?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
@@ -112,7 +165,7 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
      */
     const responseUser = {
       ...foundUser,
-      email: isAllowed ? foundUser.email : undefined,
+      email: isAllowedViewEmail ? foundUser.email : undefined,
     };
 
     return res.status(httpStatus.OK).json(
@@ -239,7 +292,10 @@ export const handleGetCurrentPlaylist = async (
  * BAD_REQUEST 400 - error updating user
  *
  */
-export const handleUpdateUser = async (req: RequestType, res: ResponseType) => {
+export const handleUpdateUser = async (
+  req: RequestType<UpdateUserRequest>,
+  res: ResponseType,
+) => {
   try {
     const id = Number(req.params.id) || 0;
     const requestUser = res.locals.user;
@@ -249,34 +305,53 @@ export const handleUpdateUser = async (req: RequestType, res: ResponseType) => {
     });
 
     if (!user) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
+    const isOwner = user.id === requestUser?.id;
     const isAllowed = canExecuteAction({
-      isOwner: user.id === requestUser?.id,
+      isOwner,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: requestUser?.role?.name,
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleForbidden(req, res);
     }
 
-    const updatedUser = await userRepository.save({ ...user, ...req.body });
+    const updateData: Partial<User> = {
+      ...(req.body as Omit<UpdateUserRequest, "role">),
+    };
+
+    if (isAdmin(requestUser)) {
+      const role = req.body.role
+        ? await roleRepository.findOneBy({ id: req.body.role })
+        : null;
+
+      if (role) {
+        updateData.role = role;
+      }
+    }
+
+    await userRepository.update(user.id, updateData);
+
+    const updatedUser = await userRepository.findOne({
+      where: { id: user.id },
+      select: getUserSelectedColumns({ userEmail: true }),
+      relations: { role: true },
+    });
+
+    /**
+     * remove user email if is not admin or owner
+     */
+    const responseUser = {
+      ...updatedUser,
+      email: isAllowed ? updatedUser?.email : undefined,
+    };
 
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { user: updatedUser } }));
+      .json(jsonResponse({ success: true, data: { user: responseUser } }));
   } catch (error) {
     APP_LOGGER.error(error);
     return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
@@ -409,7 +484,6 @@ export const handleUpdateRole = async (
       );
     }
 
-    const roleRepository = appDataSource.getRepository(Role);
     const role = await roleRepository.findOneBy({ name: requestRole });
     user.role = role!;
 

@@ -19,7 +19,11 @@ const playlistRouter = Router();
 playlistRouter.get(
   "/my-playlists",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   playlistController.handleGetMyPlaylists,
 );
 
@@ -29,7 +33,11 @@ playlistRouter.get(
 playlistRouter.get(
   "/:id",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   playlistController.handleGetPlaylist,
 );
 
@@ -39,7 +47,11 @@ playlistRouter.get(
 playlistRouter.post(
   "/",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   validatorMiddleware(createPlaylistSchema),
   playlistController.handleCreatePlaylist,
 );
@@ -50,7 +62,11 @@ playlistRouter.post(
 playlistRouter.put(
   "/:id",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   validatorMiddleware(updatePlaylistSchema),
   playlistController.handleUpdatePlaylist,
 );
@@ -61,7 +77,11 @@ playlistRouter.put(
 playlistRouter.put(
   "/:id/thumbnail",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   multerSingleFileMiddleware,
   playlistController.handleUpdateThumbnailPlaylist,
 );
@@ -72,7 +92,11 @@ playlistRouter.put(
 playlistRouter.delete(
   "/:id",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   playlistController.handleDeletePlaylist,
 );
 
@@ -82,7 +106,11 @@ playlistRouter.delete(
 playlistRouter.put(
   "/:id/order",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   validatorMiddleware(orderPlaylistSchema),
   playlistController.handleOrderPlaylist,
 );
@@ -93,7 +121,11 @@ playlistRouter.put(
 playlistRouter.put(
   "/:id/add-item",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   validatorMiddleware(addPlaylistItemSchema),
   playlistController.handleAddPlaylistItem,
 );
@@ -104,7 +136,11 @@ playlistRouter.put(
 playlistRouter.delete(
   "/:id/remove-item/:itemId",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   playlistController.handleRemovePlaylistItem,
 );
 

@@ -7,7 +7,7 @@ import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import dreamRouter from "routes/v1/dream.routes";
 import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
-import userRouter from "routes/v1/user.router";
+import userRouter from "routes/v1/user.routes";
 import { jsonResponse } from "utils/responses.util";
 
 export const registerRoutes = (app: express.Application) => {

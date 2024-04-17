@@ -15,7 +15,11 @@ const userRouter = Router();
 userRouter.get(
   "/current/playlist",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   userController.handleGetCurrentPlaylist,
 );
 
@@ -25,28 +29,55 @@ userRouter.get(
 userRouter.get(
   "/current",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   userController.handleGetCurrentUser,
+);
+
+userRouter.get(
+  "/roles",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  userController.handleGetRoles,
 );
 
 userRouter.get(
   "/:id",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   userController.handleGetUser,
 );
 
 userRouter.get(
   "/",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   userController.handleGetUsers,
 );
 
 userRouter.put(
   "/:id",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   validatorMiddleware(updateUserSchema),
   userController.handleUpdateUser,
 );
@@ -57,7 +88,11 @@ userRouter.put(
 userRouter.put(
   "/:id/avatar",
   requireAuth,
-  checkRoleMiddleware([ROLES.USER_GROUP, ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
   multerSingleFileMiddleware,
   userController.handleUpdateUserAvatar,
 );

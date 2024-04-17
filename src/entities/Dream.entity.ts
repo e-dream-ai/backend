@@ -116,11 +116,20 @@ export class Dream {
   playlistItems: PlaylistItem[];
 
   @Column({
-    default: 1.0,
     type: "decimal",
+    default: 1.0,
     transformer: new ColumnNumericTransformer(),
   })
   activityLevel?: number;
+
+  /**
+   * nsfw flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  nsfw: boolean;
 
   // computed frontend url field
   frontendUrl: string;

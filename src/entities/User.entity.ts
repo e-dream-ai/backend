@@ -60,6 +60,15 @@ export class User {
   @JoinColumn()
   currentPlaylist?: Playlist | null;
 
+  /**
+   * nsfw flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  nsfw: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

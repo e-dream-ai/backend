@@ -11,7 +11,6 @@ import appDataSource from "database/app-data-source";
 import { Dream, FeedItem, Playlist, PlaylistItem, User } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
-import { APP_LOGGER } from "shared/logger";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import {
@@ -31,6 +30,7 @@ import {
   handleNotFound,
   handleForbidden,
   jsonResponse,
+  handleInternalServerError,
 } from "utils/responses.util";
 import { isAdmin } from "utils/user.util";
 
@@ -80,14 +80,9 @@ export const handleGetMyPlaylists = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { playlists, count } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -131,14 +126,9 @@ export const handleGetPlaylist = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { playlist } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -186,14 +176,9 @@ export const handleCreatePlaylist = async (
       .json(
         jsonResponse({ success: true, data: { playlist: createdPlaylist } }),
       );
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -286,14 +271,9 @@ export const handleUpdatePlaylist = async (
       .json(
         jsonResponse({ success: true, data: { playlist: updatedPlaylist } }),
       );
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -367,14 +347,9 @@ export const handleUpdateThumbnailPlaylist = async (
       .json(
         jsonResponse({ success: true, data: { playlist: updatedPlaylist } }),
       );
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -423,14 +398,9 @@ export const handleDeletePlaylist = async (
     }
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -491,14 +461,9 @@ export const handleOrderPlaylist = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { playlist } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -544,11 +509,7 @@ export const handleAddPlaylistItem = async (
     }
 
     if (PlaylistItemType.PLAYLIST && id === itemId) {
-      return res
-        .status(httpStatus.FORBIDDEN)
-        .json(
-          jsonResponse({ success: false, message: GENERAL_MESSAGES.FORBIDDEN }),
-        );
+      return handleForbidden(req, res);
     }
 
     const playlistSearch =
@@ -605,14 +566,9 @@ export const handleAddPlaylistItem = async (
         data: { playlistItem: createdPlaylistItem },
       }),
     );
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -665,13 +621,8 @@ export const handleRemovePlaylistItem = async (
     }
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };

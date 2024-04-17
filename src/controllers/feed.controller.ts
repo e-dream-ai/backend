@@ -1,9 +1,7 @@
-import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import appDataSource from "database/app-data-source";
 import { FeedItem } from "entities/FeedItem.entity";
 import httpStatus from "http-status";
-import { APP_LOGGER } from "shared/logger";
 import { FindOptionsWhere, ILike, MoreThanOrEqual } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
@@ -12,7 +10,7 @@ import {
   getFeedFindOptionsRelations,
   getFeedSelectedColumns,
 } from "utils/feed.util";
-import { jsonResponse } from "utils/responses.util";
+import { handleInternalServerError, jsonResponse } from "utils/responses.util";
 
 /**
  * Handles get ranked feed
@@ -64,14 +62,9 @@ export const handleGetRankedFeed = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { feed, count } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -127,14 +120,9 @@ export const handleGetFeed = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { feed, count } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -174,13 +162,8 @@ export const handleGetMyDreams = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { feed, count } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };

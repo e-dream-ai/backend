@@ -2,7 +2,6 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
-import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { AVATAR } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
@@ -11,7 +10,6 @@ import { Playlist, User } from "entities";
 import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
-import { APP_LOGGER } from "shared/logger";
 import { FindOptionsWhere, ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { UpdateUserRequest, UpdateUserRoleRequest } from "types/user.types";
@@ -23,7 +21,9 @@ import {
 } from "utils/playlist.util";
 import {
   handleForbidden,
+  handleInternalServerError,
   handleNotFound,
+  handleUnauthorized,
   jsonResponse,
 } from "utils/responses.util";
 import {
@@ -69,14 +69,9 @@ export const handleGetRoles = async (req: RequestType, res: ResponseType) => {
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { roles, count } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -113,14 +108,9 @@ export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { users, count } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -146,12 +136,7 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
     });
 
     if (!foundUser) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const isAllowedViewEmail = canExecuteAction({
@@ -174,14 +159,9 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
         data: { user: responseUser },
       }),
     );
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -209,14 +189,9 @@ export const handleGetCurrentUser = async (
         data: { user },
       }),
     );
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -241,12 +216,7 @@ export const handleGetCurrentPlaylist = async (
     const currentPlaylistId = user?.currentPlaylist?.id;
 
     if (!currentPlaylistId) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const playlist = await playlistRepository.findOne({
@@ -256,12 +226,7 @@ export const handleGetCurrentPlaylist = async (
     });
 
     if (!playlist) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     return res.status(httpStatus.OK).json(
@@ -270,14 +235,9 @@ export const handleGetCurrentPlaylist = async (
         data: { playlist },
       }),
     );
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -352,14 +312,9 @@ export const handleUpdateUser = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { user: responseUser } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -388,12 +343,7 @@ export const handleUpdateUserAvatar = async (
     });
 
     if (!user) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -403,12 +353,7 @@ export const handleUpdateUserAvatar = async (
     });
 
     if (!isAllowed) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
-        }),
-      );
+      return handleUnauthorized(req, res);
     }
 
     // update playlist
@@ -440,14 +385,9 @@ export const handleUpdateUserAvatar = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { user: updatedUser } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };
 
@@ -476,12 +416,7 @@ export const handleUpdateRole = async (
     });
 
     if (!user) {
-      return res.status(httpStatus.NOT_FOUND).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.NOT_FOUND,
-        }),
-      );
+      return handleNotFound(req, res);
     }
 
     const role = await roleRepository.findOneBy({ name: requestRole });
@@ -492,13 +427,8 @@ export const handleUpdateRole = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { user: updatedUser } }));
-  } catch (error) {
-    APP_LOGGER.error(error);
-    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-      jsonResponse({
-        success: false,
-        message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-      }),
-    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
   }
 };

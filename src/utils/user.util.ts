@@ -1,12 +1,11 @@
 import { ROLES } from "constants/role.constants";
 import { User } from "entities";
 import { Role } from "entities/Role.entity";
-import { FindOptionsSelect } from "typeorm";
+import { FindOptionsRelations, FindOptionsSelect } from "typeorm";
 
 export const getRoleSelectedColumns = (): FindOptionsSelect<Role> => {
   return {
     id: true,
-
     name: true,
     created_at: true,
     updated_at: true,
@@ -30,6 +29,10 @@ export const getUserSelectedColumns = ({
     deleted_at: true,
     email: userEmail,
   };
+};
+
+export const getUserFindOptionsRelations = (): FindOptionsRelations<User> => {
+  return { role: true, currentDream: true, currentPlaylist: true };
 };
 
 /**

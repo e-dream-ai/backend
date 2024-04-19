@@ -28,6 +28,7 @@ import {
 } from "utils/responses.util";
 import {
   getRoleSelectedColumns,
+  getUserFindOptionsRelations,
   getUserSelectedColumns,
   isAdmin,
 } from "utils/user.util";
@@ -132,7 +133,7 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
     const foundUser = await userRepository.findOne({
       where: { id },
       select: getUserSelectedColumns({ userEmail: true }),
-      relations: { role: true, currentDream: true, currentPlaylist: true },
+      relations: getUserFindOptionsRelations(),
     });
 
     if (!foundUser) {
@@ -298,7 +299,7 @@ export const handleUpdateUser = async (
     const updatedUser = await userRepository.findOne({
       where: { id: user.id },
       select: getUserSelectedColumns({ userEmail: true }),
-      relations: { role: true },
+      relations: getUserFindOptionsRelations(),
     });
 
     /**
@@ -412,7 +413,7 @@ export const handleUpdateRole = async (
     const user = await userRepository.findOne({
       where: { id },
       select: getUserSelectedColumns(),
-      relations: { role: true },
+      relations: getUserFindOptionsRelations(),
     });
 
     if (!user) {

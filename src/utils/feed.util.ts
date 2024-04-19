@@ -1,8 +1,58 @@
 import { FeedItem } from "entities";
-import { FindOptionsRelations, FindOptionsSelect } from "typeorm";
+import {
+  FindOptionsRelations,
+  FindOptionsSelect,
+  FindOptionsWhere,
+  ILike,
+  IsNull,
+} from "typeorm";
 import { getDreamSelectedColumns } from "./dream.util";
 import { getUserSelectedColumns } from "./user.util";
 import { getPlaylistSelectedColumns } from "./playlist.util";
+
+type FeedItemFindOptions = {
+  showNSFW?: boolean;
+  search?: string;
+};
+
+type GetFeedFindOptionsWhere = (
+  options?: FindOptionsWhere<FeedItem>,
+  feedFindOptions?: FeedItemFindOptions,
+) => FindOptionsWhere<FeedItem>[];
+
+export const getFeedFindOptionsWhere: GetFeedFindOptionsWhere = (
+  options,
+  feedFindOptions,
+) => {
+  const search = feedFindOptions?.search
+    ? { name: ILike(`%${feedFindOptions.search}%`) }
+    : undefined;
+
+  if (feedFindOptions?.showNSFW) {
+    return [
+      {
+        ...options,
+        dreamItem: { nsfw: true, ...search },
+        playlistItem: IsNull(),
+      },
+      {
+        ...options,
+        dreamItem: { nsfw: false, ...search },
+        playlistItem: IsNull(),
+      },
+      { ...options, dreamItem: IsNull(), playlistItem: search },
+    ];
+  } else {
+    return [
+      {
+        ...options,
+        dreamItem: { nsfw: false, ...search },
+        playlistItem: IsNull(),
+      },
+      { ...options, dreamItem: IsNull(), playlistItem: search },
+    ];
+  }
+};
 
 export const getFeedSelectedColumns = ({
   userEmail,

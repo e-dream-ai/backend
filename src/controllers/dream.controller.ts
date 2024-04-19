@@ -247,12 +247,14 @@ export const handleCreateMultipartUpload = async (
     const name = truncateString(req.body.name, 1000, false);
     const extension = req.body.extension;
     const parts = req.body.parts ?? 1;
+    const nsfw = req.body.nsfw;
 
     if (!dreamUUID) {
       // create dream
       dream = new Dream();
       dream.name = name;
       dream.user = user!;
+      dream.nsfw = nsfw ?? false;
       await dreamRepository.save(dream);
     } else {
       // find dream

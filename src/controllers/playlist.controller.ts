@@ -4,7 +4,6 @@ import { BUCKET_ACL } from "constants/aws/s3.constants";
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { THUMBNAIL } from "constants/multimedia.constants";
-import { PAGINATION } from "constants/pagination.constants";
 import { PLAYLIST_PREFIX } from "constants/playlist.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
@@ -24,6 +23,7 @@ import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
   getPlaylistFindOptionsRelations,
+  getPlaylistFindOptionsWhere,
   getPlaylistSelectedColumns,
 } from "utils/playlist.util";
 import {
@@ -38,53 +38,6 @@ const playlistRepository = appDataSource.getRepository(Playlist);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 const feedItemRepository = appDataSource.getRepository(FeedItem);
 const userRepository = appDataSource.getRepository(User);
-
-/**
- * Handles get playlists
- *
- * @param {RequestType} req - Request object
- * @param {Response} res - Response object
- *
- * @returns {Response} Returns response
- * OK 200 - playlists
- * BAD_REQUEST 400 - error getting playlists
- *
- */
-export const handleGetMyPlaylists = async (
-  req: RequestType,
-  res: ResponseType,
-) => {
-  const user = res.locals.user;
-
-  try {
-    const take = Math.min(
-      Number(req.query.take) || PAGINATION.TAKE,
-      PAGINATION.MAX_TAKE,
-    );
-    const skip = Number(req.query.skip) || PAGINATION.SKIP;
-
-    const query = playlistRepository
-      .createQueryBuilder("playlist")
-      .leftJoinAndSelect("playlist.user", "user")
-      .leftJoinAndSelect("playlist.items", "item")
-      .where({ user: { id: user?.id } });
-
-    const count = await query.getCount();
-
-    const playlists = await query
-      .loadRelationCountAndMap("playlist.itemCount", "playlist.items")
-      .skip(skip)
-      .take(take)
-      .getMany();
-
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { playlists, count } }));
-  } catch (err) {
-    const error = err as Error;
-    return handleInternalServerError(error, req, res);
-  }
-};
 
 /**
  * Handles get playlist
@@ -104,8 +57,8 @@ export const handleGetPlaylist = async (
   const id: number = Number(req.params?.id) || 0;
   const user = res.locals.user;
   try {
-    const [playlist] = await playlistRepository.find({
-      where: { id },
+    const playlist = await playlistRepository.findOne({
+      where: getPlaylistFindOptionsWhere({ id }),
       select: getPlaylistSelectedColumns({ featureRank: true }),
       relations: getPlaylistFindOptionsRelations(),
       order: { items: { order: "ASC" } },
@@ -201,8 +154,8 @@ export const handleUpdatePlaylist = async (
   const user = res.locals.user;
 
   try {
-    const [playlist] = await playlistRepository.find({
-      where: { id },
+    const playlist = await playlistRepository.findOne({
+      where: getPlaylistFindOptionsWhere({ id }),
       select: getPlaylistSelectedColumns({ featureRank: true }),
       relations: getPlaylistFindOptionsRelations(),
       order: { items: { order: "ASC" } },
@@ -261,7 +214,7 @@ export const handleUpdatePlaylist = async (
     });
 
     const updatedPlaylist = await playlistRepository.findOne({
-      where: { id: playlist.id },
+      where: getPlaylistFindOptionsWhere({ id: playlist.id }),
       select: getPlaylistSelectedColumns({ featureRank: true }),
       relations: getPlaylistFindOptionsRelations(),
     });
@@ -296,8 +249,8 @@ export const handleUpdateThumbnailPlaylist = async (
   const id: number = Number(req.params.id) || 0;
 
   try {
-    const [playlist] = await playlistRepository.find({
-      where: { id: id! },
+    const playlist = await playlistRepository.findOne({
+      where: getPlaylistFindOptionsWhere({ id: id }),
       select: getPlaylistSelectedColumns(),
       relations: getPlaylistFindOptionsRelations(),
     });
@@ -371,8 +324,8 @@ export const handleDeletePlaylist = async (
   const id: number = Number(req.params?.id) || 0;
   const user = res.locals.user;
   try {
-    const [playlist] = await playlistRepository.find({
-      where: { id },
+    const playlist = await playlistRepository.findOne({
+      where: getPlaylistFindOptionsWhere({ id }),
       select: getPlaylistSelectedColumns(),
       relations: getPlaylistFindOptionsRelations(),
     });
@@ -425,8 +378,8 @@ export const handleOrderPlaylist = async (
   const order = req.body.order!;
 
   try {
-    const [playlist] = await playlistRepository.find({
-      where: { id },
+    const playlist = await playlistRepository.findOne({
+      where: getPlaylistFindOptionsWhere({ id }),
       select: getPlaylistSelectedColumns(),
       relations: getPlaylistFindOptionsRelations(),
       order: { items: { order: "ASC" } },
@@ -488,8 +441,8 @@ export const handleAddPlaylistItem = async (
   const user = res.locals.user;
 
   try {
-    const [playlist] = await playlistRepository.find({
-      where: { id },
+    const playlist = await playlistRepository.findOne({
+      where: getPlaylistFindOptionsWhere({ id }),
       select: getPlaylistSelectedColumns(),
       relations: getPlaylistFindOptionsRelations(),
     });
@@ -537,7 +490,7 @@ export const handleAddPlaylistItem = async (
 
     if (type === PlaylistItemType.DREAM) {
       const dreamRepository = appDataSource.getRepository(Dream);
-      const [dreamToAdd] = await dreamRepository.find({
+      const dreamToAdd = await dreamRepository.findOne({
         where: { id: itemId },
       });
 
@@ -547,7 +500,7 @@ export const handleAddPlaylistItem = async (
 
       playlistItem.dreamItem = dreamToAdd;
     } else if (type === PlaylistItemType.PLAYLIST) {
-      const [playlistToAdd] = await playlistRepository.find({
+      const playlistToAdd = await playlistRepository.findOne({
         where: { id: itemId },
       });
 
@@ -591,7 +544,7 @@ export const handleRemovePlaylistItem = async (
   const itemId: number = Number(req.params?.itemId) || 0;
   const user = res.locals.user;
   try {
-    const [playlist] = await playlistRepository.find({
+    const playlist = await playlistRepository.findOne({
       where: { id },
       select: getPlaylistSelectedColumns(),
       relations: getPlaylistFindOptionsRelations(),

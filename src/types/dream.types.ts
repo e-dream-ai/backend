@@ -39,6 +39,7 @@ export type CreateMultipartUploadDreamRequest = {
   name: string;
   extension: string;
   parts: number;
+  nsfw?: boolean;
 };
 
 export type RefreshMultipartUploadUrlRequest = {

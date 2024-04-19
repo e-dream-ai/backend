@@ -1,7 +1,56 @@
 import { Playlist } from "entities";
-import { FindOptionsSelect, FindOptionsRelations } from "typeorm";
+import {
+  FindOptionsSelect,
+  FindOptionsRelations,
+  FindOptionsWhere,
+  IsNull,
+} from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 
+type PlaylistFindOptions = {
+  showNSFW?: boolean;
+};
+
+type GetPlaylistFindOptionsWhere = (
+  options?: FindOptionsWhere<Playlist>,
+  playlistFindOptions?: PlaylistFindOptions,
+) => FindOptionsWhere<Playlist>[];
+
+export const getPlaylistFindOptionsWhere: GetPlaylistFindOptionsWhere = (
+  options,
+  playlistFindOptions,
+) => {
+  if (playlistFindOptions?.showNSFW) {
+    return [
+      {
+        ...options,
+        items: {
+          dreamItem: { nsfw: true },
+          playlistItem: IsNull(),
+        },
+      },
+      {
+        ...options,
+        items: {
+          dreamItem: { nsfw: false },
+          playlistItem: IsNull(),
+        },
+      },
+      { ...options, items: { dreamItem: IsNull() } },
+    ];
+  } else {
+    return [
+      {
+        ...options,
+        items: {
+          dreamItem: { nsfw: false },
+          playlistItem: IsNull(),
+        },
+      },
+      { ...options, items: { dreamItem: IsNull() } },
+    ];
+  }
+};
 export const getPlaylistSelectedColumns = ({
   userEmail,
   featureRank,

@@ -14,20 +14,6 @@ import {
 const playlistRouter = Router();
 
 /**
- * Get playlists
- */
-playlistRouter.get(
-  "/my-playlists",
-  requireAuth,
-  checkRoleMiddleware([
-    ROLES.USER_GROUP,
-    ROLES.CREATOR_GROUP,
-    ROLES.ADMIN_GROUP,
-  ]),
-  playlistController.handleGetMyPlaylists,
-);
-
-/**
  * Get playlist
  */
 playlistRouter.get(

@@ -67,6 +67,7 @@ export const getPlaylistSelectedColumns = ({
     created_at: true,
     updated_at: true,
     deleted_at: true,
+    nsfw: true,
     featureRank,
     user: getUserSelectedColumns({ userEmail }),
     displayedOwner: getUserSelectedColumns(),

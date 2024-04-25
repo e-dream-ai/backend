@@ -6,12 +6,14 @@ export enum PlaylistItemType {
 
 export type CreatePlaylistRequest = {
   name: string;
+  nsfw?: boolean;
 };
 
 export type UpdatePlaylistRequest = {
   name?: string;
   featureRank?: number;
   displayedOwner?: number;
+  nsfw?: boolean;
 };
 
 export type OrderPlaylist = {

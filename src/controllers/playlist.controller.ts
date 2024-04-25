@@ -100,13 +100,14 @@ export const handleCreatePlaylist = async (
   req: RequestType<CreatePlaylistRequest>,
   res: ResponseType,
 ) => {
-  const { name } = req.body;
+  const { name, nsfw } = req.body;
   const user = res.locals.user;
 
   try {
     // create playlist
     const playlist = new Playlist();
     playlist.name = name;
+    playlist.nsfw = nsfw ?? false;
     playlist.user = user!;
     const createdPlaylist = await playlistRepository.save(playlist);
 

@@ -68,6 +68,15 @@ export class Playlist {
   @Column({ type: "integer", default: 0 })
   featureRank?: number;
 
+  /**
+   * nsfw flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  nsfw: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

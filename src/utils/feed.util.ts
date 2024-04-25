@@ -32,15 +32,14 @@ export const getFeedFindOptionsWhere: GetFeedFindOptionsWhere = (
     return [
       {
         ...options,
-        dreamItem: { nsfw: true, ...search },
+        dreamItem: { ...search },
         playlistItem: IsNull(),
       },
       {
         ...options,
-        dreamItem: { nsfw: false, ...search },
-        playlistItem: IsNull(),
+        dreamItem: IsNull(),
+        playlistItem: { ...search },
       },
-      { ...options, dreamItem: IsNull(), playlistItem: search },
     ];
   } else {
     return [
@@ -49,7 +48,11 @@ export const getFeedFindOptionsWhere: GetFeedFindOptionsWhere = (
         dreamItem: { nsfw: false, ...search },
         playlistItem: IsNull(),
       },
-      { ...options, dreamItem: IsNull(), playlistItem: search },
+      {
+        ...options,
+        dreamItem: IsNull(),
+        playlistItem: { nsfw: false, ...search },
+      },
     ];
   }
 };

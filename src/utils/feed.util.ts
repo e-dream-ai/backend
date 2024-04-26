@@ -1,4 +1,4 @@
-import { FeedItem } from "entities";
+import { FeedItem, Playlist } from "entities";
 import {
   FindOptionsRelations,
   FindOptionsSelect,
@@ -28,6 +28,12 @@ export const getFeedFindOptionsWhere: GetFeedFindOptionsWhere = (
     ? { name: ILike(`%${feedFindOptions.search}%`) }
     : undefined;
 
+  let playlistItemOption: FindOptionsWhere<Playlist> = {};
+
+  if (options?.playlistItem && typeof options?.playlistItem === "object") {
+    playlistItemOption = options?.playlistItem as FindOptionsWhere<Playlist>;
+  }
+
   if (feedFindOptions?.showNSFW) {
     return [
       {
@@ -38,7 +44,7 @@ export const getFeedFindOptionsWhere: GetFeedFindOptionsWhere = (
       {
         ...options,
         dreamItem: IsNull(),
-        playlistItem: { ...search },
+        playlistItem: { ...search, ...playlistItemOption },
       },
     ];
   } else {
@@ -51,7 +57,7 @@ export const getFeedFindOptionsWhere: GetFeedFindOptionsWhere = (
       {
         ...options,
         dreamItem: IsNull(),
-        playlistItem: { nsfw: false, ...search },
+        playlistItem: { nsfw: false, ...search, ...playlistItemOption },
       },
     ];
   }

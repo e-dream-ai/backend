@@ -3,9 +3,9 @@ import {
   FindOptionsSelect,
   FindOptionsRelations,
   FindOptionsWhere,
-  IsNull,
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
+import appDataSource from "database/app-data-source";
 
 type PlaylistFindOptions = {
   showNSFW?: boolean;
@@ -16,41 +16,18 @@ type GetPlaylistFindOptionsWhere = (
   playlistFindOptions?: PlaylistFindOptions,
 ) => FindOptionsWhere<Playlist>[];
 
+const playlistRepository = appDataSource.getRepository(Playlist);
+
 export const getPlaylistFindOptionsWhere: GetPlaylistFindOptionsWhere = (
   options,
-  playlistFindOptions,
 ) => {
-  if (playlistFindOptions?.showNSFW) {
-    return [
-      {
-        ...options,
-        items: {
-          dreamItem: { nsfw: true },
-          playlistItem: IsNull(),
-        },
-      },
-      {
-        ...options,
-        items: {
-          dreamItem: { nsfw: false },
-          playlistItem: IsNull(),
-        },
-      },
-      { ...options, items: { dreamItem: IsNull() } },
-    ];
-  } else {
-    return [
-      {
-        ...options,
-        items: {
-          dreamItem: { nsfw: false },
-          playlistItem: IsNull(),
-        },
-      },
-      { ...options, items: { dreamItem: IsNull() } },
-    ];
-  }
+  return [
+    {
+      ...options,
+    },
+  ];
 };
+
 export const getPlaylistSelectedColumns = ({
   userEmail,
   featureRank,
@@ -92,3 +69,32 @@ export const getPlaylistFindOptionsRelations =
       },
     };
   };
+
+export const findOnePlaylist = async ({
+  where,
+  select,
+  filter,
+}: {
+  where: FindOptionsWhere<Playlist> | FindOptionsWhere<Playlist>[];
+  select: FindOptionsSelect<Playlist>;
+  filter?: {
+    nsfw?: boolean;
+  };
+}): Promise<Playlist | null> => {
+  const playlist = await playlistRepository.findOne({
+    where: where,
+    select: select,
+    relations: getPlaylistFindOptionsRelations(),
+    order: { items: { order: "ASC" } },
+  });
+
+  if (!playlist) return null;
+
+  if (!filter?.nsfw) {
+    playlist.items = playlist.items.filter(
+      (item) =>
+        item?.dreamItem?.nsfw === false || item?.playlist?.nsfw === false,
+    );
+  }
+  return playlist;
+};

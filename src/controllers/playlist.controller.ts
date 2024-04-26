@@ -22,8 +22,7 @@ import {
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
-  getPlaylistFindOptionsRelations,
-  getPlaylistFindOptionsWhere,
+  findOnePlaylist,
   getPlaylistSelectedColumns,
 } from "utils/playlist.util";
 import {
@@ -57,11 +56,10 @@ export const handleGetPlaylist = async (
   const id: number = Number(req.params?.id) || 0;
   const user = res.locals.user;
   try {
-    const playlist = await playlistRepository.findOne({
-      where: getPlaylistFindOptionsWhere({ id }),
+    const playlist = await findOnePlaylist({
+      where: { id },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      relations: getPlaylistFindOptionsRelations(),
-      order: { items: { order: "ASC" } },
+      filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
@@ -155,11 +153,10 @@ export const handleUpdatePlaylist = async (
   const user = res.locals.user;
 
   try {
-    const playlist = await playlistRepository.findOne({
-      where: getPlaylistFindOptionsWhere({ id }),
+    const playlist = await findOnePlaylist({
+      where: { id },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      relations: getPlaylistFindOptionsRelations(),
-      order: { items: { order: "ASC" } },
+      filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
@@ -214,10 +211,10 @@ export const handleUpdatePlaylist = async (
       ...updateData,
     });
 
-    const updatedPlaylist = await playlistRepository.findOne({
-      where: getPlaylistFindOptionsWhere({ id: playlist.id }),
+    const updatedPlaylist = await findOnePlaylist({
+      where: { id: playlist.id },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      relations: getPlaylistFindOptionsRelations(),
+      filter: { nsfw: user?.nsfw },
     });
 
     return res
@@ -250,10 +247,10 @@ export const handleUpdateThumbnailPlaylist = async (
   const id: number = Number(req.params.id) || 0;
 
   try {
-    const playlist = await playlistRepository.findOne({
-      where: getPlaylistFindOptionsWhere({ id: id }),
+    const playlist = await findOnePlaylist({
+      where: { id: id },
       select: getPlaylistSelectedColumns(),
-      relations: getPlaylistFindOptionsRelations(),
+      filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
@@ -325,10 +322,10 @@ export const handleDeletePlaylist = async (
   const id: number = Number(req.params?.id) || 0;
   const user = res.locals.user;
   try {
-    const playlist = await playlistRepository.findOne({
-      where: getPlaylistFindOptionsWhere({ id }),
+    const playlist = await findOnePlaylist({
+      where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: getPlaylistFindOptionsRelations(),
+      filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
@@ -379,11 +376,10 @@ export const handleOrderPlaylist = async (
   const order = req.body.order!;
 
   try {
-    const playlist = await playlistRepository.findOne({
-      where: getPlaylistFindOptionsWhere({ id }),
+    const playlist = await findOnePlaylist({
+      where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: getPlaylistFindOptionsRelations(),
-      order: { items: { order: "ASC" } },
+      filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
@@ -442,10 +438,10 @@ export const handleAddPlaylistItem = async (
   const user = res.locals.user;
 
   try {
-    const playlist = await playlistRepository.findOne({
-      where: getPlaylistFindOptionsWhere({ id }),
+    const playlist = await findOnePlaylist({
+      where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: getPlaylistFindOptionsRelations(),
+      filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
@@ -501,8 +497,10 @@ export const handleAddPlaylistItem = async (
 
       playlistItem.dreamItem = dreamToAdd;
     } else if (type === PlaylistItemType.PLAYLIST) {
-      const playlistToAdd = await playlistRepository.findOne({
+      const playlistToAdd = await findOnePlaylist({
         where: { id: itemId },
+        select: getPlaylistSelectedColumns(),
+        filter: { nsfw: user?.nsfw },
       });
 
       if (!playlistToAdd) {
@@ -545,10 +543,10 @@ export const handleRemovePlaylistItem = async (
   const itemId: number = Number(req.params?.itemId) || 0;
   const user = res.locals.user;
   try {
-    const playlist = await playlistRepository.findOne({
+    const playlist = await findOnePlaylist({
       where: { id },
       select: getPlaylistSelectedColumns(),
-      relations: getPlaylistFindOptionsRelations(),
+      filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {

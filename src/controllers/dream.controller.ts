@@ -719,6 +719,7 @@ export const handleSetDreamStatusProcessed = async (
   const processedVideoSize = req.body.processedVideoSize;
   const processedVideoFrames = req.body.processedVideoFrames;
   const processedVideoFPS = req.body.processedVideoFPS;
+  const activityLevel = req.body.activityLevel;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -750,6 +751,7 @@ export const handleSetDreamStatusProcessed = async (
       processedVideoSize,
       processedVideoFrames,
       processedVideoFPS,
+      activityLevel,
     });
 
     await createFeedItem(updatedDream);

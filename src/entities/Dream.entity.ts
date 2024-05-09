@@ -84,7 +84,7 @@ export class Dream {
   /**
    * Processed video frames per second FPS
    */
-  @Column({ type: "integer", nullable: true, default: null })
+  @Column({ type: "decimal", nullable: true, default: null })
   processedVideoFPS?: number | null;
 
   /**

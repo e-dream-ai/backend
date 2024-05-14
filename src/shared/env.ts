@@ -51,6 +51,7 @@ export const env = cleanEnv(process.env, {
   TYPEORM_PORT: port(),
   TYPEORM_SYNCHRONIZE: bool(),
   TYPEORM_USERNAME: str(),
+  TYPEORM_SSL: json(),
 
   /**
    * FRONTEND

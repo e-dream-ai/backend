@@ -15,7 +15,7 @@ const appDataSource = new DataSource({
   migrationsRun: env.TYPEORM_MIGRATIONS_RUN || false,
   logging: env.TYPEORM_LOGGING || false,
   synchronize: env.TYPEORM_SYNCHRONIZE || false,
-  ssl: {
+  ssl: env.TYPEORM_SSL ?? {
     rejectUnauthorized: false,
   },
 });

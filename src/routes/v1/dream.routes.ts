@@ -90,6 +90,17 @@ dreamRouter.get(
 );
 
 dreamRouter.get(
+  "/:uuid/vote",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  dreamController.handleGetDreamVote,
+);
+
+dreamRouter.get(
   "/:uuid",
   requireAuth,
   checkRoleMiddleware([
@@ -183,6 +194,17 @@ dreamRouter.put(
     ROLES.ADMIN_GROUP,
   ]),
   dreamController.handleDownvoteDream,
+);
+
+dreamRouter.put(
+  "/:uuid/unvote",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  dreamController.handleUnvoteDream,
 );
 
 export default dreamRouter;

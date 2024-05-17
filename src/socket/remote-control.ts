@@ -4,6 +4,8 @@ import { remoteControlSchema } from "schemas/socket.schema";
 import { APP_LOGGER } from "shared/logger";
 import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
+import { VoteType } from "types/vote.types";
+import { handleVoteDream } from "utils/dream.util";
 import {
   removeUserCurrentPlaylist,
   setUserCurrentDream,
@@ -98,9 +100,41 @@ export const remoteControlEventListener = (
      */
     if (event === REMOTE_CONTROLS.RESET_PLAYLIST) {
       await removeUserCurrentPlaylist(user);
+    }
 
-      socket.emit(GENERAL_MESSAGES.ERROR, {
-        error: GENERAL_MESSAGES.NOT_FOUND,
+    /**
+     * Handles upvote/like dream
+     */
+    if (event === REMOTE_CONTROLS.LIKE_CURRENT_DREAM) {
+      const dream = user?.currentDream;
+
+      console.log({ dream });
+
+      if (!dream) {
+        socket.emit(GENERAL_MESSAGES.ERROR, {
+          error: GENERAL_MESSAGES.NOT_FOUND,
+        });
+      }
+
+      await handleVoteDream({ dream: dream!, user, voteType: VoteType.UPVOTE });
+    }
+
+    /**
+     * Handles downvote/dislike dream
+     */
+    if (event === REMOTE_CONTROLS.DISLIKE_CURRENT_DREAM) {
+      const dream = user?.currentDream;
+
+      if (!dream) {
+        socket.emit(GENERAL_MESSAGES.ERROR, {
+          error: GENERAL_MESSAGES.NOT_FOUND,
+        });
+      }
+
+      await handleVoteDream({
+        dream: dream!,
+        user,
+        voteType: VoteType.DOWNVOTE,
       });
     }
 

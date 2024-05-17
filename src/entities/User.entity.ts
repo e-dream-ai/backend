@@ -12,6 +12,7 @@ import {
 import { Dream } from "./Dream.entity";
 import { Playlist } from "./Playlist.entity";
 import { Role } from "./Role.entity";
+import { Vote } from "./Vote.entity";
 
 @Entity()
 export class User {
@@ -35,6 +36,11 @@ export class User {
 
   @OneToMany(() => Dream, (dream) => dream.user)
   dreams: Dream[];
+
+  @OneToMany(() => Vote, (vote) => vote.user, {
+    cascade: ["soft-remove"],
+  })
+  votes: Vote;
 
   @OneToMany(() => Playlist, (playlist) => playlist.user)
   playlists: Playlist[];

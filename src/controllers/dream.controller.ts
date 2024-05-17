@@ -25,11 +25,12 @@ import {
   UpdateDreamRequest,
 } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
-import { VOTE_FIELDS, VoteType } from "types/vote.types";
+import { VoteType } from "types/vote.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import {
   createFeedItem,
   getDreamSelectedColumns,
+  handleVoteDream,
   processDreamRequest,
 } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
@@ -498,6 +499,53 @@ export const handleAbortMultipartUpload = async (
     await dreamRepository.softDelete({ id: dream.id });
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles get dream vote
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream vote
+ * BAD_REQUEST 400 - error getting dream
+ *
+ */
+export const handleGetDreamVote = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const user = res.locals.user;
+  const dreamUUID: string = String(req.params?.uuid);
+  try {
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true, displayedOwner: true, playlistItems: true },
+      select: getDreamSelectedColumns({
+        originalVideo: true,
+        featureRank: true,
+      }),
+    });
+
+    if (!dream) {
+      return handleNotFound(req, res);
+    }
+
+    const vote = await voteRepository.findOne({
+      where: {
+        dream: { id: dream.id },
+        user: { id: user?.id },
+      },
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { vote } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);
@@ -986,13 +1034,11 @@ export const handleUpdateThumbnailDream = async (
  *
  */
 export const handleUpvoteDream = async (
-  req: RequestType<UpdateDreamRequest>,
+  req: RequestType,
   res: ResponseType,
 ) => {
   const dreamUUID: string = String(req.params.uuid);
-  const user = res.locals.user;
-  let shouldDecreaseDownvotes = false,
-    shouldIncreaseUpvotes = true;
+  const user = res.locals.user!;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -1003,46 +1049,11 @@ export const handleUpvoteDream = async (
       return handleNotFound(req, res);
     }
 
-    let [vote] = await voteRepository.find({
-      where: { dream: { id: dream.id }, user: { id: user?.id } },
-    });
-
-    if (vote) {
-      shouldDecreaseDownvotes = vote.vote === VoteType.DOWNVOTE ? true : false;
-      shouldIncreaseUpvotes = vote.vote === VoteType.UPVOTE ? false : true;
-    } else {
-      vote = new Vote();
-      vote.dream = dream;
-      vote.user = user!;
-    }
-
-    vote.vote = VoteType.UPVOTE;
-    // save vote
-    voteRepository.save(vote);
-
-    // increment upvotes
-    if (shouldIncreaseUpvotes) {
-      await dreamRepository
-        .createQueryBuilder()
-        .update(Dream)
-        .whereInIds([dream.id])
-        .set({ upvotes: () => `${VOTE_FIELDS.UPVOTES} + 1` })
-        .execute();
-    }
-
-    // decrement downvotes if needed
-    if (shouldDecreaseDownvotes) {
-      await dreamRepository
-        .createQueryBuilder()
-        .update(Dream)
-        .whereInIds([dream.id])
-        .set({ downvotes: () => `${VOTE_FIELDS.DOWNVOTES} - 1` })
-        .execute();
-    }
+    await handleVoteDream({ dream, user, voteType: VoteType.UPVOTE });
 
     const [updatedDream] = await dreamRepository.find({
-      where: { uuid: dreamUUID!, votes: { user: { id: user?.id } } },
-      relations: { user: true, votes: true },
+      where: { id: dream.id },
+      relations: { user: true },
       select: getDreamSelectedColumns(),
     });
 
@@ -1067,14 +1078,11 @@ export const handleUpvoteDream = async (
  *
  */
 export const handleDownvoteDream = async (
-  req: RequestType<UpdateDreamRequest>,
+  req: RequestType,
   res: ResponseType,
 ) => {
   const dreamUUID: string = String(req.params.uuid);
-  const user = res.locals.user;
-  let shouldIncreaseDownvotes = true,
-    shouldDecreaseUpvotes = false;
-
+  const user = res.locals.user!;
   try {
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
@@ -1084,46 +1092,54 @@ export const handleDownvoteDream = async (
       return handleNotFound(req, res);
     }
 
-    let [vote] = await voteRepository.find({
-      where: { dream: { id: dream.id }, user: { id: user?.id } },
-    });
-
-    if (vote) {
-      shouldIncreaseDownvotes = vote.vote === VoteType.DOWNVOTE ? false : true;
-      shouldDecreaseUpvotes = vote.vote === VoteType.UPVOTE ? true : false;
-    } else {
-      vote = new Vote();
-      vote.dream = dream;
-      vote.user = user!;
-    }
-
-    vote.vote = VoteType.DOWNVOTE;
-    // save vote
-    voteRepository.save(vote);
-
-    // increment downvotes
-    if (shouldIncreaseDownvotes) {
-      await dreamRepository
-        .createQueryBuilder()
-        .update(Dream)
-        .whereInIds([dream.id])
-        .set({ downvotes: () => `${VOTE_FIELDS.DOWNVOTES} + 1` })
-        .execute();
-    }
-
-    // decrement upvotes if needed
-    if (shouldDecreaseUpvotes) {
-      await dreamRepository
-        .createQueryBuilder()
-        .update(Dream)
-        .whereInIds([dream.id])
-        .set({ upvotes: () => `${VOTE_FIELDS.UPVOTES} - 1` })
-        .execute();
-    }
+    await handleVoteDream({ dream, user, voteType: VoteType.DOWNVOTE });
 
     const [updatedDream] = await dreamRepository.find({
-      where: { uuid: dreamUUID!, votes: { user: { id: user?.id } } },
-      relations: { user: true, votes: true },
+      where: { id: dream.id },
+      relations: { user: true },
+      select: getDreamSelectedColumns(),
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles unvote dream
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream unvoted
+ * BAD_REQUEST 400 - error unvoting dream
+ *
+ */
+export const handleUnvoteDream = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = String(req.params.uuid);
+  const user = res.locals.user!;
+  try {
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+    });
+
+    if (!dream) {
+      return handleNotFound(req, res);
+    }
+
+    await handleVoteDream({ dream, user, voteType: VoteType.NONE });
+
+    const [updatedDream] = await dreamRepository.find({
+      where: { id: dream.id },
+      relations: { user: true },
       select: getDreamSelectedColumns(),
     });
 

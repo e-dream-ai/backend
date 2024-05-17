@@ -1,10 +1,10 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
@@ -17,7 +17,9 @@ export class Vote {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne(() => User)
+  @ManyToOne(() => User, (user) => user.votes, {
+    cascade: ["soft-remove"],
+  })
   @JoinColumn()
   user: User;
 
@@ -37,4 +39,7 @@ export class Vote {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  @DeleteDateColumn()
+  deleted_at: Date;
 }

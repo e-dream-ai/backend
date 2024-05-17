@@ -1,4 +1,4 @@
-import { Dream, FeedItem } from "entities";
+import { Dream, FeedItem, User, Vote } from "entities";
 import {
   SendMessageCommand,
   SendMessageCommandInput,
@@ -16,11 +16,15 @@ import { FindOptionsSelect } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import { FeedItemType } from "types/feed-item.types";
 import { APP_LOGGER } from "shared/logger";
+import { VOTE_FIELDS, VoteType } from "types/vote.types";
 
 const queueUrl = ""; // env.AWS_SQS_URL;
 
 const PROCESS_VIDEO_SERVER_URL = env.PROCESS_VIDEO_SERVER_URL;
+
+const dreamRepository = appDataSource.getRepository(Dream);
 const feedRepository = appDataSource.getRepository(FeedItem);
+const voteRepository = appDataSource.getRepository(Vote);
 
 /**
  * @deprecated Currently unused due to sqs queue being replaced by redis queue
@@ -134,4 +138,107 @@ export const createFeedItem = async (dream: Dream) => {
   }
 
   return feedItem;
+};
+
+/**
+ * handle vote dream
+ * @param dream - dream should include contain user data
+ */
+export const handleVoteDream = async ({
+  dream,
+  user,
+  voteType,
+}: {
+  dream: Dream;
+  user: User;
+  voteType: VoteType;
+}) => {
+  let [vote] = await voteRepository.find({
+    where: { dream: { id: dream.id }, user: { id: user?.id } },
+  });
+
+  // current operation is upvote or downvote
+  const isUpvote = voteType === VoteType.UPVOTE;
+  const isDownvote = voteType === VoteType.DOWNVOTE;
+
+  // previous data was upvote or downvote
+  const wasUpvote = vote ? vote.vote === VoteType.UPVOTE : false;
+  const wasDownvote = vote ? vote.vote === VoteType.DOWNVOTE : false;
+
+  if (!vote) {
+    vote = new Vote();
+    vote.dream = dream;
+    vote.user = user!;
+  }
+
+  vote.vote = voteType;
+  // save vote
+  await voteRepository.save(vote);
+
+  // calculate upvotes and downvotes changes
+  const upvoteChange: number = (isUpvote ? 1 : 0) - (wasUpvote ? 1 : 0);
+  const downvoteChange: number = (isDownvote ? 1 : 0) - (wasDownvote ? 1 : 0);
+
+  // Actualiza los conteos de votos
+  await dreamRepository
+    .createQueryBuilder()
+    .update(Dream)
+    .whereInIds([dream.id])
+    .set({
+      upvotes: () => `GREATEST(upvotes + ${upvoteChange}, 0)`,
+      downvotes: () => `GREATEST(downvotes + ${downvoteChange}, 0)`,
+    })
+    .execute();
+};
+
+/**
+ * handle downvote dream
+ * @param dream - dream should include contain user data
+ */
+export const handleDownvoteDream = async ({
+  dream,
+  user,
+}: {
+  dream: Dream;
+  user: User;
+}) => {
+  let shouldIncreaseDownvotes = true,
+    shouldDecreaseUpvotes = false;
+
+  let [vote] = await voteRepository.find({
+    where: { dream: { id: dream.id }, user: { id: user?.id } },
+  });
+
+  if (vote) {
+    shouldIncreaseDownvotes = vote.vote === VoteType.DOWNVOTE ? false : true;
+    shouldDecreaseUpvotes = vote.vote === VoteType.UPVOTE ? true : false;
+  } else {
+    vote = new Vote();
+    vote.dream = dream;
+    vote.user = user!;
+  }
+
+  vote.vote = VoteType.DOWNVOTE;
+  // save vote
+  voteRepository.save(vote);
+
+  // increment downvotes
+  if (shouldIncreaseDownvotes) {
+    await dreamRepository
+      .createQueryBuilder()
+      .update(Dream)
+      .whereInIds([dream.id])
+      .set({ downvotes: () => `${VOTE_FIELDS.DOWNVOTES} + 1` })
+      .execute();
+  }
+
+  // decrement upvotes if needed
+  if (shouldDecreaseUpvotes) {
+    await dreamRepository
+      .createQueryBuilder()
+      .update(Dream)
+      .whereInIds([dream.id])
+      .set({ upvotes: () => `${VOTE_FIELDS.UPVOTES} - 1` })
+      .execute();
+  }
 };

@@ -76,6 +76,18 @@ Install Docker and run docker command
 docker compose -f "docker-compose.yml" up -d --build
 ```
 
+### Database locally
+
+Configure in your .env the TypeORM values ​​that need to be changed in order to connect to your local database. TYPEORM_SSL should be set on `false` for local database, use `{ "rejectUnauthorized": false }` for stage and production.
+
+```
+TYPEORM_DATABASE=<database name>
+TYPEORM_USERNAME=<username>
+TYPEORM_PASSWORD=<password>
+TYPEORM_HOST=localhost
+TYPEORM_SSL=false
+```
+
 ## Deployment process
 
 ### Stage

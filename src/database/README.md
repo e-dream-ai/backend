@@ -1,5 +1,13 @@
 ### Connect with a snapshot instance database
 
+For development purposes you can connect the backend to a snapshot of
+the database, instead of one of the deployed instances (production and
+staging). The easiest way is to create your own instance in the cloud,
+and then delete it when you are done.
+
+Once the instance is up, you can `pg_dump` it and run it locally if
+needed.
+
 List RDS snapshots to find the identifier of the snapshot want to restore
 
 ```bash

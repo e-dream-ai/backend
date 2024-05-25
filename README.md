@@ -78,7 +78,7 @@ docker compose -f "docker-compose.yml" up -d --build
 
 ### Database
 
-Database configurations to connect with a snapshot instance or locally [here](src/database/README.md).
+Database configurations to connect with a development instance or locally [here](src/database/README.md).
 
 ## Deployment process
 

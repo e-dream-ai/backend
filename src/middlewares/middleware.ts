@@ -2,15 +2,36 @@ import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { Namespace } from "socket.io/dist/namespace";
-import swaggerDocument from "constants/swagger.json";
+// import swaggerDocument from "constants/swagger.json";
 import authMiddleware from "middlewares/auth.middleware";
 import { socketAuthMiddleware } from "middlewares/socket.middleware";
 import env from "shared/env";
 import swaggerUi from "swagger-ui-express";
+import swaggerJSDoc from "swagger-jsdoc";
+
+const swaggerPath = "/api/v1/api-docs";
+
+const options: swaggerJSDoc.Options = {
+  definition: {
+    openapi: "3.1.0",
+    info: {
+      title: "edream api 1.0",
+      version: "1.0",
+      description: "This is the edream api specification.",
+    },
+    servers: [
+      {
+        url: "http://localhost:8080",
+      },
+    ],
+  },
+  apis: ["./src/routes/v1/*.routes.ts", "./src/routes/v1/router.ts"],
+};
+
+const swaggerSpec = swaggerJSDoc(options);
 
 export const registerMiddlewares = (app: express.Application) => {
   const version = env.npm_package_version;
-  const swaggerPath = "/api/v1/api-docs";
 
   const customHeaders = (req: Request, res: Response, next: NextFunction) => {
     app.disable("x-powered-by");
@@ -34,8 +55,11 @@ export const registerMiddlewares = (app: express.Application) => {
   app.use(authMiddleware);
 
   // swagger ui
-  app.use(swaggerPath, swaggerUi.serve);
-  app.get(swaggerPath, swaggerUi.setup(swaggerDocument));
+
+  // Serve Swagger UI
+  app.use(swaggerPath, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  // app.use(swaggerPath, swaggerUi.serve);
+  // app.get(swaggerPath, swaggerUi.setup(swaggerDocument));
 };
 
 export const socketRegisterMiddlewares = (namespace: Namespace) => {

@@ -1,4 +1,4 @@
-import { Playlist } from "entities";
+import { Playlist, PlaylistItem } from "entities";
 import {
   FindOptionsSelect,
   FindOptionsRelations,
@@ -39,15 +39,14 @@ export const getPlaylistSelectedColumns = ({
     id: true,
     name: true,
     thumbnail: true,
-    items: true,
-    playlistItems: true,
+    items: getPlaylistItemSelectedColumns(),
     created_at: true,
     updated_at: true,
     deleted_at: true,
     nsfw: true,
     featureRank,
     user: getUserSelectedColumns({ userEmail }),
-    displayedOwner: getUserSelectedColumns(),
+    displayedOwner: getUserSelectedColumns({ userEmail }),
   };
 };
 
@@ -67,6 +66,32 @@ export const getPlaylistFindOptionsRelations =
         },
         dreamItem: { user: true, displayedOwner: true },
       },
+    };
+  };
+
+export const getPlaylistItemSelectedColumns =
+  (): FindOptionsSelect<PlaylistItem> => {
+    return {
+      id: true,
+      order: true,
+      type: true,
+      dreamItem: {
+        id: true,
+        uuid: true,
+        name: true,
+        thumbnail: true,
+        user: getUserSelectedColumns(),
+        displayedOwner: getUserSelectedColumns(),
+      },
+      playlistItem: {
+        id: true,
+        name: true,
+        thumbnail: true,
+        user: getUserSelectedColumns(),
+        displayedOwner: getUserSelectedColumns(),
+      },
+      created_at: true,
+      updated_at: true,
     };
   };
 

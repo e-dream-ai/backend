@@ -42,12 +42,14 @@ aws rds restore-db-instance-from-db-snapshot \
  --publicly-accessible
 ```
 
-A full example for restoring a instance from a stage snapshot should be like this. Remember that the snapshot identifier `--db-snapshot-identifier` must exist, and there must not be a DB instance identifier `--db-instance-identifier` with the same name.
+Most commonly, to restore an instance from a stage snapshot should be
+like this. <SNAPSHOT_ID> should be an existing snapshot of stage, and
+<NEW_DB_INSTANCE_ID> should be an unused name to create.
 
 ```bash
 aws rds restore-db-instance-from-db-snapshot \
- --db-instance-identifier edream-snapshot-from-staging \
- --db-snapshot-identifier edream-db-staging-snapshot \
+ --db-instance-identifier <NEW_DB_INSTANCE_ID> \
+ --db-snapshot-identifier <SNAPSHOT_ID> \
  --db-instance-class db.t3.micro \
  --availability-zone us-east-1a \
  --db-subnet-group-name edream-db-subnet-group-staging \
@@ -55,7 +57,9 @@ aws rds restore-db-instance-from-db-snapshot \
  --publicly-accessible
 ```
 
-To connect backend to this database, copy your .env vars file from the environment you used to create the instance, and change only the database host value, with the new snapshot instance host url.
+To connect backend to this database, change only the database host
+value to the new instance endpoint (find it under the "Connectivity
+and Security" tab.
 
 ```bash
 TYPEORM_HOST=<DATABASE_HOST>

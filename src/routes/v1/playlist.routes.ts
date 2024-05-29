@@ -259,13 +259,6 @@ playlistRouter.put(
  *            schema:
  *              allOf:
  *                - $ref: '#/components/schemas/ApiResponse'
- *                - type: object
- *                  properties:
- *                    data:
- *                      type: object
- *                      properties:
- *                        playlist:
- *                          $ref: '#/components/schemas/Playlist'
  *      '400':
  *        description: Bad request
  *        content:

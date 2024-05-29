@@ -18,6 +18,51 @@ import {
 
 const dreamRouter = Router();
 
+/**
+ * @swagger
+ * /dream:
+ *   get:
+ *     tags:
+ *       - dream
+ *     summary: Gets dreams
+ *     description: Get dreams
+ *     parameters:
+ *       - schema:
+ *           type: number
+ *         name: take
+ *         in: query
+ *       - schema:
+ *           type: number
+ *         name: skip
+ *         in: query
+ *     responses:
+ *       '200':
+ *         description: Get dreams
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         dreams:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/Dream'
+ *                         count:
+ *                           type: number
+ *       '400':
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadApiResponse'
+ *     security:
+ *       - bearerAuth: []
+ */
 dreamRouter.get(
   "/",
   requireAuth,
@@ -46,6 +91,58 @@ dreamRouter.post(
   dreamController.handleConfirmPresignedPost,
 );
 
+/**
+ * @swagger
+ * /dream/create-multipart-upload:
+ *  post:
+ *    tags:
+ *      - dream
+ *    summary: Creates multipart upload
+ *    description: Creates multipart upload
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               extension:
+ *                 type: string
+ *               parts:
+ *                 type: number
+ *               nsfw:
+ *                 type: boolean
+ *    responses:
+ *      '200':
+ *        description: Creates multipart upload
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        uploadId:
+ *                          type: string
+ *                        urls:
+ *                          type: array
+ *                          items:
+ *                            type: string
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.post(
   "/create-multipart-upload",
   requireAuth,
@@ -54,6 +151,63 @@ dreamRouter.post(
   dreamController.handleCreateMultipartUpload,
 );
 
+/**
+ * @swagger
+ * /{uuid}/refresh-multipart-upload-url:
+ *  post:
+ *    tags:
+ *      - dream
+ *    summary: Refreshes multipart upload
+ *    description: Refreshes multipart upload
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               uploadId:
+ *                 type: string
+ *               extension:
+ *                 type: string
+ *               part:
+ *                 type: number
+ *    responses:
+ *      '200':
+ *        description: Refreshes multipart upload
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        uploadId:
+ *                          type: string
+ *                        urls:
+ *                          type: array
+ *                          items:
+ *                            type: string
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.post(
   "/:uuid/refresh-multipart-upload-url",
   requireAuth,
@@ -62,6 +216,64 @@ dreamRouter.post(
   dreamController.handleRefreshMultipartUploadUrl,
 );
 
+/**
+ * @swagger
+ * /{uuid}/complete-multipart-upload:
+ *  post:
+ *    tags:
+ *      - dream
+ *    summary: Refreshes multipart upload
+ *    description: Refreshes multipart upload
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *              uploadId:
+ *                type: string
+ *              parts:
+ *                type: array
+ *                items:
+ *                  type: object
+ *                  properties:
+ *                    ETag:
+ *                      type: string
+ *                    PartNumber:
+ *                      type: number
+ *              extension:
+ *                type: string
+ *    responses:
+ *      '200':
+ *        description: Refreshes multipart upload
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.post(
   "/:uuid/complete-multipart-upload",
   requireAuth,
@@ -70,6 +282,45 @@ dreamRouter.post(
   dreamController.handleCompleteMultipartUpload,
 );
 
+/**
+ * @swagger
+ * /{uuid}/abort-multipart-upload:
+ *  post:
+ *    tags:
+ *      - dream
+ *    summary: Aborts multipart upload
+ *    description: Aborts multipart upload
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *    responses:
+ *      '200':
+ *        description: Aborts multipart upload
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.post(
   "/:uuid/abort-multipart-upload",
   requireAuth,
@@ -78,6 +329,51 @@ dreamRouter.post(
   dreamController.handleAbortMultipartUpload,
 );
 
+/**
+ * @swagger
+ * /dream/my-dreams:
+ *  get:
+ *    tags:
+ *      - dream
+ *    summary: Gets user dreams
+ *    description: Handles get user dreams
+ *    parameters:
+ *      - schema:
+ *          type: number
+ *        name: take
+ *        in: query
+ *      - schema:
+ *          type: number
+ *        name: skip
+ *        in: query
+ *    responses:
+ *      '200':
+ *        description: Get user dreams
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dreams:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/Dream'
+ *                        count:
+ *                          type: number
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.get(
   "/my-dreams",
   requireAuth,
@@ -89,6 +385,45 @@ dreamRouter.get(
   dreamController.handleGetMyDreams,
 );
 
+/**
+ * @swagger
+ * /dream/{uuid}/vote:
+ *  get:
+ *    tags:
+ *      - dream
+ *    summary: Gets user dream vote
+ *    description: Gets user dream vote
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Gets user dream vote
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        vote:
+ *                          $ref: '#/components/schemas/Vote'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.get(
   "/:uuid/vote",
   requireAuth,
@@ -100,6 +435,251 @@ dreamRouter.get(
   dreamController.handleGetDreamVote,
 );
 
+/**
+ * @swagger
+ * /dream/{uuid}/process-dream:
+ *  put:
+ *    tags:
+ *      - dream
+ *    summary: Start process dream
+ *    description: Start process dream
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *    responses:
+ *      '200':
+ *        description: Start process dream
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+dreamRouter.post(
+  "/:uuid/process-dream",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  dreamController.handleProcessDream,
+);
+
+/**
+ * @swagger
+ * /dream/{uuid}/processing:
+ *  put:
+ *    tags:
+ *      - dream
+ *    summary: Set dream status to processing
+ *    description: Set dream status to processing
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *    responses:
+ *      '200':
+ *        description: Set dream status to processing
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+dreamRouter.post(
+  "/:uuid/status/processing",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  dreamController.handleSetDreamStatusProcessing,
+);
+
+/**
+ * @swagger
+ * /dream/{uuid}/processed:
+ *  put:
+ *    tags:
+ *      - dream
+ *    summary: Set dream status to processed
+ *    description: Set dream status to processed
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               processedVideoSize:
+ *                 type: number
+ *               processedVideoFrames:
+ *                 type: number
+ *               processedVideoFPS:
+ *                 type: number
+ *               activityLevel:
+ *                 type: number
+ *    responses:
+ *      '200':
+ *        description: Set dream status to processed
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+dreamRouter.post(
+  "/:uuid/status/processed",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  dreamController.handleSetDreamStatusProcessed,
+);
+
+/**
+ * @swagger
+ * /dream/{uuid}/failed:
+ *  put:
+ *    tags:
+ *      - dream
+ *    summary: Set dream status to failed
+ *    description: Set dream status to failed
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *    responses:
+ *      '200':
+ *        description: Set dream status to failed
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+dreamRouter.post(
+  "/:uuid/status/failed",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  dreamController.handleSetDreamStatusFailed,
+);
+
+/**
+ * @swagger
+ * /dream/{uuid}:
+ *  get:
+ *    tags:
+ *      - dream
+ *    summary: Gets dream
+ *    description: Get dream
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Get dream
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.get(
   "/:uuid",
   requireAuth,
@@ -111,34 +691,50 @@ dreamRouter.get(
   dreamController.handleGetDream,
 );
 
-dreamRouter.post(
-  "/:uuid/process-dream",
-  requireAuth,
-  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
-  dreamController.handleProcessDream,
-);
-
-dreamRouter.post(
-  "/:uuid/status/processing",
-  requireAuth,
-  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
-  dreamController.handleSetDreamStatusProcessing,
-);
-
-dreamRouter.post(
-  "/:uuid/status/processed",
-  requireAuth,
-  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
-  dreamController.handleSetDreamStatusProcessed,
-);
-
-dreamRouter.post(
-  "/:uuid/status/failed",
-  requireAuth,
-  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
-  dreamController.handleSetDreamStatusFailed,
-);
-
+/**
+ * @swagger
+ * /dream/{uuid}:
+ *  put:
+ *    tags:
+ *      - dream
+ *    summary: Update dream
+ *    description: Update dreams
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *          schema:
+ *            $ref: '#/components/schemas/Dream'
+ *    responses:
+ *      '200':
+ *        description: Create dreams
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.put(
   "/:uuid",
   requireAuth,
@@ -151,6 +747,54 @@ dreamRouter.put(
   dreamController.handleUpdateDream,
 );
 
+/**
+ * @swagger
+ *  /dream/{uuid}/thumbnail:
+ *   put:
+ *     tags:
+ *       - dream
+ *     summary: Update thumbnail file
+ *     description: Update thumbnail file
+ *     parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       '200':
+ *         description: Dream updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         dream:
+ *                           $ref: '#/components/schemas/Dream'
+ *       '400':
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadApiResponse'
+ *     security:
+ *       - bearerAuth: []
+ */
 dreamRouter.put(
   "/:uuid/thumbnail",
   requireAuth,
@@ -163,6 +807,38 @@ dreamRouter.put(
   dreamController.handleUpdateThumbnailDream,
 );
 
+/**
+ * @swagger
+ * /dream/{uuid}:
+ *  delete:
+ *    tags:
+ *      - dream
+ *    summary: Deletes dream
+ *    description: Deletes dream
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Deletes dream
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.delete(
   "/:uuid",
   requireAuth,
@@ -174,6 +850,45 @@ dreamRouter.delete(
   dreamController.handleDeleteDream,
 );
 
+/**
+ * @swagger
+ * /dream/{uuid}/upvote:
+ *  put:
+ *    tags:
+ *      - dream
+ *    summary: Updates dream to upvote
+ *    description: Updates dream upvote
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Updates dream upvote
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.put(
   "/:uuid/upvote",
   requireAuth,
@@ -185,6 +900,45 @@ dreamRouter.put(
   dreamController.handleUpvoteDream,
 );
 
+/**
+ * @swagger
+ * /dream/{uuid}/downvote:
+ *  put:
+ *    tags:
+ *      - dream
+ *    summary: Updates dream to downvote
+ *    description: Updates dream to downvote
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Updates dream to downvote
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.put(
   "/:uuid/downvote",
   requireAuth,
@@ -196,6 +950,45 @@ dreamRouter.put(
   dreamController.handleDownvoteDream,
 );
 
+/**
+ * @swagger
+ * /dream/{uuid}/unvote:
+ *  put:
+ *    tags:
+ *      - dream
+ *    summary: Updates dream to unvote
+ *    description: Updates dream to unvote
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Updates dream to unvote
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 dreamRouter.put(
   "/:uuid/unvote",
   requireAuth,

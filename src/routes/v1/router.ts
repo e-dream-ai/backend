@@ -13,7 +13,247 @@ import { jsonResponse } from "utils/responses.util";
 export const registerRoutes = (app: express.Application) => {
   const version = env.npm_package_version;
 
-  // main route
+  /**
+   * @swagger
+   * components:
+   *   schemas:
+   *     Token:
+   *       type: object
+   *       properties:
+   *         AccessToken:
+   *           type: string
+   *         ExpiresIn:
+   *           type: integer
+   *           default: 3600
+   *         IdToken:
+   *           type: string
+   *         RefreshToken:
+   *           type: string
+   *         TokenType:
+   *           type: string
+   *           default: bearer
+   *       xml:
+   *         name: customer
+   *     ApiResponse:
+   *       type: object
+   *       properties:
+   *         success:
+   *           type: boolean
+   *           example: true
+   *         message:
+   *           type: string
+   *         data:
+   *           type: object
+   *     BadApiResponse:
+   *       type: object
+   *       properties:
+   *         success:
+   *           type: boolean
+   *           example: false
+   *         message:
+   *           type: string
+   *         data:
+   *           type: object
+   *     Role:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: string
+   *         name:
+   *           type: string
+   *           enum:
+   *            - admin
+   *            - user
+   *            - creator
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *     User:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: string
+   *         cognitoId:
+   *           type: string
+   *         name:
+   *           type: string
+   *         email:
+   *           type: string
+   *           format: email
+   *         description:
+   *           type: string
+   *         nsfw:
+   *           type: boolean
+   *         role:
+   *           $ref: '#/components/schemas/Role'
+   *         currentDream:
+   *           $ref: '#/components/schemas/Dream'
+   *         currentPlaylist:
+   *           $ref: '#/components/schemas/Playlist'
+   *     UserWithToken:
+   *       allOf:
+   *         - $ref: '#/components/schemas/User'
+   *         - type: object
+   *           properties:
+   *             token:
+   *               $ref: '#/components/schemas/Token'
+   *     Dream:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         uuid:
+   *           type: string
+   *         name:
+   *           type: string
+   *         video:
+   *           type: string
+   *         original_video:
+   *           type: string
+   *         thumbnail:
+   *           type: string
+   *         status:
+   *           type: string
+   *           enum:
+   *            - none
+   *            - queue
+   *            - processing
+   *            - failed
+   *            - processed
+   *         processedVideoSize:
+   *           type: number
+   *         processedVideoFrames:
+   *           type: number
+   *         processedVideoFPS:
+   *           type: number
+   *         featureRank:
+   *           type: number
+   *         upvotes:
+   *           type: number
+   *         downvotes:
+   *           type: number
+   *         activityLevel:
+   *           type: number
+   *         nsfw:
+   *           type: boolean
+   *         frontendUrl:
+   *           type: string
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *         user:
+   *           $ref: '#/components/schemas/User'
+   *         displayedOwner:
+   *           $ref: '#/components/schemas/User'
+   *     Playlist:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         uuid:
+   *           type: string
+   *         name:
+   *           type: string
+   *         thumbnail:
+   *           type: string
+   *         featureRank:
+   *           type: number
+   *         nsfw:
+   *           type: boolean
+   *         items:
+   *           type: array
+   *           $ref: '#/components/schemas/PlaylistItem'
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *         user:
+   *           $ref: '#/components/schemas/User'
+   *         displayedOwner:
+   *           $ref: '#/components/schemas/User'
+   *     PlaylistItem:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         type:
+   *           type: string
+   *           enum:
+   *            - none
+   *            - dream
+   *            - playlist
+   *         dreamItem:
+   *           $ref: '#/components/schemas/Dream'
+   *         playlistItem:
+   *           $ref: '#/components/schemas/Playlist'
+   *         order:
+   *           type: number
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *     FeedItem:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         type:
+   *           type: string
+   *           enum:
+   *            - none
+   *            - dream
+   *            - playlist
+   *         dreamItem:
+   *           $ref: '#/components/schemas/Dream'
+   *         playlistItem:
+   *           $ref: '#/components/schemas/Playlist'
+   *         order:
+   *           type: number
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *         user:
+   *           $ref: '#/components/schemas/User'
+   *     Vote:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         type:
+   *           type: string
+   *           enum:
+   *            - none
+   *            - upvote
+   *            - downvote
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *         user:
+   *           $ref: '#/components/schemas/User'
+   *   requestBodies: {}
+   *   securitySchemes:
+   *     bearerAuth:
+   *       type: http
+   *       scheme: bearer
+   *       bearerFormat: jwt
+   */
+
   app.get(["/", "/api/v1"], (req: Request, res: Response) => {
     res.status(httpStatus.OK).send({
       message: `e-dream.ai is running api at version ${version}`,

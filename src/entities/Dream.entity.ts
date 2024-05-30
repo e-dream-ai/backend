@@ -102,7 +102,7 @@ export class Dream {
 
   @OneToMany(() => Vote, (vote) => vote.dream)
   @JoinColumn()
-  votes: Vote;
+  votes: Vote[];
 
   @Column({ default: 0, type: "integer" })
   upvotes: number;

@@ -8,6 +8,7 @@ import dreamRouter from "routes/v1/dream.routes";
 import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
 import userRouter from "routes/v1/user.routes";
+import inviteRouter from "routes/v1/invite.routes";
 import { jsonResponse } from "utils/responses.util";
 
 export const registerRoutes = (app: express.Application) => {
@@ -274,6 +275,9 @@ export const registerRoutes = (app: express.Application) => {
 
   // register playlist router
   app.use("/api/v1/feed", feedRouter);
+
+  // register playlist router
+  app.use("/api/v1/invite", inviteRouter);
 
   app.all("*", (req, res) => {
     res.status(httpStatus.NOT_FOUND);

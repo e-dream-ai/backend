@@ -13,6 +13,7 @@ import { Dream } from "./Dream.entity";
 import { Playlist } from "./Playlist.entity";
 import { Role } from "./Role.entity";
 import { Vote } from "./Vote.entity";
+import { Invite } from "./Invite.entity";
 
 @Entity()
 export class User {
@@ -40,7 +41,7 @@ export class User {
   @OneToMany(() => Vote, (vote) => vote.user, {
     cascade: ["soft-remove"],
   })
-  votes: Vote;
+  votes: Vote[];
 
   @OneToMany(() => Playlist, (playlist) => playlist.user)
   playlists: Playlist[];
@@ -74,6 +75,13 @@ export class User {
     default: false,
   })
   nsfw: boolean;
+
+  /**
+   * signup invite
+   */
+  @ManyToOne(() => Invite, { nullable: true })
+  @JoinColumn()
+  signupInvite?: Invite | null;
 
   @CreateDateColumn()
   created_at: Date;

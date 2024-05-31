@@ -1,5 +1,6 @@
 import {
   AWS_COGNITO_APP_CLIENT_ID,
+  AWS_COGNITO_USER_POOL_ID,
   cognitoIdentityProviderClient,
 } from "clients/cognito.client";
 import {
@@ -22,7 +23,6 @@ import {
   UserVerifyCredentials,
 } from "types/auth.types";
 import { jsonResponse } from "utils/responses.util";
-
 import {
   AuthFlowType,
   ChangePasswordCommand,
@@ -35,6 +35,7 @@ import {
   RespondToAuthChallengeCommand,
   RevokeTokenCommand,
   SignUpCommand,
+  AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
 import { ROLES } from "constants/role.constants";
@@ -45,6 +46,14 @@ import type { Response } from "express";
 import { APP_LOGGER } from "shared/logger";
 import type { RequestType, ResponseType } from "types/express.types";
 import { getErrorMessage } from "utils/aws/auth-errors";
+import { CognitoIPSExceptions } from "constants/aws/erros.constant";
+import { validateAndUseCode } from "utils/invite.util";
+
+/**
+ * Repositories
+ */
+const roleRepository = appDataSource.getRepository(Role);
+const userRepository = appDataSource.getRepository(User);
 
 export const handleLoginWithCode = async (
   req: RequestType<UserLoginWithCodeCredentials>,
@@ -133,7 +142,41 @@ export const handleSignUp = async (
   res: Response,
 ) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, code } = req.body;
+
+    const getUserCommand = new AdminGetUserCommand({
+      UserPoolId: AWS_COGNITO_USER_POOL_ID,
+      Username: email,
+    });
+
+    try {
+      await cognitoIdentityProviderClient.send(getUserCommand);
+
+      // Handle user already exists
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message: AUTH_MESSAGES.USER_ALREADY_EXISTS,
+        }),
+      );
+    } catch (error) {
+      const awsError = error as CognitoIdentityProviderServiceException;
+      if (awsError.name !== CognitoIPSExceptions.USER_NOT_FOUND_EXCEPTION) {
+        throw error; // Unexpected error, rethrow
+      }
+      // User does not exist, continue to sign up
+    }
+
+    const invite = await validateAndUseCode(code!);
+
+    if (!invite) {
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message: AUTH_MESSAGES.INVALID_INVITE,
+        }),
+      );
+    }
 
     const command = new SignUpCommand({
       ClientId: AWS_COGNITO_APP_CLIENT_ID,
@@ -144,14 +187,13 @@ export const handleSignUp = async (
 
     const cognitoResponse = await cognitoIdentityProviderClient.send(command);
 
-    const roleRepository = appDataSource.getRepository(Role);
     const role = await roleRepository.findOneBy({ name: ROLES.USER_GROUP });
-    const userRepository = appDataSource.getRepository(User);
 
     const user = new User();
     user.role = role!;
     user.cognitoId = cognitoResponse.UserSub!;
     user.email = email!;
+    user.signupInvite = invite;
     await userRepository.save(user);
 
     return res.status(httpStatus.OK).json(
@@ -244,7 +286,6 @@ export const handleLogin = async (
     const accessToken = commandResponse.AuthenticationResult?.AccessToken;
     const cognitoUser = await fetchCognitoUser(accessToken!);
 
-    const userRepository = appDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { cognitoId: cognitoUser.id },
       relations: { role: true },
@@ -301,7 +342,6 @@ export const fetchCognitoUser = async (accessToken: string) => {
  *
  */
 export const fetchUser = async (username: string) => {
-  const userRepository = appDataSource.getRepository(User);
   const user = await userRepository.findOne({
     where: { cognitoId: username },
     relations: { role: true, currentPlaylist: true, currentDream: true },

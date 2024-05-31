@@ -126,7 +126,7 @@ authRouter.post(
  *                 format: password
  *     responses:
  *       '200':
- *         description: User crated successfully
+ *         description: User created successfully
  *         content:
  *           application/json:
  *             schema:

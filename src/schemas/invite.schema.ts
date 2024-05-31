@@ -15,6 +15,7 @@ export const inviteQuerySchema = {
 export const createInviteSchema = {
   body: Joi.object<CreateInviteRequest>().keys({
     size: Joi.number(),
+    codeLength: Joi.number(),
     email: Joi.string().email(),
   }),
 };

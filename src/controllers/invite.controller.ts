@@ -4,10 +4,7 @@ import { Invite } from "entities";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
 import { CreateInviteRequest, GetInvitesQuery } from "types/invite.types";
-import {
-  generateRandomCode,
-  getInviteSelectedColumns,
-} from "utils/invite.util";
+import { generateInvite, getInviteSelectedColumns } from "utils/invite.util";
 import {
   jsonResponse,
   handleInternalServerError,
@@ -72,14 +69,12 @@ export const handleCreateInvite = async (
   req: RequestType<CreateInviteRequest>,
   res: ResponseType,
 ) => {
-  //   const { email } = req.body;
+  // email to which the invitation will be sent
+  const { size, codeLength } = req.body;
 
   try {
     // create invite
-    const invite = new Invite();
-    invite.code = generateRandomCode();
-    invite.size = 1;
-    const createdInvite = await inviteRepository.save(invite);
+    const createdInvite = await generateInvite({ size, codeLength });
 
     return res
       .status(httpStatus.CREATED)

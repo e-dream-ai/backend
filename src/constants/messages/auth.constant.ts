@@ -1,6 +1,6 @@
 export const AUTH_MESSAGES = {
   USER_NOT_FOUND: "User not found.",
-  USER_CREATED: "User crated successfully.",
+  USER_CREATED: "User created successfully.",
   USER_VERIFIED: "User verified successfully.",
   USER_LOGGED_IN: "User logged in successfully.",
   USER_LOGGED_OUT: "User logged out successfully.",
@@ -10,6 +10,7 @@ export const AUTH_MESSAGES = {
     "User is not confirmed, check your email to verify account.",
   INVALID_PARAMETERS: "Invalid parameters provided.",
   INVALID_CREDENTIALS: "Invalid credentials provided.",
+  INVALID_INVITE: "Invalid invite code.",
   INVALID_TOKEN: "Invalid token.",
   EXPIRED_TOKEN: "Expired token.",
   JWT_ERROR: "JWT error.",

@@ -247,6 +247,21 @@ export const registerRoutes = (app: express.Application) => {
    *           format: date
    *         user:
    *           $ref: '#/components/schemas/User'
+   *     Invite:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         code:
+   *           type: string
+   *         size:
+   *           type: number
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
    *   requestBodies: {}
    *   securitySchemes:
    *     bearerAuth:

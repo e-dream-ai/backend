@@ -11,9 +11,9 @@ export type JwtPayloadType = JwtPayload & {
 };
 
 export type UserSignUpCredentials = {
-  username: string;
   email: string;
   password: string;
+  code: string;
 };
 
 export type UserVerifyCredentials = {
@@ -21,7 +21,10 @@ export type UserVerifyCredentials = {
   code: string;
 };
 
-export type UserLoginCredentials = Omit<UserSignUpCredentials, "email">;
+export type UserLoginCredentials = {
+  username: string;
+  password: string;
+};
 
 export type UserChangePasswordCredentials = {
   previousPassword: string;

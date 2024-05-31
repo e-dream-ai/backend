@@ -12,6 +12,51 @@ import {
 
 const inviteRouter = Router();
 
+/**
+ * @swagger
+ * /invite:
+ *  get:
+ *    tags:
+ *      - invite
+ *    summary: Gets invites
+ *    description: Handles get invites
+ *    parameters:
+ *      - schema:
+ *          type: number
+ *        name: take
+ *        in: query
+ *      - schema:
+ *          type: number
+ *        name: skip
+ *        in: query
+ *    responses:
+ *      '200':
+ *        description: Get invites
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        invites:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/Invite'
+ *                        count:
+ *                          type: number
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 inviteRouter.get(
   "/",
   requireAuth,
@@ -20,6 +65,50 @@ inviteRouter.get(
   inviteController.handleGetInvites,
 );
 
+/**
+ * @swagger
+ * /invite:
+ *  post:
+ *    tags:
+ *      - invite
+ *    summary: Creates invite
+ *    description: Creates invite
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               size:
+ *                 type: number
+ *               codeLength:
+ *                 type: number
+ *               email:
+ *                 type: string
+ *    responses:
+ *      '200':
+ *        description: Creates invite
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        invite:
+ *                          $ref: '#/components/schemas/Invite'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 inviteRouter.post(
   "/",
   requireAuth,
@@ -28,6 +117,48 @@ inviteRouter.post(
   inviteController.handleCreateInvite,
 );
 
+/**
+ * @swagger
+ * /invite/{id}/invalidate:
+ *  put:
+ *    tags:
+ *      - invite
+ *    summary: Invalidates invite
+ *    description: Invalidates invite
+ *    parameters:
+ *      - name: id
+ *        in: query
+ *        description: invite id
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *    responses:
+ *      '200':
+ *        description: Invalidates invite
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        invite:
+ *                          $ref: '#/components/schemas/Invite'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
 inviteRouter.put(
   "/:id/invalidate",
   requireAuth,

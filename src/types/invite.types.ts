@@ -6,6 +6,7 @@ export type GetInvitesQuery = {
 export type CreateInviteRequest = {
   email?: string;
   size?: number;
+  codeLength?: number;
 };
 
 export type InvalidateInviteQuery = {

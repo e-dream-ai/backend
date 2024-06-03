@@ -54,6 +54,33 @@ export const generateInvite = async ({
 };
 
 /**
+ * generates a invite
+ * @param code
+ * @param size
+ * @returns generated invite, return undefined if invite with that code already exists
+ */
+export const createInviteFromCode = async ({
+  code,
+  size = 1,
+}: {
+  code: string;
+  size?: number;
+}): Promise<Invite | undefined> => {
+  const foundInvite = await inviteRepository.findOne({ where: { code } });
+
+  if (foundInvite) {
+    return undefined;
+  }
+
+  const invite = new Invite();
+  invite.code = code;
+  invite.size = size;
+  const createdInvite = await inviteRepository.save(invite);
+
+  return createdInvite;
+};
+
+/**
  *
  * @param code
  * @returns

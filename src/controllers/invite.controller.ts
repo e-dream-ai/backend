@@ -1,10 +1,15 @@
+import { INVITE_MESSAGES } from "constants/messages/invite.constant";
 import { PAGINATION } from "constants/pagination.constants";
 import appDataSource from "database/app-data-source";
 import { Invite } from "entities";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
 import { CreateInviteRequest, GetInvitesQuery } from "types/invite.types";
-import { generateInvite, getInviteSelectedColumns } from "utils/invite.util";
+import {
+  createInviteFromCode,
+  generateInvite,
+  getInviteSelectedColumns,
+} from "utils/invite.util";
 import {
   jsonResponse,
   handleInternalServerError,
@@ -70,10 +75,28 @@ export const handleCreateInvite = async (
   res: ResponseType,
 ) => {
   // email to which the invitation will be sent
-  const { size, codeLength } = req.body;
+  const { size, codeLength, code } = req.body;
 
   try {
     // create invite
+    if (code) {
+      const inviteFromCode = await createInviteFromCode({ code, size });
+
+      if (!inviteFromCode) {
+        return res.status(httpStatus.BAD_REQUEST).json(
+          jsonResponse({
+            success: false,
+            message: INVITE_MESSAGES.CODE_ALREADY_EXISTS,
+          }),
+        );
+      } else {
+        return res
+          .status(httpStatus.CREATED)
+          .json(
+            jsonResponse({ success: true, data: { invite: inviteFromCode } }),
+          );
+      }
+    }
     const createdInvite = await generateInvite({ size, codeLength });
 
     return res

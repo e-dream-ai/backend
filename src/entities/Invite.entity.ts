@@ -1,4 +1,5 @@
 import {
+  AfterLoad,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -9,6 +10,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "./User.entity";
+import env from "shared/env";
 
 @Entity()
 export class Invite {
@@ -25,6 +27,9 @@ export class Invite {
   @JoinColumn()
   users: User[];
 
+  // computed signup url field
+  signupUrl: string;
+
   @CreateDateColumn()
   created_at: Date;
 
@@ -33,4 +38,9 @@ export class Invite {
 
   @DeleteDateColumn()
   deleted_at: Date;
+
+  @AfterLoad()
+  computeSignupUrl() {
+    this.signupUrl = `${env.FRONTEND_URL}/signup?invite=${this.code}`;
+  }
 }

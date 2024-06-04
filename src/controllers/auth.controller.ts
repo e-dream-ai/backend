@@ -190,11 +190,10 @@ export const handleSignUp = async (
     const role = await roleRepository.findOneBy({ name: ROLES.USER_GROUP });
 
     const user = new User();
-    user.role = role!;
     user.cognitoId = cognitoResponse.UserSub!;
     user.email = email!;
     user.signupInvite = invite;
-    user.role = invite.signupRole!;
+    user.role = invite.signupRole! ?? role;
     await userRepository.save(user);
 
     return res.status(httpStatus.OK).json(

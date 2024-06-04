@@ -14,9 +14,14 @@ export const inviteQuerySchema = {
 
 export const createInviteSchema = {
   body: Joi.object<CreateInviteRequest>().keys({
-    code: Joi.string(),
-    size: Joi.number(),
-    codeLength: Joi.number(),
+    code: Joi.string()
+      .pattern(/^[ABCDEFGHJKLMNPQRSTUVWXYZ0123456789]*$/)
+      .messages({
+        "string.pattern.base":
+          "Code should contain A-Z and 0-9 (excluding I and O)",
+      }),
+    size: Joi.number().integer().positive().greater(0),
+    codeLength: Joi.number().integer().positive().greater(0),
     emails: Joi.array().items(Joi.string().email()),
     roleId: Joi.number().required(),
   }),

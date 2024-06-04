@@ -1,4 +1,5 @@
 import {
+  AfterInsert,
   AfterLoad,
   Column,
   CreateDateColumn,
@@ -47,6 +48,7 @@ export class Invite {
   @DeleteDateColumn()
   deleted_at: Date;
 
+  @AfterInsert()
   @AfterLoad()
   computeSignupUrl() {
     this.signupUrl = `${env.FRONTEND_URL}/signup?invite=${this.code}`;

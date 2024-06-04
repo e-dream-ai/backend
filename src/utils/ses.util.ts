@@ -13,12 +13,12 @@ import { APP_LOGGER } from "shared/logger";
  */
 export const sendEmail = async ({
   toAddresses,
-  body,
+  bodyHtml,
   subject,
   fromAddress,
 }: {
   toAddresses: string[];
-  body: string;
+  bodyHtml: string;
   subject: string;
   fromAddress: string;
 }) => {
@@ -28,9 +28,9 @@ export const sendEmail = async ({
     },
     Message: {
       Body: {
-        Text: {
+        Html: {
           Charset: "UTF-8",
-          Data: body,
+          Data: bodyHtml,
         },
       },
       Subject: {

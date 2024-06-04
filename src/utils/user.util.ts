@@ -32,7 +32,12 @@ export const getUserSelectedColumns = ({
 };
 
 export const getUserFindOptionsRelations = (): FindOptionsRelations<User> => {
-  return { role: true, currentDream: true, currentPlaylist: true };
+  return {
+    role: true,
+    currentDream: true,
+    currentPlaylist: true,
+    signupInvite: true,
+  };
 };
 
 /**

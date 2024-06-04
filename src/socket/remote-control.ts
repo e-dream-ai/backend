@@ -107,9 +107,6 @@ export const remoteControlEventListener = (
      */
     if (event === REMOTE_CONTROLS.LIKE_CURRENT_DREAM) {
       const dream = user?.currentDream;
-
-      console.log({ dream });
-
       if (!dream) {
         socket.emit(GENERAL_MESSAGES.ERROR, {
           error: GENERAL_MESSAGES.NOT_FOUND,

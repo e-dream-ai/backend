@@ -140,7 +140,7 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
       return handleNotFound(req, res);
     }
 
-    const isAllowedViewEmail = canExecuteAction({
+    const isAllowedView = canExecuteAction({
       isOwner: user?.id === foundUser?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
@@ -151,7 +151,8 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
      */
     const responseUser = {
       ...foundUser,
-      email: isAllowedViewEmail ? foundUser.email : undefined,
+      email: isAllowedView ? foundUser.email : undefined,
+      signupInvite: isAllowedView ? foundUser.signupInvite : undefined,
     };
 
     return res.status(httpStatus.OK).json(

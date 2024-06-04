@@ -5,12 +5,14 @@ import {
   DeleteDateColumn,
   Entity,
   JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "./User.entity";
 import env from "shared/env";
+import { Role } from "./Role.entity";
 
 @Entity()
 export class Invite {
@@ -24,8 +26,14 @@ export class Invite {
   size: number;
 
   @OneToMany(() => User, (user) => user)
-  @JoinColumn()
   users: User[];
+
+  /**
+   * signup role
+   */
+  @ManyToOne(() => Role, { nullable: true })
+  @JoinColumn()
+  signupRole?: Role | null;
 
   // computed signup url field
   signupUrl: string;

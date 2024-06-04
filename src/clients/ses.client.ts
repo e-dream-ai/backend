@@ -1,8 +1,8 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { SESClient } from "@aws-sdk/client-ses";
 
 import env from "shared/env";
 
-export const s3Client: S3Client = new S3Client({
+export const sesClient: SESClient = new SESClient({
   region: env.AWS_REGION,
   credentials: {
     accessKeyId: env.AWS_ACCESS_KEY_ID,

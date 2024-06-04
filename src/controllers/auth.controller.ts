@@ -194,6 +194,7 @@ export const handleSignUp = async (
     user.cognitoId = cognitoResponse.UserSub!;
     user.email = email!;
     user.signupInvite = invite;
+    user.role = invite.signupRole!;
     await userRepository.save(user);
 
     return res.status(httpStatus.OK).json(

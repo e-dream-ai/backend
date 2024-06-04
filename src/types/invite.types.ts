@@ -8,6 +8,7 @@ export type CreateInviteRequest = {
   code?: string;
   size?: number;
   codeLength?: number;
+  roleId: number;
 };
 
 export type InvalidateInviteQuery = {

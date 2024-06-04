@@ -2,6 +2,7 @@ import { INVITE_MESSAGES } from "constants/messages/invite.constant";
 import { PAGINATION } from "constants/pagination.constants";
 import appDataSource from "database/app-data-source";
 import { Invite } from "entities";
+import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
 import { CreateInviteRequest, GetInvitesQuery } from "types/invite.types";
@@ -9,6 +10,7 @@ import {
   createInviteFromCode,
   generateInvite,
   getInviteSelectedColumns,
+  sendInviteEmail,
 } from "utils/invite.util";
 import {
   jsonResponse,
@@ -20,6 +22,7 @@ import {
  * Repositories
  */
 const inviteRepository = appDataSource.getRepository(Invite);
+const roleRepository = appDataSource.getRepository(Role);
 
 /**
  * Handles get invites
@@ -75,12 +78,26 @@ export const handleCreateInvite = async (
   res: ResponseType,
 ) => {
   // email to which the invitation will be sent
-  const { size, codeLength, code } = req.body;
+  const { size, codeLength, code, roleId, emails } = req.body;
 
   try {
     // create invite
+    const signupRole = await roleRepository.findOne({
+      where: {
+        id: roleId,
+      },
+    });
+
+    if (!signupRole) {
+      return handleNotFound(req, res);
+    }
+
     if (code) {
-      const inviteFromCode = await createInviteFromCode({ code, size });
+      const inviteFromCode = await createInviteFromCode({
+        signupRole,
+        code,
+        size,
+      });
 
       if (!inviteFromCode) {
         return res.status(httpStatus.BAD_REQUEST).json(
@@ -90,6 +107,10 @@ export const handleCreateInvite = async (
           }),
         );
       } else {
+        await sendInviteEmail({
+          invite: inviteFromCode,
+          emails: emails as string[],
+        });
         return res
           .status(httpStatus.CREATED)
           .json(
@@ -97,7 +118,16 @@ export const handleCreateInvite = async (
           );
       }
     }
-    const createdInvite = await generateInvite({ size, codeLength });
+    const createdInvite = await generateInvite({
+      signupRole,
+      size,
+      codeLength,
+    });
+
+    await sendInviteEmail({
+      invite: createdInvite,
+      emails: emails as string[],
+    });
 
     return res
       .status(httpStatus.CREATED)

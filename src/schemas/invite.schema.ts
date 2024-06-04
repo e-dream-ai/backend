@@ -18,6 +18,7 @@ export const createInviteSchema = {
     size: Joi.number(),
     codeLength: Joi.number(),
     emails: Joi.array().items(Joi.string().email()),
+    roleId: Joi.number().required(),
   }),
 };
 

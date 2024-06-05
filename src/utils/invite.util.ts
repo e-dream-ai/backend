@@ -1,10 +1,16 @@
 import appDataSource from "database/app-data-source";
 import { Invite } from "entities";
 import { Role } from "entities/Role.entity";
-import { EntityManager, FindOptionsSelect } from "typeorm";
+import {
+  EntityManager,
+  FindOptionsRelations,
+  FindOptionsSelect,
+} from "typeorm";
 import { sendEmail } from "./ses.util";
 import { ROLES } from "constants/role.constants";
 import env from "shared/env";
+
+const DEFAULT_CODE_LENGTH = 4;
 
 /**
  * Repositories
@@ -35,7 +41,7 @@ export const generateInvite = async ({
   /**
    * default code lenght
    */
-  codeLength = 4,
+  codeLength = DEFAULT_CODE_LENGTH,
 }: {
   signupRole: Role;
   size?: number;
@@ -148,6 +154,17 @@ export const getInviteSelectedColumns = (): FindOptionsSelect<Invite> => {
     updated_at: true,
   };
 };
+
+/**
+ *
+ * @returns invite find options relations
+ */
+export const getInviteFindOptionsRelations =
+  (): FindOptionsRelations<Invite> => {
+    return {
+      signupRole: true,
+    };
+  };
 
 /**
  *

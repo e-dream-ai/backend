@@ -22,7 +22,7 @@ export const createInviteSchema = {
       }),
     size: Joi.number().integer().positive().greater(0),
     codeLength: Joi.number().integer().positive().greater(0),
-    emails: Joi.array().items(Joi.string().email()),
+    email: Joi.string().email(),
     roleId: Joi.number().required(),
   }),
 };

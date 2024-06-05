@@ -9,6 +9,7 @@ import { CreateInviteRequest, GetInvitesQuery } from "types/invite.types";
 import {
   createInviteFromCode,
   generateInvite,
+  getInviteFindOptionsRelations,
   getInviteSelectedColumns,
   sendInviteEmail,
 } from "utils/invite.util";
@@ -48,6 +49,7 @@ export const handleGetInvites = async (
 
     const [invites, count] = await inviteRepository.findAndCount({
       select: getInviteSelectedColumns(),
+      relations: getInviteFindOptionsRelations(),
       order: { size: "DESC" },
       take,
       skip,
@@ -78,7 +80,7 @@ export const handleCreateInvite = async (
   res: ResponseType,
 ) => {
   // email to which the invitation will be sent
-  const { size, codeLength, code, roleId, emails } = req.body;
+  const { size, codeLength, code, roleId, email } = req.body;
 
   try {
     // create invite
@@ -109,7 +111,7 @@ export const handleCreateInvite = async (
       } else {
         await sendInviteEmail({
           invite: inviteFromCode,
-          emails: emails as string[],
+          emails: email ? [email] : undefined,
         });
         return res
           .status(httpStatus.CREATED)
@@ -126,7 +128,7 @@ export const handleCreateInvite = async (
 
     await sendInviteEmail({
       invite: createdInvite,
-      emails: emails as string[],
+      emails: email ? [email] : undefined,
     });
 
     return res

@@ -173,16 +173,16 @@ export const getInviteFindOptionsRelations =
  */
 export const sendInviteEmail = async ({
   invite,
-  emails,
+  email,
 }: {
   invite: Invite;
-  emails?: string[];
+  email?: string;
 }): Promise<void> => {
-  if (!emails) {
+  if (!email) {
     return;
   }
 
-  const codeLink = `<a href="${invite.signupUrl}" target="_blank"><b>${invite.code}</b></a>`;
+  const codeLink = `<a href="${invite.signupUrl}&email=${email}" target="_blank"><b>${invite.code}</b></a>`;
 
   const INVITE_SUBJECT = "e-dream private alpha invitation";
   const USER_BODY = `
@@ -208,7 +208,7 @@ export const sendInviteEmail = async ({
     invite.signupRole?.name === ROLES.CREATOR_GROUP ? CREATOR_BODY : USER_BODY;
 
   await sendEmail({
-    toAddresses: emails,
+    toAddresses: [email],
     subject: INVITE_SUBJECT,
     bodyHtml: body,
     fromAddress: env.AWS_SES_EMAIL_IDENTITY,

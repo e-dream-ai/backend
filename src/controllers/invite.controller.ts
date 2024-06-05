@@ -111,7 +111,7 @@ export const handleCreateInvite = async (
       } else {
         await sendInviteEmail({
           invite: inviteFromCode,
-          emails: email ? [email] : undefined,
+          email,
         });
         return res
           .status(httpStatus.CREATED)
@@ -128,7 +128,7 @@ export const handleCreateInvite = async (
 
     await sendInviteEmail({
       invite: createdInvite,
-      emails: email ? [email] : undefined,
+      email,
     });
 
     return res

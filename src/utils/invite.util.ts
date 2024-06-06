@@ -182,7 +182,12 @@ export const sendInviteEmail = async ({
     return;
   }
 
-  const codeLink = `<a href="${invite.signupUrl}&email=${email}" target="_blank"><b>${invite.code}</b></a>`;
+  const searchParams = new URLSearchParams();
+  searchParams.append("email", email);
+
+  const codeLink = `<a href="${
+    invite.signupUrl
+  }&${searchParams.toString()}" target="_blank"><b>${invite.code}</b></a>`;
 
   const INVITE_SUBJECT = "e-dream private alpha invitation";
   const USER_BODY = `

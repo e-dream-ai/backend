@@ -51,6 +51,8 @@ export class Invite {
   @AfterInsert()
   @AfterLoad()
   computeSignupUrl() {
-    this.signupUrl = `${env.FRONTEND_URL}/signup?invite=${this.code}`;
+    const searchParams = new URLSearchParams();
+    searchParams.append("invite", this.code);
+    this.signupUrl = `${env.FRONTEND_URL}/signup?${searchParams.toString()}`;
   }
 }

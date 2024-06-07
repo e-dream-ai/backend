@@ -135,7 +135,7 @@ export const handleCreatePlaylist = async (
 };
 
 /**
- * Handles create playlist
+ * Handles update playlist
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object

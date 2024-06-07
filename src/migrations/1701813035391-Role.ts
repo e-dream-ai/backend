@@ -25,6 +25,12 @@ export class Role1701813035391 implements MigrationInterface {
         name: ROLES.USER_GROUP,
       }),
     );
+
+    await queryRunner.manager.save(
+      queryRunner.manager.create<Role>(Role, {
+        name: ROLES.CREATOR_GROUP,
+      }),
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

@@ -7,6 +7,7 @@ import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import dreamRouter from "routes/v1/dream.routes";
 import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
+import featureRouter from "./feature.routes";
 import userRouter from "routes/v1/user.routes";
 import inviteRouter from "routes/v1/invite.routes";
 import { jsonResponse } from "utils/responses.util";
@@ -262,6 +263,21 @@ export const registerRoutes = (app: express.Application) => {
    *         updated_at:
    *           type: string
    *           format: date
+   *     Feature:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         name:
+   *           type: string
+   *         isActive:
+   *           type: boolean
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
    *   requestBodies: {}
    *   securitySchemes:
    *     bearerAuth:
@@ -275,6 +291,9 @@ export const registerRoutes = (app: express.Application) => {
       message: `e-dream.ai is running api at version ${version}`,
     });
   });
+
+  // register feature router
+  app.use("/api/v1/feature", featureRouter);
 
   // register user router
   app.use("/api/v1/auth", authRouter);

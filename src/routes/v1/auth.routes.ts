@@ -1,12 +1,13 @@
 import * as authController from "controllers/auth.controller";
 import { Router } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import {
   confirmLoginWithCodeSchema,
   loginSchema,
   loginWithCodeSchema,
-  signupSchema,
+  getSignupSchema,
   verifySchema,
 } from "schemas/auth.schema";
 
@@ -140,7 +141,13 @@ authRouter.post(
  */
 authRouter.post(
   "/signup",
-  validatorMiddleware(signupSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    /**
+     * get async schema
+     */
+    const schema = await getSignupSchema();
+    validatorMiddleware(schema)(req, res, next);
+  },
   authController.handleSignUp,
 );
 

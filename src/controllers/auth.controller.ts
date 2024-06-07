@@ -48,6 +48,8 @@ import type { RequestType, ResponseType } from "types/express.types";
 import { getErrorMessage } from "utils/aws/auth-errors";
 import { CognitoIPSExceptions } from "constants/aws/erros.constant";
 import { validateAndUseCode } from "utils/invite.util";
+import { isFeatureActive } from "utils/feature.util";
+import { FEATURES } from "constants/feature.constants";
 
 /**
  * Repositories
@@ -142,6 +144,7 @@ export const handleSignUp = async (
   res: Response,
 ) => {
   try {
+    const isSignupCodeActive = await isFeatureActive(FEATURES.SIGNUP_WITH_CODE);
     const { email, password, code } = req.body;
 
     const getUserCommand = new AdminGetUserCommand({
@@ -169,7 +172,7 @@ export const handleSignUp = async (
 
     const invite = await validateAndUseCode(code!);
 
-    if (!invite) {
+    if (isSignupCodeActive && !invite) {
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({
           success: false,
@@ -187,13 +190,16 @@ export const handleSignUp = async (
 
     const cognitoResponse = await cognitoIdentityProviderClient.send(command);
 
+    /**
+     * get user group role
+     */
     const role = await roleRepository.findOneBy({ name: ROLES.USER_GROUP });
 
     const user = new User();
     user.cognitoId = cognitoResponse.UserSub!;
     user.email = email!;
     user.signupInvite = invite;
-    user.role = invite.signupRole! ?? role;
+    user.role = invite?.signupRole || role!;
     await userRepository.save(user);
 
     return res.status(httpStatus.OK).json(

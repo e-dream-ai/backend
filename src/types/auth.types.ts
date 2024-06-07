@@ -12,6 +12,7 @@ export type JwtPayloadType = JwtPayload & {
 
 export type UserSignUpCredentials = {
   email: string;
+  username?: string;
   password: string;
   code: string;
 };

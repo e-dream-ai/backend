@@ -1,13 +1,12 @@
 import * as authController from "controllers/auth.controller";
 import { Router } from "express";
-import type { NextFunction, Request, Response } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import {
   confirmLoginWithCodeSchema,
   loginSchema,
   loginWithCodeSchema,
-  getSignupSchema,
+  validateSignupSchema,
   verifySchema,
 } from "schemas/auth.schema";
 
@@ -139,17 +138,7 @@ authRouter.post(
  *             schema:
  *               $ref: '#/components/schemas/BadApiResponse'
  */
-authRouter.post(
-  "/signup",
-  async (req: Request, res: Response, next: NextFunction) => {
-    /**
-     * get async schema
-     */
-    const schema = await getSignupSchema();
-    validatorMiddleware(schema)(req, res, next);
-  },
-  authController.handleSignUp,
-);
+authRouter.post("/signup", validateSignupSchema, authController.handleSignUp);
 
 /**
  * @swagger

@@ -4,6 +4,12 @@ import Joi from "joi";
 import { RequestValidationSchema } from "types/validator.types";
 import { jsonResponse } from "utils/responses.util";
 
+export const mapValidatorErrors = (error: Joi.ValidationError | undefined) =>
+  error?.details?.map((err) => ({
+    field: err.path.join(", "),
+    message: err.message,
+  }));
+
 /**
  * Handles validation of given schema
  *
@@ -28,14 +34,17 @@ const validatorMiddleware = (schema: RequestValidationSchema) => {
       next();
     } else {
       // mapping erros to response
-      const errors = error?.details?.map((err) => ({
-        field: err.path.join(", "),
-        message: err.message,
-      }));
+      const errors = mapValidatorErrors(error);
 
       res
         .status(httpStatus.BAD_REQUEST)
-        .json(jsonResponse({ success: false, data: errors }));
+        .json(
+          jsonResponse({
+            success: false,
+            data: errors,
+            message: error.message,
+          }),
+        );
     }
   };
 };

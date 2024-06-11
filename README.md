@@ -157,10 +157,14 @@ Provide a way to organize sockets into groups, allowing you to broadcast message
 
 Verifies the identity of clients connecting to the server via sockets and adds user data to logic
 
-## script
+## Scripts
+
+TS scripts to execute process
 
 #### run
 
+to run a TS script, use next command. Script should be located on script `folder`, for example `src/script/my_script.ts`
+
 ```bash
-script=process-dream.ts pnpm run script
+script=<SCRIPT_FILE_NAME>.ts pnpm run script
 ```

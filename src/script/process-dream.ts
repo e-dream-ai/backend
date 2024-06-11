@@ -17,6 +17,9 @@ const main = async () => {
     where: {
       created_at: Between(startDate, endDate),
     },
+    relations: {
+      user: true,
+    },
   });
 
   const promises = dreams.map((dream) => processDreamRequest(dream));
@@ -25,9 +28,9 @@ const main = async () => {
 
   results.forEach((result, index) => {
     if (result.status === "fulfilled") {
-      console.log(`Dream request promise ${index} fulfilled:`, result.value);
+      console.log(`Dream request promise ${index} fulfilled:`);
     } else if (result.status === "rejected") {
-      console.error(`Dream request promise ${index} rejected:`, result.reason);
+      console.error(`Dream request promise ${index} rejected:`);
     }
   });
 

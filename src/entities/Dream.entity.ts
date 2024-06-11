@@ -134,6 +134,10 @@ export class Dream {
   // computed frontend url field
   frontendUrl: string;
 
+  // last processed at date
+  @Column({ nullable: true, type: "timestamp" })
+  processed_at: Date;
+
   @CreateDateColumn()
   created_at: Date;
 

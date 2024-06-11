@@ -26,6 +26,7 @@
     "migration:run": "pnpm run typeorm migration:run -d src/database/app-data-source.ts",
     "migration:revert": "pnpm run typeorm migration:revert -d src/database/app-data-source.ts",
     "migration:show": "pnpm run typeorm migration:show -d src/database/app-data-source.ts",
+    "script": "ts-node -r tsconfig-paths/register src/script/$script",
     "husky-install": "husky install",
     "lint-staged": "npx lint-staged"
   },

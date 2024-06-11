@@ -796,6 +796,7 @@ export const handleSetDreamStatusProcessed = async (
       status: DreamStatusType.PROCESSED,
       video: generateBucketObjectURL(videoFilePath),
       thumbnail: generateBucketObjectURL(thumbnailFilePath),
+      processed_at: new Date(),
       processedVideoSize,
       processedVideoFrames,
       processedVideoFPS,

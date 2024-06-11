@@ -1,6 +1,6 @@
 import path from "path";
 import { DataSource } from "typeorm";
-import env from "../shared/env";
+import env from "shared/env";
 
 const appDataSource = new DataSource({
   type: "postgres",

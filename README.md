@@ -156,3 +156,11 @@ Provide a way to organize sockets into groups, allowing you to broadcast message
 ### Auth middleware
 
 Verifies the identity of clients connecting to the server via sockets and adds user data to logic
+
+## script
+
+#### run
+
+```bash
+script=process-dream.ts pnpm run script
+```

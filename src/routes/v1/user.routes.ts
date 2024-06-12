@@ -5,7 +5,11 @@ import { multerSingleFileMiddleware } from "middlewares/multer.middleware";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
-import { updateUserRoleSchema, updateUserSchema } from "schemas/user.schema";
+import {
+  getUsersSchema,
+  updateUserRoleSchema,
+  updateUserSchema,
+} from "schemas/user.schema";
 
 const userRouter = Router();
 
@@ -250,6 +254,7 @@ userRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(getUsersSchema),
   userController.handleGetUsers,
 );
 

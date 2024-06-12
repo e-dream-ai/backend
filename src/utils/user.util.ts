@@ -24,6 +24,7 @@ export const getUserSelectedColumns = ({
     description: true,
     avatar: true,
     nsfw: true,
+    last_login_at: true,
     created_at: true,
     updated_at: true,
     deleted_at: true,

@@ -10,9 +10,13 @@ import { Playlist, User } from "entities";
 import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
-import { FindOptionsWhere, ILike } from "typeorm";
+import { FindOptionsWhere, ILike, IsNull, Not } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
-import { UpdateUserRequest, UpdateUserRoleRequest } from "types/user.types";
+import {
+  GetUsersQuery,
+  UpdateUserRequest,
+  UpdateUserRoleRequest,
+} from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
@@ -87,7 +91,10 @@ export const handleGetRoles = async (req: RequestType, res: ResponseType) => {
  * BAD_REQUEST 400 - error getting users
  *
  */
-export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
+export const handleGetUsers = async (
+  req: RequestType<unknown, GetUsersQuery>,
+  res: ResponseType,
+) => {
   try {
     const take = Math.min(
       Number(req.query.take) || PAGINATION.TAKE,
@@ -95,11 +102,21 @@ export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
     );
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
     const search = req.query.search ? String(req.query.search) : undefined;
+    const role = req.query.role;
+    /**
+     * users with a registered login are verified users
+     */
     const whereSentence = {
-      name: ILike(`%${search}%`),
+      name: search ? ILike(`%${search}%`) : undefined,
+      last_login_at: Not(IsNull()),
+      role: role
+        ? {
+          name: role,
+        }
+        : undefined,
     } as FindOptionsWhere<User>;
     const [users, count] = await userRepository.findAndCount({
-      where: search ? whereSentence : undefined,
+      where: whereSentence,
       select: getUserSelectedColumns(),
       order: { created_at: "DESC" },
       take,
@@ -111,7 +128,7 @@ export const handleGetUsers = async (req: RequestType, res: ResponseType) => {
       .json(jsonResponse({ success: true, data: { users, count } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 

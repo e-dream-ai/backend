@@ -22,7 +22,7 @@ import {
   UserSignUpCredentials,
   UserVerifyCredentials,
 } from "types/auth.types";
-import { jsonResponse } from "utils/responses.util";
+import { handleNotFound, jsonResponse } from "utils/responses.util";
 import {
   AuthFlowType,
   ChangePasswordCommand,
@@ -295,6 +295,17 @@ export const handleLogin = async (
     const user = await userRepository.findOne({
       where: { cognitoId: cognitoUser.id },
       relations: { role: true },
+    });
+
+    if (!user) {
+      return handleNotFound(req, res);
+    }
+
+    /**
+     * save last login date
+     */
+    await userRepository.update(user.id, {
+      last_login_at: new Date(),
     });
 
     return res.status(httpStatus.OK).json(

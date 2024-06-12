@@ -83,6 +83,9 @@ export class User {
   @JoinColumn()
   signupInvite?: Invite | null;
 
+  @Column({ nullable: true, type: "timestamp" })
+  last_login_at: Date;
+
   @CreateDateColumn()
   created_at: Date;
 

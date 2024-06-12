@@ -1,6 +1,19 @@
 import { ROLES } from "constants/role.constants";
 import Joi from "joi";
-import { UpdateUserRequest, UpdateUserRoleRequest } from "types/user.types";
+import {
+  GetUsersQuery,
+  UpdateUserRequest,
+  UpdateUserRoleRequest,
+} from "types/user.types";
+
+export const getUsersSchema = {
+  query: Joi.object<GetUsersQuery>().keys({
+    role: Joi.string().valid(...Object.values(ROLES)),
+    skip: Joi.number(),
+    take: Joi.number(),
+    search: Joi.string(),
+  }),
+};
 
 export const updateUserSchema = {
   body: Joi.object<UpdateUserRequest>().keys({

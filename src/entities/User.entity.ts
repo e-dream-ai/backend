@@ -83,6 +83,10 @@ export class User {
   @JoinColumn()
   signupInvite?: Invite | null;
 
+  /**
+   * last_login_at saves the last login user date
+   * users with null last_login_at are considered unverified (have never logged in)
+   */
   @Column({ nullable: true, type: "timestamp" })
   last_login_at: Date;
 

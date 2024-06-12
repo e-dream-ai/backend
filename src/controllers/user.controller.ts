@@ -104,7 +104,8 @@ export const handleGetUsers = async (
     const search = req.query.search ? String(req.query.search) : undefined;
     const role = req.query.role;
     /**
-     * users with a registered login are verified users
+     * users with a registered last login are verified users
+     * this will find users with not null last_login_at
      */
     const whereSentence = {
       name: search ? ILike(`%${search}%`) : undefined,

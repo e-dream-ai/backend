@@ -180,6 +180,12 @@ const startDate = new Date("2024-05-01");
 const endDate = new Date("2024-05-31");
 ```
 
+Update `PROCESS_VIDEO_SERVER_URL` .env value with the one you are targeting, with url of process video service setting stage or production value.
+
+```bash
+PROCESS_VIDEO_SERVER_URL=<URL_TO_PROCESS_VIDEO_SERVER>
+```
+
 Run the script
 
 ```bash

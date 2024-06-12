@@ -26,18 +26,20 @@ const main = async () => {
   const promises = dreams.map((dream) => processDreamRequest(dream));
 
   const results = await Promise.allSettled(promises);
+  const queuedDreams: string[] = [];
 
   results.forEach((result, index) => {
-    if (result.status === "fulfilled") {
+    if (result.status === "fulfilled" && result?.value?.id) {
       console.log(`Dream request promise ${index} fulfilled:`);
-    } else if (result.status === "rejected") {
+      queuedDreams.push(dreams?.[index]?.uuid);
+    } else {
       console.error(`Dream request promise ${index} rejected:`);
     }
   });
 
   console.log(
-    `Dreams added to queue: [${dreams
-      ?.map((dream) => JSON.stringify(dream?.uuid))
+    `Dreams added to queue: [${queuedDreams
+      ?.map((uuid) => JSON.stringify(uuid))
       .join(", ")}]`,
   );
 

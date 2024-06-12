@@ -159,12 +159,29 @@ Verifies the identity of clients connecting to the server via sockets and adds u
 
 ## Scripts
 
-TS scripts to execute process
+TS scripts to execute a process.
 
-#### run
+### Run a script
 
-to run a TS script, use next command. Script should be located on script `folder`, for example `src/script/my_script.ts`
+To run a TS script, use next command. Script should be located on script `folder`, for example `src/script/my_script.ts`
 
 ```bash
 script=<SCRIPT_FILE_NAME>.ts pnpm run script
+```
+
+#### Process dream script
+
+Takes a range of dates and find all dreams on that range, sends multiple requests to queue jobs to process video file for that dreams.
+
+Update dates range values with desired values in format `YYYY-MM-DD`
+
+```js
+const startDate = new Date("2024-05-01");
+const endDate = new Date("2024-05-31");
+```
+
+Run the script
+
+```bash
+script=process-dream.ts pnpm run script
 ```

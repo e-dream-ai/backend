@@ -10,6 +10,7 @@ const main = async () => {
   // Initialize dream repository
   const dreamRepository = appDataSource.getRepository(Dream);
 
+  // date range in format YYYY-MM-DD
   const startDate = new Date("2024-05-01");
   const endDate = new Date("2024-05-31");
 
@@ -33,6 +34,12 @@ const main = async () => {
       console.error(`Dream request promise ${index} rejected:`);
     }
   });
+
+  console.log(
+    `Dreams added to queue: [${dreams
+      ?.map((dream) => JSON.stringify(dream?.uuid))
+      .join(", ")}]`,
+  );
 
   process.exit(0);
 };

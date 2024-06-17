@@ -15,8 +15,12 @@ import {
   refreshMultipartUploadUrlSchema,
   updateDreamSchema,
 } from "schemas/dream.schema";
+import jobRouter from "routes/v1/job.routes";
 
 const dreamRouter = Router();
+
+// register jobs router
+dreamRouter.use("/job", jobRouter);
 
 /**
  * @swagger

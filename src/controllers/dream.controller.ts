@@ -6,6 +6,11 @@ import {
   MYME_TYPES,
   MYME_TYPES_EXTENSIONS,
 } from "constants/file.constants";
+import {
+  DEFAULT_QUEUE,
+  TURN_OFF_QUANTITY,
+  TURN_ON_QUANTITY,
+} from "constants/job.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
@@ -33,6 +38,7 @@ import {
   handleVoteDream,
   processDreamRequest,
 } from "utils/dream.util";
+import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { isBrowserRequest } from "utils/request.util";
 import {
@@ -423,6 +429,11 @@ export const handleCompleteMultipartUpload = async (
     const createdDream = await dreamRepository.save(dream);
 
     /**
+     * turn on video service worker
+     */
+    await updateVideoServiceWorker(TURN_ON_QUANTITY);
+
+    /**
      * process dream
      */
     await processDreamRequest(dream);
@@ -804,6 +815,18 @@ export const handleSetDreamStatusProcessed = async (
     });
 
     await createFeedItem(updatedDream);
+
+    /**
+     * get jobs queue on video service
+     */
+    const jobs = await getQueueValues(DEFAULT_QUEUE);
+
+    /**
+     * if there are not jobs on queue, turn off video service workers
+     */
+    if (!jobs.length) {
+      await updateVideoServiceWorker(TURN_OFF_QUANTITY);
+    }
 
     return res
       .status(httpStatus.OK)

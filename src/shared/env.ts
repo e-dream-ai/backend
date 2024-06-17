@@ -31,6 +31,21 @@ export const env = cleanEnv(process.env, {
   AWS_SES_EMAIL_IDENTITY: str(),
 
   /**
+   * Heroku
+   */
+  HEROKU_API_URL: str(),
+  VIDEO_SERVICE_APP_ID_OR_NAME: str(),
+
+  /**
+   * REDIS
+   */
+  // REDISCLOUD_URL is set by heroku automatically
+  REDISCLOUD_URL: str(),
+  REDIS_HOST: str(),
+  REDIS_PORT: port(),
+  REDIS_PASSWORD: str(),
+
+  /**
    * PROCESS VIDEO SERVER
    */
   PROCESS_VIDEO_SERVER_URL: str(),

@@ -212,6 +212,11 @@ export const handleConfirmPresignedPost = async (
     const createdDream = await dreamRepository.save(dream);
 
     /**
+     * turn on video service worker
+     */
+    await updateVideoServiceWorker(TURN_ON_QUANTITY);
+
+    /**
      * process dream
      */
     await processDreamRequest(dream);
@@ -698,9 +703,13 @@ export const handleProcessDream = async (
     }
 
     /**
+     * turn on video service worker
+     */
+    await updateVideoServiceWorker(TURN_ON_QUANTITY);
+
+    /**
      * process dream
      */
-
     await processDreamRequest(dream);
 
     const updatedDream = await dreamRepository.save({

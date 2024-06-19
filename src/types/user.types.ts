@@ -4,7 +4,7 @@ export type GetUsersQuery = {
   take: number;
   skip: number;
   role: RoleType;
-  search: string;
+  search?: string;
 };
 
 export type UpdateUserRequest = {

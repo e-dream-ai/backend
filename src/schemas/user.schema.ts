@@ -11,7 +11,7 @@ export const getUsersSchema = {
     role: Joi.string().valid(...Object.values(ROLES)),
     skip: Joi.number(),
     take: Joi.number(),
-    search: Joi.string(),
+    search: Joi.string().optional().allow(""),
   }),
 };
 

@@ -11,6 +11,7 @@ export type UpdateUserRequest = {
   name: string;
   description?: string;
   role?: number;
+  enableMarketingEmails?: boolean;
 };
 
 export type UpdateUserRoleRequest = {

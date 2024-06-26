@@ -77,6 +77,15 @@ export class User {
   nsfw: boolean;
 
   /**
+   * enable marketing emails flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  enableMarketingEmails: boolean;
+
+  /**
    * signup invite
    */
   @ManyToOne(() => Invite, { nullable: true })

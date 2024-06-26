@@ -20,6 +20,7 @@ export const updateUserSchema = {
     name: Joi.string().optional().allow("").max(50),
     description: Joi.string().optional().allow("").max(300),
     role: Joi.number().greater(0).integer(),
+    enableMarketingEmails: Joi.boolean().optional(),
   }),
 };
 

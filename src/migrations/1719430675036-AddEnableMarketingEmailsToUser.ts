@@ -7,7 +7,7 @@ implements MigrationInterface
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "user" ADD "enableMarketingEmails" boolean NOT NULL DEFAULT false`,
+      `ALTER TABLE "user" ADD "enableMarketingEmails" boolean NOT NULL DEFAULT true`,
     );
   }
 

@@ -24,6 +24,7 @@ import {
   CreateMultipartUploadDreamRequest,
   CreatePresignedDreamRequest,
   DreamStatusType,
+  GetDreamQuery,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
   UpdateDreamProcessedRequest,
@@ -580,7 +581,7 @@ export const handleGetDreamVote = async (
  *
  */
 export const handleGetDream = async (
-  req: RequestType<UpdateDreamRequest>,
+  req: RequestType<GetDreamQuery>,
   res: ResponseType,
 ) => {
   const isBrowser = isBrowserRequest(req);

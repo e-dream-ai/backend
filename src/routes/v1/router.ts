@@ -9,6 +9,7 @@ import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
 import featureRouter from "./feature.routes";
 import userRouter from "routes/v1/user.routes";
+import clientRouter from "routes/v1/client.routes";
 import inviteRouter from "routes/v1/invite.routes";
 import { jsonResponse } from "utils/responses.util";
 
@@ -300,6 +301,9 @@ export const registerRoutes = (app: express.Application) => {
 
   // register auth router
   app.use("/api/v1/user", userRouter);
+
+  // register dream router
+  app.use("/api/v1/client", clientRouter);
 
   // register dream router
   app.use("/api/v1/dream", dreamRouter);

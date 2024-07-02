@@ -1,4 +1,5 @@
 import {
+  BeforeInsert,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -14,6 +15,7 @@ import { Playlist } from "./Playlist.entity";
 import { Role } from "./Role.entity";
 import { Vote } from "./Vote.entity";
 import { Invite } from "./Invite.entity";
+import { NEW_USER_DEFAULT_QUOTA } from "constants/user.constants";
 
 @Entity()
 export class User {
@@ -93,6 +95,12 @@ export class User {
   signupInvite?: Invite | null;
 
   /**
+   * Processed video size on bytes
+   */
+  @Column({ type: "bigint", default: 0 })
+  quota?: number;
+
+  /**
    * last_login_at saves the last login user date
    * users with null last_login_at are considered unverified (have never logged in)
    */
@@ -107,4 +115,9 @@ export class User {
 
   @DeleteDateColumn()
   deleted_at: Date;
+
+  @BeforeInsert()
+  setQuota() {
+    this.quota = NEW_USER_DEFAULT_QUOTA;
+  }
 }

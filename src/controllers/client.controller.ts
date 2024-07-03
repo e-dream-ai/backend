@@ -10,7 +10,6 @@ import {
 import { GetDreamQuery } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { formatClientDream, formatClientPlaylist } from "utils/client.util";
-import { computeAllUsersDefaultPlaylist } from "utils/default-playlist.util";
 import { getDreamSelectedColumns } from "utils/dream.util";
 import {
   findOnePlaylist,
@@ -90,8 +89,6 @@ export const handleGetPlaylist = async (
     }
 
     const clientPlaylist: ClientPlaylist = formatClientPlaylist(playlist);
-
-    await computeAllUsersDefaultPlaylist();
 
     return res
       .status(httpStatus.OK)

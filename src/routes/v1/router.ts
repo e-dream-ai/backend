@@ -279,6 +279,74 @@ export const registerRoutes = (app: express.Application) => {
    *         updated_at:
    *           type: string
    *           format: date
+   *     Hello:
+   *       type: object
+   *       properties:
+   *         quota:
+   *           type: number
+   *         currentPlaylistId:
+   *           type: number
+   *     ClientDream:
+   *       type: object
+   *       properties:
+   *         uuid:
+   *           type: string
+   *         name:
+   *           type: string
+   *         artist:
+   *           type: string
+   *         size:
+   *           type: number
+   *         status:
+   *           type: string
+   *           enum:
+   *            - none
+   *            - queue
+   *            - processing
+   *            - failed
+   *            - processed
+   *         fps:
+   *           type: number
+   *         frames:
+   *           type: number
+   *         thumbnail:
+   *           type: string
+   *         upvotes:
+   *           type: number
+   *         downvotes:
+   *           type: number
+   *         nsfw:
+   *           type: boolean
+   *         frontendUrl:
+   *           type: string
+   *         timestamp:
+   *           type: number
+   *         video_timestamp:
+   *           type: number
+   *     ClientPlaylist:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         name:
+   *           type: string
+   *         artist:
+   *           type: string
+   *         thumbnail:
+   *           type: string
+   *         nsfw:
+   *           type: boolean
+   *         contents:
+   *            type: array
+   *            items:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                timestamp:
+   *                  type: number
+   *         timestamp:
+   *           type: number
    *   requestBodies: {}
    *   securitySchemes:
    *     bearerAuth:

@@ -165,7 +165,7 @@ dreamRouter.post(
  *    description: Refreshes multipart upload
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -230,7 +230,7 @@ dreamRouter.post(
  *    description: Refreshes multipart upload
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -296,7 +296,7 @@ dreamRouter.post(
  *    description: Aborts multipart upload
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -399,7 +399,7 @@ dreamRouter.get(
  *    description: Gets user dream vote
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -449,7 +449,7 @@ dreamRouter.get(
  *    description: Start process dream
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -498,7 +498,7 @@ dreamRouter.post(
  *    description: Set dream status to processing
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -546,7 +546,7 @@ dreamRouter.post(
  *    description: Set dream status to processed
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -606,7 +606,7 @@ dreamRouter.post(
  *    description: Set dream status to failed
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -655,7 +655,7 @@ dreamRouter.post(
  *    description: Get dream
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -705,7 +705,7 @@ dreamRouter.get(
  *    description: Update dreams
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -761,7 +761,7 @@ dreamRouter.put(
  *     description: Update thumbnail file
  *     parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -821,7 +821,7 @@ dreamRouter.put(
  *    description: Deletes dream
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -864,7 +864,7 @@ dreamRouter.delete(
  *    description: Updates dream upvote
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -914,7 +914,7 @@ dreamRouter.put(
  *    description: Updates dream to downvote
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:
@@ -964,7 +964,7 @@ dreamRouter.put(
  *    description: Updates dream to unvote
  *    parameters:
  *      - name: uuid
- *        in: query
+ *        in: path
  *        description: dream uuid
  *        required: true
  *        schema:

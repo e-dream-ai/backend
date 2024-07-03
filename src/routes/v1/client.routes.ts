@@ -16,21 +16,6 @@ const clientRouter = Router();
  *      - client
  *    summary: Gets client hello data
  *    description: Gets client hello data
- *    parameters:
- *      - name: take
- *        in: query
- *        description: Number of items to take
- *        required: false
- *        schema:
- *          type: integer
- *          example: 1
- *      - name: skip
- *        in: query
- *        description: Number of items to skip
- *        required: false
- *        schema:
- *          type: integer
- *          example: 1
  *    responses:
  *      '200':
  *        description: Gets client hello data
@@ -43,13 +28,7 @@ const clientRouter = Router();
  *                  properties:
  *                    data:
  *                      type: object
- *                      properties:
- *                        count:
- *                          type: number
- *                        feed:
- *                          type: array
- *                          items:
- *                            $ref: '#/components/schemas/FeedItem'
+ *                      $ref: '#/components/schemas/Hello'
  *      '400':
  *        description: Bad request
  *        content:
@@ -72,24 +51,17 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/playlist/:id:
+ * /client/playlist/{id}:
  *  get:
  *    tags:
  *      - client
  *    summary: Gets client playlist data
  *    description: Gets client playlist data
  *    parameters:
- *      - name: take
- *        in: query
- *        description: Number of items to take
- *        required: false
- *        schema:
- *          type: integer
- *          example: 1
- *      - name: skip
- *        in: query
- *        description: Number of items to skip
- *        required: false
+ *      - name: id
+ *        in: path
+ *        description: playlist id
+ *        required: true
  *        schema:
  *          type: integer
  *          example: 1
@@ -106,12 +78,9 @@ clientRouter.get(
  *                    data:
  *                      type: object
  *                      properties:
- *                        count:
- *                          type: number
- *                        feed:
- *                          type: array
- *                          items:
- *                            $ref: '#/components/schemas/FeedItem'
+ *                        playlist:
+ *                          type: object
+ *                          $ref: '#/components/schemas/ClientPlaylist'
  *      '400':
  *        description: Bad request
  *        content:
@@ -134,27 +103,19 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/dream/:uuid/url:
+ * /client/dream/{uuid}/url:
  *  get:
  *    tags:
  *      - client
  *    summary: Gets download dream url
  *    description: Gets download dream url
  *    parameters:
- *      - name: take
- *        in: query
- *        description: Number of items to take
- *        required: false
+ *      - name: uuid
+ *        in: path
+ *        description: dream uuid
+ *        required: true
  *        schema:
- *          type: integer
- *          example: 1
- *      - name: skip
- *        in: query
- *        description: Number of items to skip
- *        required: false
- *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Gets download dream url
@@ -168,12 +129,8 @@ clientRouter.get(
  *                    data:
  *                      type: object
  *                      properties:
- *                        count:
- *                          type: number
- *                        feed:
- *                          type: array
- *                          items:
- *                            $ref: '#/components/schemas/FeedItem'
+ *                        url:
+ *                          type: string
  *      '400':
  *        description: Bad request
  *        content:
@@ -204,20 +161,12 @@ clientRouter.get(
  *    summary: Gets dreams
  *    description: Gets dreams
  *    parameters:
- *      - name: take
+ *      - name: uuids
  *        in: query
- *        description: Number of items to take
+ *        description: uuids separated by comma ","
  *        required: false
  *        schema:
- *          type: integer
- *          example: 1
- *      - name: skip
- *        in: query
- *        description: Number of items to skip
- *        required: false
- *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Gets dreams
@@ -231,12 +180,10 @@ clientRouter.get(
  *                    data:
  *                      type: object
  *                      properties:
- *                        count:
- *                          type: number
- *                        feed:
+ *                        dreams:
  *                          type: array
  *                          items:
- *                            $ref: '#/components/schemas/FeedItem'
+ *                            $ref: '#/components/schemas/ClientDream'
  *      '400':
  *        description: Bad request
  *        content:

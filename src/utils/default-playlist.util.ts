@@ -39,8 +39,6 @@ export const computeUserDefaultPlaylist = async (
     DEFAULT_PLAYLIST_SIZE,
   );
 
-  console.log({ topDreams, filteredTopDreams, playlistData });
-
   let playlist = await defaultPlaylistRepository.findOne({
     where: { user: { id: user.id } },
   });

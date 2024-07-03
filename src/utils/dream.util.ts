@@ -243,3 +243,17 @@ export const handleDownvoteDream = async ({
       .execute();
   }
 };
+
+/**
+ * get top dreams
+ * @param {number} take - dreams to take
+ * @returns {string[]} dreams uuids
+ */
+export const getTopDreams = async (take: number = 50) => {
+  const dreams = await dreamRepository.find({
+    take,
+    order: { upvotes: "DESC" },
+  });
+
+  return dreams.map((dream) => dream.uuid);
+};

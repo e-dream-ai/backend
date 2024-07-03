@@ -1,24 +1,27 @@
-import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import httpStatus from "http-status";
 import { In } from "typeorm";
-import { GetDreamsQuery } from "types/client.types";
+import {
+  ClientDream,
+  ClientPlaylist,
+  GetDreamsQuery,
+} from "types/client.types";
 import { GetDreamQuery } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
+import { formatClientDream, formatClientPlaylist } from "utils/client.util";
+import { computeAllUsersDefaultPlaylist } from "utils/default-playlist.util";
 import { getDreamSelectedColumns } from "utils/dream.util";
-import { canExecuteAction } from "utils/permissions.util";
 import {
   findOnePlaylist,
   getPlaylistSelectedColumns,
 } from "utils/playlist.util";
-import { isBrowserRequest } from "utils/request.util";
 import {
   handleInternalServerError,
   handleNotFound,
   jsonResponse,
 } from "utils/responses.util";
-import { isAdmin } from "utils/user.util";
+import { reduceUserQuota } from "utils/user.util";
 
 /**
  * Repositories
@@ -86,17 +89,15 @@ export const handleGetPlaylist = async (
       return handleNotFound(req, res);
     }
 
-    /*
-     * Check if the user is an admin
-     * remove fields from the updateData object if is not an admin
-     */
-    if (!isAdmin(user)) {
-      delete playlist.featureRank;
-    }
+    const clientPlaylist: ClientPlaylist = formatClientPlaylist(playlist);
+
+    await computeAllUsersDefaultPlaylist();
 
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { playlist } }));
+      .json(
+        jsonResponse({ success: true, data: { playlist: clientPlaylist } }),
+      );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -118,7 +119,6 @@ export const handleGetDownloadUrl = async (
   req: RequestType<GetDreamQuery>,
   res: ResponseType,
 ) => {
-  const isBrowser = isBrowserRequest(req as RequestType);
   const user = res.locals.user;
   const dreamUUID: string = String(req.params?.uuid);
 
@@ -136,26 +136,7 @@ export const handleGetDownloadUrl = async (
       return handleNotFound(req, res);
     }
 
-    const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
-      allowedRoles: [ROLES.ADMIN_GROUP],
-      userRole: user?.role?.name,
-    });
-
-    /**
-     * remove original video if is not admin or owner or browser requested
-     */
-    if (!isAllowed || !isBrowser) {
-      delete dream.original_video;
-    }
-
-    /*
-     * Check if the user is an admin
-     * remove fields from the updateData object if is not an admin
-     */
-    if (!isAdmin(user)) {
-      delete dream.featureRank;
-    }
+    await reduceUserQuota(user!, dream?.processedVideoSize ?? 0);
 
     const url = dream.video;
 
@@ -195,11 +176,15 @@ export const handleGetDreams = async (
       }),
     });
 
+    const clientDreams: ClientDream[] = dreams?.map((dream) =>
+      formatClientDream(dream),
+    );
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
         data: {
-          dreams,
+          dreams: clientDreams,
         },
       }),
     );

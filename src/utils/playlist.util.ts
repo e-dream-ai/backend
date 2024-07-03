@@ -83,6 +83,7 @@ export const getPlaylistItemSelectedColumns =
         nsfw: true,
         user: getUserSelectedColumns(),
         displayedOwner: getUserSelectedColumns(),
+        updated_at: true,
       },
       playlistItem: {
         id: true,
@@ -91,6 +92,7 @@ export const getPlaylistItemSelectedColumns =
         nsfw: true,
         user: getUserSelectedColumns(),
         displayedOwner: getUserSelectedColumns(),
+        updated_at: true,
       },
       created_at: true,
       updated_at: true,

@@ -10,7 +10,11 @@ import {
 } from "types/client.types";
 import { GetDreamQuery } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
-import { formatClientDream, formatClientPlaylist } from "utils/client.util";
+import {
+  formatClientDream,
+  formatClientPlaylist,
+  populateDefautPlaylist,
+} from "utils/client.util";
 import { getDreamSelectedColumns } from "utils/dream.util";
 import {
   findOnePlaylist,
@@ -91,10 +95,12 @@ export const handleGetDefaultPlaylist = async (
       return handleNotFound(req, res);
     }
 
+    const playlist = await populateDefautPlaylist(defaultPlaylist.data);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { playlist: defaultPlaylist.data },
+        data: { playlist },
       }),
     );
   } catch (err) {

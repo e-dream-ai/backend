@@ -21,7 +21,10 @@ const options: swaggerJSDoc.Options = {
     },
     servers: [
       {
-        url: "http://localhost:8080",
+        url: `http://localhost:${env.PORT ?? 8080}/api/v1/`,
+      },
+      {
+        url: "https://e-dream-76c98b08cc5d.herokuapp.com/api/v1/",
       },
     ],
   },

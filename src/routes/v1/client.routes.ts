@@ -71,9 +71,14 @@ clientRouter.get(
  *                      type: object
  *                      properties:
  *                        playlist:
- *                          type: array
- *                          items:
- *                            type: string
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               uuid:
+ *                                 type: string
+ *                               timestamp:
+ *                                 type: number
  *      '400':
  *        description: Bad request
  *        content:

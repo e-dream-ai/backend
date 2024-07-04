@@ -4,6 +4,11 @@ export type GetDreamsQuery = {
   uuids: string;
 };
 
+export type PartialClientDream = {
+  uuid: string;
+  timestamp?: number;
+};
+
 export type ClientDream = {
   uuid: string;
   name?: string | null;

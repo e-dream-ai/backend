@@ -352,7 +352,7 @@ export const registerRoutes = (app: express.Application) => {
    *     bearerAuth:
    *       type: http
    *       scheme: bearer
-   *       bearerFormat: jwt
+   *       bearerFormat: JWT
    */
 
   app.get(["/", "/api/v1"], (req: Request, res: Response) => {

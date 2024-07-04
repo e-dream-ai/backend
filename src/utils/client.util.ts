@@ -1,5 +1,16 @@
+import appDataSource from "database/app-data-source";
 import { Dream, Playlist } from "entities";
-import { ClientDream, ClientPlaylist } from "types/client.types";
+import { In } from "typeorm";
+import {
+  ClientDream,
+  ClientPlaylist,
+  PartialClientDream,
+} from "types/client.types";
+
+/**
+ * Repositories
+ */
+const dreamRepository = appDataSource.getRepository(Dream);
 
 /**
  *@param {Dream} dream
@@ -40,3 +51,29 @@ export const formatClientPlaylist = (playlist: Playlist): ClientPlaylist => ({
     })),
   timestamp: playlist.updated_at.getTime(),
 });
+
+/**
+ *
+ * @param uuids dreams uuids
+ * @returns {PartialClientDream[]} array of partial client dreams
+ */
+export const populateDefautPlaylist = async (
+  uuids?: string[],
+): Promise<PartialClientDream[]> => {
+  if (!uuids) {
+    return [];
+  }
+
+  const dreams = await dreamRepository.find({
+    where: { uuid: In(uuids) },
+    relations: { user: true, playlistItems: true },
+    select: ["uuid", "updated_at"],
+  });
+
+  const clientDreams: PartialClientDream[] = dreams.map((dream) => ({
+    uuid: dream.uuid,
+    timestamp: dream?.updated_at?.getTime(),
+  }));
+
+  return clientDreams;
+};

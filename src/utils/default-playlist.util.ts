@@ -25,7 +25,7 @@ export const computeUserDefaultPlaylist = async (
    */
   const userDownvotes = user.votes
     .filter((vote) => vote.vote === VoteType.DOWNVOTE)
-    .map((vote) => vote.dream.uuid);
+    .map((vote) => vote?.dream?.uuid ?? "");
 
   /**
    * remove downvotes from
@@ -71,7 +71,9 @@ export const computeAllUsersDefaultPlaylist = async () => {
   while (true) {
     const [users] = await userRepository.findAndCount({
       relations: {
-        votes: true,
+        votes: {
+          dream: true,
+        },
       },
       skip: offset,
       take: BATCH_SIZE,

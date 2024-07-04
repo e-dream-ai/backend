@@ -70,7 +70,6 @@ export const computeAllUsersDefaultPlaylist = async () => {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const [users] = await userRepository.findAndCount({
-      where: { id: 1 },
       relations: {
         votes: true,
       },

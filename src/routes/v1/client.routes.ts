@@ -51,6 +51,51 @@ clientRouter.get(
 
 /**
  * @swagger
+ * /client/playlist/default:
+ *  get:
+ *    tags:
+ *      - client
+ *    summary: Gets client default playlist data
+ *    description: Gets client default playlist data
+ *    responses:
+ *      '200':
+ *        description: Gets client default playlist data
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        playlist:
+ *                          type: array
+ *                          items:
+ *                            type: string
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+clientRouter.get(
+  "/playlist/default",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  clientController.handleGetDefaultPlaylist,
+);
+
+/**
+ * @swagger
  * /client/playlist/{id}:
  *  get:
  *    tags:

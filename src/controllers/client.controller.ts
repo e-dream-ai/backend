@@ -1,5 +1,6 @@
 import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
+import { DefaultPlaylist } from "entities/DefaultPlaylist.entity";
 import httpStatus from "http-status";
 import { In } from "typeorm";
 import {
@@ -26,6 +27,7 @@ import { reduceUserQuota } from "utils/user.util";
  * Repositories
  */
 const dreamRepository = appDataSource.getRepository(Dream);
+const defaultPlaylistRepository = appDataSource.getRepository(DefaultPlaylist);
 
 /**
  * Handles hello
@@ -51,6 +53,48 @@ export const handleHello = async (req: RequestType, res: ResponseType) => {
           quota,
           currentPlaylistId,
         },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles get default playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlist
+ * BAD_REQUEST 400 - error getting playlist
+ *
+ */
+export const handleGetDefaultPlaylist = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const user = res.locals?.user;
+
+  try {
+    const defaultPlaylist = await defaultPlaylistRepository.findOne({
+      where: {
+        user: {
+          id: user!.id,
+        },
+      },
+    });
+
+    if (!defaultPlaylist) {
+      return handleNotFound(req, res);
+    }
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { playlist: defaultPlaylist.data },
       }),
     );
   } catch (err) {

@@ -814,6 +814,11 @@ export const handleSetDreamStatusProcessed = async (
     const videoFilePath = `${user?.cognitoId}/${dreamUUID}/${videoFileName}`;
     const thumbnailFileName = `${dreamUUID}.${FILE_EXTENSIONS.PNG}`;
     const thumbnailFilePath = `${user?.cognitoId}/${dreamUUID}/thumbnails/${thumbnailFileName}`;
+    const formatedFilmstrip = filmstrip?.map((frame) =>
+      generateBucketObjectURL(
+        `${user?.cognitoId}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
+      ),
+    );
 
     const updatedDream = await dreamRepository.save({
       ...dream,
@@ -825,7 +830,7 @@ export const handleSetDreamStatusProcessed = async (
       processedVideoFrames,
       processedVideoFPS,
       activityLevel,
-      filmstrip,
+      filmstrip: formatedFilmstrip,
     });
 
     await createFeedItem(updatedDream);

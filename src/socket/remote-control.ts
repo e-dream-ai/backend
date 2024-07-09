@@ -76,6 +76,7 @@ export const remoteControlEventListener = (
         socket.emit(GENERAL_MESSAGES.ERROR, {
           error: GENERAL_MESSAGES.NOT_FOUND,
         });
+        return;
       }
 
       data = { ...data, name: dream?.name };
@@ -90,6 +91,7 @@ export const remoteControlEventListener = (
         socket.emit(GENERAL_MESSAGES.ERROR, {
           error: GENERAL_MESSAGES.NOT_FOUND,
         });
+        return;
       }
 
       data = { ...data, name: playlist?.name };
@@ -111,6 +113,7 @@ export const remoteControlEventListener = (
         socket.emit(GENERAL_MESSAGES.ERROR, {
           error: GENERAL_MESSAGES.NOT_FOUND,
         });
+        return;
       }
 
       await handleVoteDream({ dream: dream!, user, voteType: VoteType.UPVOTE });
@@ -126,6 +129,7 @@ export const remoteControlEventListener = (
         socket.emit(GENERAL_MESSAGES.ERROR, {
           error: GENERAL_MESSAGES.NOT_FOUND,
         });
+        return;
       }
 
       await handleVoteDream({

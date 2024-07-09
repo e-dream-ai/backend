@@ -593,6 +593,7 @@ dreamRouter.post(
   "/:uuid/status/processed",
   requireAuth,
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  validatorMiddleware(updateDreamSchema),
   dreamController.handleSetDreamStatusProcessed,
 );
 

@@ -102,6 +102,7 @@ export const getDreamSelectedColumns = ({
     processedVideoFrames: true,
     processedVideoFPS: true,
     nsfw: true,
+    filmstrip: true,
     processed_at: true,
     created_at: true,
     updated_at: true,

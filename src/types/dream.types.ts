@@ -27,6 +27,7 @@ export type UpdateDreamProcessedRequest = {
   processedVideoFrames?: number;
   processedVideoFPS?: number;
   activityLevel?: number;
+  filmstrip?: string[];
 };
 
 export type CreatePresignedDreamRequest = {

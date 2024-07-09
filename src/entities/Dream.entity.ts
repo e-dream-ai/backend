@@ -131,6 +131,10 @@ export class Dream {
   })
   nsfw: boolean;
 
+  // filmstrip
+  @Column({ type: "json", nullable: true })
+  filmstrip: string[];
+
   // computed frontend url field
   frontendUrl: string;
 

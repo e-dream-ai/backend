@@ -51,10 +51,9 @@ export const remoteControlEventListener = (
      */
 
     APP_LOGGER.info(
-      `User ${user?.cognitoId} sent ${NEW_REMOTE_CONTROL_EVENT}`,
-      {
+      `User ${user?.cognitoId} sent ${NEW_REMOTE_CONTROL_EVENT} - ${JSON.stringify(
         data,
-      },
+      )}`,
     );
 
     /**

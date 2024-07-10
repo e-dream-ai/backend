@@ -1,6 +1,7 @@
 import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
+import pinoHttp from "pino-http";
 import { Namespace } from "socket.io/dist/namespace";
 // import swaggerDocument from "constants/swagger.json";
 import authMiddleware from "middlewares/auth.middleware";
@@ -8,6 +9,7 @@ import { socketAuthMiddleware } from "middlewares/socket.middleware";
 import env from "shared/env";
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
+import { APP_LOGGER } from "shared/logger";
 
 const swaggerPath = "/api/v1/api-docs";
 
@@ -53,6 +55,9 @@ export const registerMiddlewares = (app: express.Application) => {
 
   // custom headers
   app.use(customHeaders);
+
+  // pino-http express middleware
+  app.use(pinoHttp({ logger: APP_LOGGER }));
 
   // auth middleware
   app.use(authMiddleware);

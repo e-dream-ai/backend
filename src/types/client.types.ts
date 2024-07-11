@@ -22,6 +22,7 @@ export type ClientDream = {
   downvotes: number;
   nsfw: boolean;
   frontendUrl: string;
+  activityLevel?: number;
   timestamp: number;
   video_timestamp?: number;
 };

@@ -29,6 +29,7 @@ export const formatClientDream = (dream: Dream): ClientDream => ({
   downvotes: dream?.downvotes,
   nsfw: dream?.nsfw,
   frontendUrl: dream?.frontendUrl,
+  activityLevel: dream?.activityLevel,
   video_timestamp: dream?.processed_at?.getTime(),
   timestamp: dream?.updated_at?.getTime(),
 });

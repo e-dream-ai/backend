@@ -3,7 +3,7 @@ import pretty from "pino-pretty";
 import env from "../shared/env";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let APP_LOGGER: Logger;
+let APP_LOGGER: Logger<string>;
 
 if (env.NODE_ENV === "production") {
   /**
@@ -13,7 +13,7 @@ if (env.NODE_ENV === "production") {
 } else if (env.NODE_ENV === "stage") {
   APP_LOGGER = pino(pretty({ minimumLevel: "warn" }));
 } else {
-  APP_LOGGER = pino(pretty({ minimumLevel: "debug" }));
+  APP_LOGGER = pino(pretty({ minimumLevel: "trace" }));
 }
 
 export { APP_LOGGER };

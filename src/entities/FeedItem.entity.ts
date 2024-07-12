@@ -33,7 +33,7 @@ export class FeedItem {
    * Dream of Playlist Item
    * Should be null if playlistItem exists
    */
-  @OneToOne(() => Dream)
+  @OneToOne(() => Dream, (dream) => dream.feedItem)
   @JoinColumn()
   dreamItem: Dream;
 
@@ -41,7 +41,7 @@ export class FeedItem {
    * Playlist of Playlist Item
    * Should be null if dreamItem exists
    */
-  @OneToOne(() => Playlist)
+  @OneToOne(() => Playlist, (playlist) => playlist.feedItem)
   @JoinColumn()
   playlistItem: Playlist;
 

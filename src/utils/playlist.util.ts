@@ -55,6 +55,7 @@ export const getPlaylistFindOptionsRelations =
     return {
       user: true,
       displayedOwner: true,
+      feedItem: true,
       items: {
         playlistItem: {
           user: true,

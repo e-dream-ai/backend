@@ -11,14 +11,15 @@ export const socketAuthMiddleware = async (
   APP_LOGGER.info("Socket connection attempt has begun");
 
   try {
-    const token = socket.handshake.query.token;
+    const accessToken = socket.handshake.headers?.authorization?.split(" ")[1];
+
     /**
      * If is not string or empty throw error
      */
-    if (typeof token !== "string" || !token) {
+    if (typeof accessToken !== "string" || !accessToken) {
       return next(new Error("Authentication error"));
     }
-    const accessToken = String(token)?.split(" ")[1];
+
     // Validate the token
     const validatedToken = await validateToken(String(accessToken));
     const { username } = validatedToken;

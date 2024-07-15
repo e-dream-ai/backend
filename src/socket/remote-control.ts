@@ -5,7 +5,11 @@ import { APP_LOGGER } from "shared/logger";
 import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import { VoteType } from "types/vote.types";
-import { handleVoteDream } from "utils/dream.util";
+import {
+  findOneDream,
+  getDreamSelectedColumns,
+  handleVoteDream,
+} from "utils/dream.util";
 import {
   removeUserCurrentPlaylist,
   setUserCurrentDream,
@@ -104,7 +108,7 @@ export const remoteControlEventListener = (
     }
 
     /**
-     * Handles upvote/like dream
+     * Handles upvote/like current dream
      */
     if (event === REMOTE_CONTROLS.LIKE_CURRENT_DREAM) {
       const dream = user?.currentDream;
@@ -119,10 +123,58 @@ export const remoteControlEventListener = (
     }
 
     /**
-     * Handles downvote/dislike dream
+     * Handles downvote/dislike current dream
      */
     if (event === REMOTE_CONTROLS.DISLIKE_CURRENT_DREAM) {
       const dream = user?.currentDream;
+
+      if (!dream) {
+        socket.emit(GENERAL_MESSAGES.ERROR, {
+          error: GENERAL_MESSAGES.NOT_FOUND,
+        });
+        return;
+      }
+
+      await handleVoteDream({
+        dream: dream!,
+        user,
+        voteType: VoteType.DOWNVOTE,
+      });
+    }
+
+    /**
+     * Handles upvote/like dream
+     */
+    if (event === REMOTE_CONTROLS.LIKE_DREAM) {
+      const uuid = data.uuid;
+      const dream = await findOneDream({
+        where: {
+          uuid,
+        },
+        select: getDreamSelectedColumns(),
+      });
+
+      if (!dream) {
+        socket.emit(GENERAL_MESSAGES.ERROR, {
+          error: GENERAL_MESSAGES.NOT_FOUND,
+        });
+        return;
+      }
+
+      await handleVoteDream({ dream: dream!, user, voteType: VoteType.UPVOTE });
+    }
+
+    /**
+     * Handles downvote/dislike dream
+     */
+    if (event === REMOTE_CONTROLS.DISLIKE_DREAM) {
+      const uuid = data.uuid;
+      const dream = await findOneDream({
+        where: {
+          uuid,
+        },
+        select: getDreamSelectedColumns(),
+      });
 
       if (!dream) {
         socket.emit(GENERAL_MESSAGES.ERROR, {

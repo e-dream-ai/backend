@@ -12,7 +12,7 @@ import appDataSource from "database/app-data-source";
 import env from "shared/env";
 import axios from "axios";
 import { ContentType, getRequestHeaders } from "constants/api.constants";
-import { FindOptionsSelect } from "typeorm";
+import { FindOptionsSelect, FindOptionsWhere } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import { FeedItemType } from "types/feed-item.types";
 import { APP_LOGGER } from "shared/logger";
@@ -121,6 +121,27 @@ export const getFileExtension = (fileName: string): string => {
   } else {
     return ""; // No extension found
   }
+};
+
+/**
+ * finds one dream
+ * @param where - where conditions
+ * @param select - columns to select
+ * @returns {Dream} dream
+ */
+export const findOneDream = async ({
+  where,
+  select,
+}: {
+  where: FindOptionsWhere<Dream> | FindOptionsWhere<Dream>[];
+  select: FindOptionsSelect<Dream>;
+}): Promise<Dream | null> => {
+  const dream = await dreamRepository.findOne({
+    where: where,
+    select: select,
+  });
+
+  return dream;
 };
 
 export const createFeedItem = async (dream: Dream) => {

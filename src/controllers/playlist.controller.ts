@@ -4,12 +4,14 @@ import { BUCKET_ACL } from "constants/aws/s3.constants";
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { THUMBNAIL } from "constants/multimedia.constants";
+import { PAGINATION } from "constants/pagination.constants";
 import { PLAYLIST_PREFIX } from "constants/playlist.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { Dream, FeedItem, Playlist, PlaylistItem, User } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
+import { ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import {
@@ -77,6 +79,56 @@ export const handleGetPlaylist = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { playlist } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles get playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlist
+ * BAD_REQUEST 400 - error getting playlist
+ *
+ */
+export const handleGetPlaylists = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const take = Math.min(
+    Number(req.query.take) || PAGINATION.TAKE,
+    PAGINATION.MAX_TAKE,
+  );
+  const skip = Number(req.query.skip) || PAGINATION.SKIP;
+  const userId = Number(req.query.userId) || undefined;
+
+  const search = req.query?.search
+    ? { name: ILike(`%${req.query.search}%`) }
+    : undefined;
+
+  try {
+    const [playlists, count] = await playlistRepository.findAndCount({
+      where: { user: { id: userId }, ...search },
+      select: getPlaylistSelectedColumns(),
+      order: { updated_at: "DESC" },
+      relations: {
+        items: {
+          playlistItem: true,
+          dreamItem: true,
+        },
+      },
+      take,
+      skip,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { playlists, count } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);

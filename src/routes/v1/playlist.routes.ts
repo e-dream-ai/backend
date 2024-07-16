@@ -66,6 +66,49 @@ playlistRouter.get(
 
 /**
  * @swagger
+ * /playlist/{id}:
+ *  get:
+ *    tags:
+ *      - playlist
+ *    summary: Gets playlists
+ *    description: Gets playlists
+ *    responses:
+ *      '200':
+ *        description: Gets playlists
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        playlists:
+ *                          $ref: '#/components/schemas/Playlist'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+playlistRouter.get(
+  "/",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  playlistController.handleGetPlaylists,
+);
+
+/**
+ * @swagger
  * /playlist:
  *  post:
  *    tags:

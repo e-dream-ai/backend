@@ -83,10 +83,12 @@ export const getDreamSelectedColumns = ({
   originalVideo,
   featureRank,
   userEmail,
+  playlistItems,
 }: {
   originalVideo?: boolean;
   featureRank?: boolean;
   userEmail?: boolean;
+  playlistItems?: boolean;
 } = {}): FindOptionsSelect<Dream> => {
   return {
     id: true,
@@ -109,6 +111,7 @@ export const getDreamSelectedColumns = ({
     deleted_at: true,
     original_video: originalVideo,
     featureRank: featureRank,
+    playlistItems: playlistItems,
     user: getUserSelectedColumns({ userEmail }),
     displayedOwner: getUserSelectedColumns(),
   };

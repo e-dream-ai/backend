@@ -41,6 +41,7 @@ import {
 } from "utils/dream.util";
 import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
+import { getPlaylistFindOptionsRelations } from "utils/playlist.util";
 import { isBrowserRequest } from "utils/request.util";
 import {
   jsonResponse,
@@ -590,10 +591,15 @@ export const handleGetDream = async (
   try {
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true, displayedOwner: true, playlistItems: true },
+      relations: {
+        user: true,
+        displayedOwner: true,
+        playlistItems: { playlist: getPlaylistFindOptionsRelations() },
+      },
       select: getDreamSelectedColumns({
         originalVideo: true,
         featureRank: true,
+        playlistItems: true,
       }),
     });
 

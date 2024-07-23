@@ -10,8 +10,13 @@ import env from "shared/env";
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
 import { APP_LOGGER } from "shared/logger";
+import passport from "passport";
+import session from "express-session";
+import configurePassport from "clients/passport.client";
 
 const swaggerPath = "/api/v1/api-docs";
+
+configurePassport();
 
 const options: swaggerJSDoc.Options = {
   definition: {
@@ -58,6 +63,17 @@ export const registerMiddlewares = (app: express.Application) => {
 
   // pino-http express middleware
   app.use(pinoHttp({ logger: APP_LOGGER }));
+
+  app.use(
+    session({
+      secret: "your_secret_key",
+      resave: false,
+      saveUninitialized: true,
+    }),
+  );
+
+  app.use(passport.initialize());
+  app.use(passport.session());
 
   // auth middleware
   app.use(authMiddleware);

@@ -50,6 +50,7 @@ import { CognitoIPSExceptions } from "constants/aws/erros.constant";
 import { validateAndUseCode } from "utils/invite.util";
 import { isFeatureActive } from "utils/feature.util";
 import { FEATURES } from "constants/feature.constants";
+import { authenticateUser } from "utils/user.util";
 
 /**
  * Repositories
@@ -279,23 +280,7 @@ export const handleLogin = async (
   try {
     const { username, password } = req.body;
 
-    const command = new InitiateAuthCommand({
-      AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
-      ClientId: AWS_COGNITO_APP_CLIENT_ID,
-      AuthParameters: {
-        USERNAME: username!,
-        PASSWORD: password!,
-      },
-    });
-
-    const commandResponse = await cognitoIdentityProviderClient.send(command);
-    const accessToken = commandResponse.AuthenticationResult?.AccessToken;
-    const cognitoUser = await fetchCognitoUser(accessToken!);
-
-    const user = await userRepository.findOne({
-      where: { cognitoId: cognitoUser.id },
-      relations: { role: true },
-    });
+    const { user, token } = await authenticateUser({ username, password });
 
     if (!user) {
       return handleNotFound(req, res);
@@ -312,7 +297,7 @@ export const handleLogin = async (
       jsonResponse({
         success: true,
         message: AUTH_MESSAGES.USER_LOGGED_IN,
-        data: { ...user, token: commandResponse.AuthenticationResult },
+        data: { ...user, token },
       }),
     );
   } catch (error) {

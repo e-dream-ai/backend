@@ -2,6 +2,7 @@ import * as authController from "controllers/auth.controller";
 import { Router } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
+import passport from "passport";
 import {
   confirmLoginWithCodeSchema,
   loginSchema,
@@ -224,6 +225,28 @@ authRouter.post(
   validatorMiddleware(loginSchema),
   authController.handleLogin,
 );
+
+// Custom callback for handling JSON
+authRouter.post("/passport-login", (req, res, next) => {
+  passport.authenticate("local", (err, user, info) => {
+    if (err) {
+      return res
+        .status(500)
+        .json({ message: "Internal Server Error", error: err });
+    }
+    if (!user) {
+      return res
+        .status(401)
+        .json({ message: "Authentication Failed", info: info });
+    }
+    req.logIn(user, (err) => {
+      if (err) {
+        return res.status(500).json({ message: "Login Failed", error: err });
+      }
+      return res.status(200).json({ message: "Login Successful", user: user });
+    });
+  })(req, res, next);
+});
 
 /**
  * @swagger

@@ -1,4 +1,8 @@
 import { FindOptionsRelations, FindOptionsSelect, LessThan } from "typeorm";
+import {
+  AWS_COGNITO_APP_CLIENT_ID,
+  cognitoIdentityProviderClient,
+} from "clients/cognito.client";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { User } from "entities";
@@ -7,11 +11,46 @@ import {
   DAILY_USER_DEFAULT_QUOTA,
   MIN_USER_QUOTA,
 } from "constants/user.constants";
+import {
+  AuthFlowType,
+  InitiateAuthCommand,
+} from "@aws-sdk/client-cognito-identity-provider";
+import { fetchCognitoUser } from "controllers/auth.controller";
 
 /**
  * Repositories
  */
 const userRepository = appDataSource.getRepository(User);
+
+export const authenticateUser = async ({
+  username,
+  password,
+}: {
+  username?: string;
+  password?: string;
+}) => {
+  const command = new InitiateAuthCommand({
+    AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
+    ClientId: AWS_COGNITO_APP_CLIENT_ID,
+    AuthParameters: {
+      USERNAME: username!,
+      PASSWORD: password!,
+    },
+  });
+
+  const commandResponse = await cognitoIdentityProviderClient.send(command);
+  const accessToken = commandResponse.AuthenticationResult?.AccessToken;
+  const cognitoUser = await fetchCognitoUser(accessToken!);
+
+  const user = await userRepository.findOne({
+    where: { cognitoId: cognitoUser.id },
+    relations: { role: true },
+  });
+
+  const token = commandResponse.AuthenticationResult;
+
+  return { user, token };
+};
 
 export const getRoleSelectedColumns = (): FindOptionsSelect<Role> => {
   return {

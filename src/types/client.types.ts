@@ -22,9 +22,9 @@ export type ClientDream = {
   downvotes: number;
   nsfw: boolean;
   frontendUrl: string;
-  activityLevel?: number;
+  activityLevel?: number | null;
   timestamp: number;
-  video_timestamp?: number;
+  video_timestamp?: number | null;
 };
 
 export type ClientPlaylist = {

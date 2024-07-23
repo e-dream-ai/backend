@@ -3,6 +3,7 @@ import { Between } from "typeorm";
 import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import { processDreamRequest } from "utils/dream.util";
+import { DreamStatusType } from "types/dream.types";
 
 const main = async () => {
   // Initialize the data source
@@ -23,7 +24,16 @@ const main = async () => {
     },
   });
 
-  const promises = dreams.map((dream) => processDreamRequest(dream));
+  const promises = dreams.map(async (dream) => {
+    /**
+     * set dream status to queue
+     */
+    await dreamRepository.update(dream.id, {
+      status: DreamStatusType.QUEUE,
+    });
+
+    return processDreamRequest(dream);
+  });
 
   const results = await Promise.allSettled(promises);
   const queuedDreams: string[] = [];

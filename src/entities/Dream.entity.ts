@@ -140,7 +140,7 @@ export class Dream {
 
   // last processed at date
   @Column({ nullable: true, type: "timestamp" })
-  processed_at: Date;
+  processed_at?: Date | null;
 
   @CreateDateColumn()
   created_at: Date;

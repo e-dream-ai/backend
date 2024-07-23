@@ -18,20 +18,20 @@ const dreamRepository = appDataSource.getRepository(Dream);
  */
 export const formatClientDream = (dream: Dream): ClientDream => ({
   uuid: dream.uuid,
-  name: dream?.name,
-  artist: dream?.displayedOwner?.name ?? dream?.user?.name,
-  size: dream?.processedVideoSize,
-  status: dream?.status,
-  fps: dream?.processedVideoFPS,
-  frames: dream?.processedVideoFrames,
-  thumbnail: dream?.thumbnail,
-  upvotes: dream?.upvotes,
-  downvotes: dream?.downvotes,
-  nsfw: dream?.nsfw,
-  frontendUrl: dream?.frontendUrl,
-  activityLevel: dream?.activityLevel,
-  video_timestamp: dream?.processed_at?.getTime(),
-  timestamp: dream?.updated_at?.getTime(),
+  name: dream?.name ?? null,
+  artist: dream?.displayedOwner?.name ?? dream?.user?.name ?? null,
+  size: dream?.processedVideoSize ?? null,
+  status: dream.status,
+  fps: dream?.processedVideoFPS ?? null,
+  frames: dream?.processedVideoFrames ?? null,
+  thumbnail: dream?.thumbnail ?? null,
+  upvotes: dream.upvotes,
+  downvotes: dream.downvotes,
+  nsfw: dream.nsfw,
+  frontendUrl: dream.frontendUrl,
+  activityLevel: dream?.activityLevel ?? null,
+  video_timestamp: dream?.processed_at ? dream?.processed_at.getTime() : null,
+  timestamp: dream.updated_at.getTime(),
 });
 
 /**
@@ -40,15 +40,15 @@ export const formatClientDream = (dream: Dream): ClientDream => ({
  */
 export const formatClientPlaylist = (playlist: Playlist): ClientPlaylist => ({
   id: playlist.id,
-  name: playlist?.name,
-  artist: playlist?.displayedOwner?.name ?? playlist?.user?.name,
-  thumbnail: playlist?.thumbnail,
-  nsfw: playlist?.nsfw,
+  name: playlist?.name ?? null,
+  artist: playlist?.displayedOwner?.name ?? playlist?.user?.name ?? null,
+  thumbnail: playlist?.thumbnail ?? null,
+  nsfw: playlist.nsfw,
   contents: playlist?.items
     ?.filter((item) => Boolean(item?.dreamItem))
     .map((item) => ({
-      uuid: item?.dreamItem?.uuid,
-      timestamp: item?.dreamItem?.updated_at?.getTime(),
+      uuid: item.dreamItem.uuid,
+      timestamp: item.dreamItem.updated_at.getTime(),
     })),
   timestamp: playlist.updated_at.getTime(),
 });

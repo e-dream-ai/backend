@@ -1,8 +1,8 @@
 import { Socket } from "socket.io";
 import { ExtendedError } from "socket.io/dist/namespace";
-import { fetchUser } from "controllers/auth.controller";
+import { fetchUserByCognitoId } from "controllers/auth.controller";
 import { APP_LOGGER } from "shared/logger";
-import { validateToken } from "middlewares/auth.middleware";
+import { validateCognitoJWT } from "utils/auth.util";
 
 export const socketAuthMiddleware = async (
   socket: Socket,
@@ -20,9 +20,9 @@ export const socketAuthMiddleware = async (
     }
     const accessToken = String(token)?.split(" ")[1];
     // Validate the token
-    const validatedToken = await validateToken(String(accessToken));
-    const { username } = validatedToken;
-    const user = await fetchUser(username);
+    const validatedToken = await validateCognitoJWT(String(accessToken));
+    const { username: cognitoId } = validatedToken;
+    const user = await fetchUserByCognitoId(cognitoId);
     socket.data.user = user;
     if (validatedToken) {
       return next();

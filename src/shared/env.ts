@@ -71,6 +71,11 @@ export const env = cleanEnv(process.env, {
    * FRONTEND
    */
   FRONTEND_URL: url(),
+
+  /**
+   * API_KEYS
+   */
+  API_KEYS: json(),
 });
 
 export default env;

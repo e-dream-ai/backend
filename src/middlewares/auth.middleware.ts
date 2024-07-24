@@ -1,43 +1,17 @@
 import { NextFunction } from "express";
 import httpStatus from "http-status";
-import jwt, { JsonWebTokenError } from "jsonwebtoken";
-import jwksClient, { DecodedToken } from "jwks-rsa";
-import env from "shared/env";
+import { JsonWebTokenError } from "jsonwebtoken";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
-import { fetchUser } from "controllers/auth.controller";
+import { fetchUserByCognitoId } from "controllers/auth.controller";
 import { APP_LOGGER } from "shared/logger";
-import { JwtPayloadType } from "types/auth.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { getErrorCode, getErrorMessage } from "utils/aws/auth-errors";
 import { jsonResponse } from "utils/responses.util";
+import { validateCognitoJWT } from "utils/auth.util";
 
-export const validateToken = async (token: string): Promise<JwtPayloadType> => {
-  const jwksUri = `https://cognito-idp.${env.AWS_REGION}.amazonaws.com/${env.AWS_COGNITO_USER_POOL_ID}/.well-known/jwks.json`;
-  const verifyIssuerUri = `https://cognito-idp.${env.AWS_REGION}.amazonaws.com/${env.AWS_COGNITO_USER_POOL_ID}`;
-
-  // Decode the JWT token without verifying to get kid for key lookup
-  const decodedToken: DecodedToken = jwt.decode(token, {
-    complete: true,
-  }) as DecodedToken;
-
-  if (!decodedToken?.header) {
-    throw new Error(AUTH_MESSAGES.INVALID_TOKEN);
-  }
-
-  const client = jwksClient({
-    cache: true,
-    jwksUri: jwksUri,
-  });
-
-  const signingKey = await client.getSigningKey(decodedToken.header.kid);
-
-  // Verify the token
-  return jwt.verify(token, signingKey.getPublicKey(), {
-    issuer: verifyIssuerUri,
-    algorithms: ["RS256"],
-  }) as JwtPayloadType;
-};
-
+/**
+ * next to be deprecated
+ */
 const authMiddleware = async (
   req: RequestType,
   res: ResponseType,
@@ -48,9 +22,9 @@ const authMiddleware = async (
   }
   try {
     const accessToken = req.headers.authorization.split(" ")[1];
-    const validatedToken = await validateToken(accessToken);
+    const validatedToken = await validateCognitoJWT(accessToken);
     const { username } = validatedToken;
-    const user = await fetchUser(username);
+    const user = await fetchUserByCognitoId(username);
 
     if (!user) {
       return res.status(httpStatus.NOT_FOUND).json(

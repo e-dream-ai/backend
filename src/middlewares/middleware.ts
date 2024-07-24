@@ -3,8 +3,6 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { Namespace } from "socket.io/dist/namespace";
-// import swaggerDocument from "constants/swagger.json";
-import authMiddleware from "middlewares/auth.middleware";
 import { socketAuthMiddleware } from "middlewares/socket.middleware";
 import env from "shared/env";
 import swaggerUi from "swagger-ui-express";
@@ -74,9 +72,6 @@ export const registerMiddlewares = (app: express.Application) => {
 
   app.use(passport.initialize());
   app.use(passport.session());
-
-  // auth middleware
-  app.use(authMiddleware);
 
   // swagger ui
 

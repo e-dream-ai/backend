@@ -7,6 +7,7 @@ import {
   AUTH_CUSTOM_CHALLENGE,
   UserAttributes,
 } from "constants/aws/cognito.constant";
+import passport from "passport";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import httpStatus from "http-status";
 import {
@@ -22,7 +23,11 @@ import {
   UserSignUpCredentials,
   UserVerifyCredentials,
 } from "types/auth.types";
-import { handleNotFound, jsonResponse } from "utils/responses.util";
+import {
+  handleInternalServerError,
+  handleNotFound,
+  jsonResponse,
+} from "utils/responses.util";
 import {
   AuthFlowType,
   ChangePasswordCommand,
@@ -37,12 +42,11 @@ import {
   SignUpCommand,
   AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
-
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { User } from "entities";
 import { Role } from "entities/Role.entity";
-import type { Response } from "express";
+import type { NextFunction, Response } from "express";
 import { APP_LOGGER } from "shared/logger";
 import type { RequestType, ResponseType } from "types/express.types";
 import { getErrorMessage } from "utils/aws/auth-errors";
@@ -312,6 +316,51 @@ export const handleLogin = async (
 };
 
 /**
+ * Handles the login
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - user logged in
+ * BAD_REQUEST 400 - error logging in user
+ *
+ */
+export const handlePassportLogin = async (
+  req: RequestType<UserLoginCredentials>,
+  res: Response,
+  next: NextFunction,
+) => {
+  return passport.authenticate(
+    "local",
+    (
+      err: Error,
+      user: Express.User | false | null | undefined,
+      // _: object | string | Array<string | undefined> | undefined,
+    ) => {
+      if (err) {
+        return handleInternalServerError(err, req, res);
+      }
+      if (!user) {
+        return handleNotFound(req, res);
+      }
+      req.logIn(user, (err) => {
+        if (err) {
+          return handleInternalServerError(err, req, res);
+        }
+        return res.status(httpStatus.OK).json(
+          jsonResponse({
+            success: true,
+            message: AUTH_MESSAGES.USER_LOGGED_IN,
+            data: user,
+          }),
+        );
+      });
+    },
+  )(req, res, next);
+};
+
+/**
  * Fetch user from aws cognito
  *
  * @param {string} access_token - user access token
@@ -336,16 +385,32 @@ export const fetchCognitoUser = async (accessToken: string) => {
 };
 
 /**
- * Fetch user from database
+ * Fetch user by cognito id
  *
- * @param {string} access_token - user access token
+ * @param {string} cognitoId - cognitoId
  *
- * @returns {MiddlewareUser} Returns middleware user
+ * @returns {User} Returns user
  *
  */
-export const fetchUser = async (username: string) => {
+export const fetchUserByCognitoId = async (cognitoId: string) => {
   const user = await userRepository.findOne({
-    where: { cognitoId: username },
+    where: { cognitoId },
+    relations: { role: true, currentPlaylist: true, currentDream: true },
+  });
+  return user;
+};
+
+/**
+ * Fetch user by id
+ *
+ * @param {string} id - user id
+ *
+ * @returns {User} Returns user
+ *
+ */
+export const fetchUserById = async (id: number) => {
+  const user = await userRepository.findOne({
+    where: { id },
     relations: { role: true, currentPlaylist: true, currentDream: true },
   });
   return user;

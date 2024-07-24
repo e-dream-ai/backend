@@ -256,6 +256,7 @@ authRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 authRouter.get("/user", requireAuth, authController.handleUser);
 
@@ -361,6 +362,7 @@ authRouter.post("/refresh", authController.handleRefresh);
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 authRouter.post(
   "/change-password",

@@ -157,6 +157,18 @@ Provide a way to organize sockets into groups, allowing you to broadcast message
 
 Verifies the identity of clients connecting to the server via sockets and adds user data to logic
 
+## Authentication
+
+Authentication is handled by [Passport](https://www.npmjs.com/package/passport). It provides various strategies that act as middleware to process and validate authentication requests. This application uses next strategies for authentication.
+
+### BearerStrategy
+
+Authenticates users using JWT issued by Amazon Cognito.
+
+### HeaderAPIKeyStrategy
+
+Authenticates users using an API key provided in the request header.
+
 ## Scripts
 
 TS scripts to execute a process.

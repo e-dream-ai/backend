@@ -44,6 +44,7 @@ const userRouter = Router();
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 userRouter.get(
   "/current/playlist",
@@ -87,6 +88,7 @@ userRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 userRouter.get(
   "/current",
@@ -149,6 +151,7 @@ userRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 userRouter.get(
   "/roles",
@@ -200,6 +203,7 @@ userRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 userRouter.get(
   "/:id",
@@ -245,6 +249,7 @@ userRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 userRouter.get(
   "/",
@@ -303,6 +308,7 @@ userRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 userRouter.put(
   "/:id",
@@ -366,6 +372,7 @@ userRouter.put(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 userRouter.put(
   "/:id/avatar",
@@ -427,6 +434,7 @@ userRouter.put(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 userRouter.put(
   "/:id/role",

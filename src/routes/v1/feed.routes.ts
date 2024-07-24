@@ -58,6 +58,7 @@ const feedRouter = Router();
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 feedRouter.get(
   "/ranked",
@@ -120,6 +121,7 @@ feedRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 feedRouter.get(
   "/",
@@ -182,6 +184,7 @@ feedRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 feedRouter.get(
   "/my-dreams",

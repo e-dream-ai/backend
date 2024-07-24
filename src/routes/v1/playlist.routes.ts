@@ -52,6 +52,7 @@ const playlistRouter = Router();
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 playlistRouter.get(
   "/:id",
@@ -95,6 +96,7 @@ playlistRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 playlistRouter.get(
   "/",
@@ -144,6 +146,7 @@ playlistRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 playlistRouter.post(
   "/",
@@ -202,6 +205,7 @@ playlistRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 playlistRouter.put(
   "/:id",
@@ -265,6 +269,7 @@ playlistRouter.put(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 playlistRouter.put(
   "/:id/thumbnail",
@@ -310,6 +315,7 @@ playlistRouter.put(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 playlistRouter.delete(
   "/:id",
@@ -387,6 +393,7 @@ playlistRouter.delete(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 playlistRouter.put(
   "/:id/order",
@@ -450,6 +457,7 @@ playlistRouter.put(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 playlistRouter.put(
   "/:id/add-item",
@@ -509,6 +517,7 @@ playlistRouter.put(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 playlistRouter.delete(
   "/:id/remove-item/:itemId",

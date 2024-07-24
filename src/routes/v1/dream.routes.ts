@@ -66,6 +66,7 @@ dreamRouter.use("/job", jobRouter);
  *               $ref: '#/components/schemas/BadApiResponse'
  *     security:
  *       - bearerAuth: []
+ *       - apiKeyAuth: []
  */
 dreamRouter.get(
   "/",
@@ -146,6 +147,7 @@ dreamRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.post(
   "/create-multipart-upload",
@@ -211,6 +213,7 @@ dreamRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.post(
   "/:uuid/refresh-multipart-upload-url",
@@ -277,6 +280,7 @@ dreamRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.post(
   "/:uuid/complete-multipart-upload",
@@ -324,6 +328,7 @@ dreamRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.post(
   "/:uuid/abort-multipart-upload",
@@ -377,6 +382,7 @@ dreamRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.get(
   "/my-dreams",
@@ -427,6 +433,7 @@ dreamRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.get(
   "/:uuid/vote",
@@ -480,6 +487,7 @@ dreamRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.post(
   "/:uuid/process-dream",
@@ -528,6 +536,7 @@ dreamRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.post(
   "/:uuid/status/processing",
@@ -588,6 +597,7 @@ dreamRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.post(
   "/:uuid/status/processed",
@@ -638,6 +648,7 @@ dreamRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.post(
   "/:uuid/status/failed",
@@ -684,6 +695,7 @@ dreamRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.get(
   "/:uuid",
@@ -739,6 +751,7 @@ dreamRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.put(
   "/:uuid",
@@ -799,6 +812,7 @@ dreamRouter.put(
  *               $ref: '#/components/schemas/BadApiResponse'
  *     security:
  *       - bearerAuth: []
+ *       - apiKeyAuth: []
  */
 dreamRouter.put(
   "/:uuid/thumbnail",
@@ -843,6 +857,7 @@ dreamRouter.put(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.delete(
   "/:uuid",
@@ -893,6 +908,7 @@ dreamRouter.delete(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.put(
   "/:uuid/upvote",
@@ -943,6 +959,7 @@ dreamRouter.put(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.put(
   "/:uuid/downvote",
@@ -993,6 +1010,7 @@ dreamRouter.put(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 dreamRouter.put(
   "/:uuid/unvote",

@@ -4,6 +4,11 @@ import env from "shared/env";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import { JwtPayloadType } from "types/auth.types";
 
+/**
+ * Validates cognito jwt
+ * @param token
+ * @returns {JwtPayloadType} jwtPayload
+ */
 export const validateCognitoJWT = async (
   token: string,
 ): Promise<JwtPayloadType> => {
@@ -33,7 +38,19 @@ export const validateCognitoJWT = async (
   }) as JwtPayloadType;
 };
 
+/**
+ * Validates apikey
+ * @param apiKey
+ * @returns {number | undefined} userId
+ */
 export const validateApiKey = async (apiKey: string) => {
+  /**
+   * now api keys are obteined from ENV with API_KEYS in this format:
+   *
+   * { userId: number; apiKey: string }
+   *
+   * will be changed on future for storing on sql or other strategy
+   */
   const apiKeys: { userId: number; apiKey: string }[] = env.API_KEYS;
   if (!apiKeys) {
     return undefined;

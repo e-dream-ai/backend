@@ -56,6 +56,7 @@ const inviteRouter = Router();
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 inviteRouter.get(
   "/",
@@ -108,6 +109,7 @@ inviteRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 inviteRouter.post(
   "/",
@@ -158,6 +160,7 @@ inviteRouter.post(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 inviteRouter.put(
   "/:id/invalidate",

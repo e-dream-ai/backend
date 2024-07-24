@@ -7,6 +7,12 @@ import passport from "passport";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
 
+/**
+ * Callback handler for passport authenticate strategies
+ * @param req
+ * @param res
+ * @param next
+ */
 const handleAuthCallback = (
   req: RequestType,
   res: ResponseType,
@@ -26,6 +32,11 @@ const handleAuthCallback = (
       );
     }
     if (!user) {
+      /**
+       * get error message
+       * BearerStrategy and HeaderAPIKeyStrategy work different on info handling
+       * BearerStrategy uses OAuth 2.0 error response format, this is the reason why error message is extracted different here
+       */
       const errorMessage =
         (info as { message?: string }[])?.[0]?.message ??
         (info as string[])?.[0]?.match(/error_description="([^"]+)"/)?.[1];
@@ -53,6 +64,9 @@ const requireAuth = (
 ) => {
   const authHeader = req.headers.authorization;
 
+  /**
+   * Applies different strategies: for Api-Key and Bearer authorization headers
+   */
   if (authHeader && authHeader.startsWith("Bearer ")) {
     return passport.authenticate(
       ["bearer"],

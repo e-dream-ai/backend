@@ -14,6 +14,9 @@ import { JsonWebTokenError } from "jsonwebtoken";
 import { getErrorMessage } from "utils/aws/auth-errors";
 import { User } from "entities";
 
+/**
+ * Configures Passport with LocalStrategy, BearerStrategy, and HeaderAPIKeyStrategy
+ */
 export default function configurePassport() {
   passport.use(
     new LocalStrategy(
@@ -33,6 +36,7 @@ export default function configurePassport() {
     ),
   );
 
+  // BearerStrategy for cognito JWT-based authentication
   passport.use(
     new BearerStrategy(async (token, done) => {
       try {
@@ -61,6 +65,7 @@ export default function configurePassport() {
     }),
   );
 
+  // HeaderAPIKeyStrategy for API key authentication
   passport.use(
     new HeaderAPIKeyStrategy(
       { header: "Authorization", prefix: "Api-Key " },

@@ -47,6 +47,7 @@ const jobRouter = Router();
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 jobRouter.get(
   "/",

@@ -96,6 +96,7 @@ featureRouter.get("/", featureController.handleGetFeatures);
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 featureRouter.put(
   "/",

@@ -37,6 +37,7 @@ const clientRouter = Router();
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 clientRouter.get(
   "/hello",
@@ -87,6 +88,7 @@ clientRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 clientRouter.get(
   "/playlist/default",
@@ -139,6 +141,7 @@ clientRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 clientRouter.get(
   "/playlist/:id",
@@ -189,6 +192,7 @@ clientRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 clientRouter.get(
   "/dream/:uuid/url",
@@ -242,6 +246,7 @@ clientRouter.get(
  *              $ref: '#/components/schemas/BadApiResponse'
  *    security:
  *      - bearerAuth: []
+ *      - apiKeyAuth: []
  */
 clientRouter.get(
   "/dream",

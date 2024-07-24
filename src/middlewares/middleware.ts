@@ -77,8 +77,6 @@ export const registerMiddlewares = (app: express.Application) => {
 
   // Serve Swagger UI
   app.use(swaggerPath, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-  // app.use(swaggerPath, swaggerUi.serve);
-  // app.get(swaggerPath, swaggerUi.setup(swaggerDocument));
 };
 
 export const socketRegisterMiddlewares = (namespace: Namespace) => {

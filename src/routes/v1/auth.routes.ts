@@ -222,11 +222,8 @@ authRouter.post(
 authRouter.post(
   "/login",
   validatorMiddleware(loginSchema),
-  authController.handleLogin,
+  authController.handlePassportLogin,
 );
-
-// Custom callback for handling JSON
-authRouter.post("/passport-login", authController.handlePassportLogin);
 
 /**
  * @swagger

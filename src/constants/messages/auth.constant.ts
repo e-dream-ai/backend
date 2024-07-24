@@ -9,7 +9,9 @@ export const AUTH_MESSAGES = {
   USER_NOT_CONFIRMED:
     "User is not confirmed, check your email to verify account.",
   AUTHENTICATION_FAILED: "Authentication failed.",
+  INVALID_SIGNATURE: "Invalid signature.",
   INVALID_PARAMETERS: "Invalid parameters provided.",
+  INVALID_API_KEY: "Invalid apikey.",
   INVALID_CREDENTIALS: "Invalid credentials provided.",
   INVALID_INVITE: "Invalid invite code.",
   INVALID_TOKEN: "Invalid token.",

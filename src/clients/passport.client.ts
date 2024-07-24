@@ -41,20 +41,22 @@ export default function configurePassport() {
         const user = await fetchUserByCognitoId(cognitoId);
 
         if (user) {
-          done(null, user);
+          return done(null, user);
         } else {
-          done(
-            {
-              message: AUTH_MESSAGES.INVALID_CREDENTIALS,
-            },
-            false,
-          );
+          return done(null, false, {
+            message: AUTH_MESSAGES.INVALID_CREDENTIALS,
+            scope: "JWTError",
+          });
         }
       } catch (error) {
         APP_LOGGER.error(error);
         const jwtError = error as JsonWebTokenError;
-        const message: string = getErrorMessage(jwtError.name);
-        done({ message: message ?? AUTH_MESSAGES.INVALID_CREDENTIALS }, false);
+        const message: string =
+          jwtError.message ?? getErrorMessage(jwtError.name);
+        return done(undefined, false, {
+          message: message ?? AUTH_MESSAGES.INVALID_CREDENTIALS,
+          scope: "JWTError",
+        });
       }
     }),
   );
@@ -73,27 +75,22 @@ export default function configurePassport() {
           }
 
           if (user) {
-            done(null, user);
+            return done(null, user);
           } else {
-            done(
-              {
-                message: AUTH_MESSAGES.INVALID_CREDENTIALS,
-                name: "ApiKeyError",
-              },
-              false,
-            );
+            return done(null, false, {
+              message: AUTH_MESSAGES.INVALID_API_KEY,
+              scope: "ApiKeyError",
+            });
           }
         } catch (error) {
           APP_LOGGER.error(error);
           const jwtError = error as JsonWebTokenError;
-          const message: string = getErrorMessage(jwtError.name);
-          done(
-            {
-              message: message ?? AUTH_MESSAGES.INVALID_CREDENTIALS,
-              name: "ApiKeyError",
-            },
-            false,
-          );
+          const message: string =
+            jwtError.message ?? getErrorMessage(jwtError.name);
+          return done(null, false, {
+            message: message ?? AUTH_MESSAGES.INVALID_CREDENTIALS,
+            scope: "ApiKeyError",
+          });
         }
       },
     ),

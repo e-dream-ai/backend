@@ -76,6 +76,11 @@ export const env = cleanEnv(process.env, {
    * API_KEYS
    */
   API_KEYS: json(),
+
+  /**
+   * SESSION_SECRET
+   */
+  SESSION_SECRET: str(),
 });
 
 export default env;

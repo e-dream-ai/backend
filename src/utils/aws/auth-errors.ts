@@ -6,7 +6,7 @@ export const getErrorMessage: (errorName: string) => string = (errorName) => {
   let message: string;
   switch (errorName) {
     case JWTErrors.JSON_WEB_TOKEN_ERROR:
-      message = AUTH_MESSAGES.USER_ALREADY_EXISTS;
+      message = AUTH_MESSAGES.INVALID_SIGNATURE;
       break;
     case JWTErrors.TOKEN_EXPIRED_ERROR:
       message = AUTH_MESSAGES.EXPIRED_TOKEN;

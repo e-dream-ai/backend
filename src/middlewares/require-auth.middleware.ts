@@ -7,39 +7,70 @@ import passport from "passport";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
 
+const handleAuthCallback = (
+  req: RequestType,
+  res: ResponseType,
+  next: NextFunction,
+) => {
+  return (
+    error: Error,
+    user: User,
+    info: { message?: string }[] | string[],
+  ) => {
+    if (error) {
+      return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
+        }),
+      );
+    }
+    if (!user) {
+      const errorMessage =
+        (info as { message?: string }[])?.[0]?.message ??
+        (info as string[])?.[0]?.match(/error_description="([^"]+)"/)?.[1];
+
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: errorMessage ?? AUTH_MESSAGES.AUTHENTICATION_FAILED,
+        }),
+      );
+    }
+    /**
+     * set on reqyest and response params
+     */
+    req.user = user;
+    res.locals.user = user;
+    next();
+  };
+};
+
 const requireAuth = (
   req: RequestType,
   res: ResponseType,
   next: NextFunction,
 ) => {
-  return passport.authenticate(
-    ["bearer", "headerapikey"],
-    { session: false },
-    (error: Error, user: User) => {
-      if (error) {
-        return res.status(httpStatus.INTERNAL_SERVER_ERROR).json(
-          jsonResponse({
-            success: false,
-            message: error.message ?? GENERAL_MESSAGES.INTERNAL_SERVER_ERROR,
-          }),
-        );
-      }
-      if (!user) {
-        return res.status(httpStatus.NOT_FOUND).json(
-          jsonResponse({
-            success: false,
-            message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
-          }),
-        );
-      }
-      /**
-       * set on reqyest and response params
-       */
-      req.user = user;
-      res.locals.user = user;
-      next();
-    },
-  )(req, res, next);
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return passport.authenticate(
+      ["bearer"],
+      { session: false },
+      handleAuthCallback(req, res, next),
+    )(req, res, next);
+  } else if (authHeader && authHeader.startsWith("Api-Key ")) {
+    return passport.authenticate(
+      ["headerapikey"],
+      { session: false },
+      handleAuthCallback(req, res, next),
+    )(req, res, next);
+  } else {
+    return res.status(httpStatus.UNAUTHORIZED).json({
+      success: false,
+      message: AUTH_MESSAGES.INVALID_CREDENTIALS,
+    });
+  }
 };
 
 export { requireAuth };

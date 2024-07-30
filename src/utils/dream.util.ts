@@ -21,6 +21,7 @@ import { VOTE_FIELDS, VoteType } from "types/vote.types";
 const queueUrl = ""; // env.AWS_SQS_URL;
 
 const PROCESS_VIDEO_SERVER_URL = env.PROCESS_VIDEO_SERVER_URL;
+const VIDEO_INGESTION_API_KEY = env.VIDEO_INGESTION_API_KEY;
 
 const dreamRepository = appDataSource.getRepository(Dream);
 const feedRepository = appDataSource.getRepository(FeedItem);
@@ -69,9 +70,10 @@ export const processDreamRequest = async (dream: Dream) => {
   };
   return axios
     .post(`${PROCESS_VIDEO_SERVER_URL}/process-video`, data, {
-      headers: getRequestHeaders({
-        contentType: ContentType.json,
-      }),
+      headers: {
+        Authorization: `Api-Key ${VIDEO_INGESTION_API_KEY}`,
+        ...getRequestHeaders({ contentType: ContentType.json }),
+      },
     })
     .then((res) => {
       return res.data;

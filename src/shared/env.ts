@@ -78,6 +78,11 @@ export const env = cleanEnv(process.env, {
   API_KEYS: json(),
 
   /**
+   * VIDEO_INGESTION_API_KEY
+   */
+  VIDEO_INGESTION_API_KEY: str(),
+
+  /**
    * SESSION_SECRET
    */
   SESSION_SECRET: str(),

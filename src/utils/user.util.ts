@@ -74,6 +74,7 @@ export const getUserSelectedColumns = ({
     avatar: true,
     nsfw: true,
     enableMarketingEmails: true,
+    quota: true,
     last_login_at: true,
     created_at: true,
     updated_at: true,

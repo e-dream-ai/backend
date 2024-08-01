@@ -11,7 +11,9 @@ export type UpdateUserRequest = {
   name: string;
   description?: string;
   role?: number;
+  nsfw?: boolean;
   enableMarketingEmails?: boolean;
+  quota?: number;
 };
 
 export type UpdateUserRoleRequest = {

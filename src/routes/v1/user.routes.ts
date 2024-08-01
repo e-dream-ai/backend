@@ -8,7 +8,7 @@ import validatorMiddleware from "middlewares/validator.middleware";
 import {
   getUsersSchema,
   updateUserRoleSchema,
-  updateUserSchema,
+  validateUserSchema,
 } from "schemas/user.schema";
 
 const userRouter = Router();
@@ -318,7 +318,7 @@ userRouter.put(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
-  validatorMiddleware(updateUserSchema),
+  validateUserSchema,
   userController.handleUpdateUser,
 );
 

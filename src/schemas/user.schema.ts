@@ -5,6 +5,11 @@ import {
   UpdateUserRequest,
   UpdateUserRoleRequest,
 } from "types/user.types";
+import { NextFunction } from "express";
+import httpStatus from "http-status";
+import { RequestType, ResponseType } from "types/express.types";
+import { jsonResponse } from "utils/responses.util";
+import { mapValidatorErrors } from "middlewares/validator.middleware";
 
 export const getUsersSchema = {
   query: Joi.object<GetUsersQuery>().keys({
@@ -20,7 +25,9 @@ export const updateUserSchema = {
     name: Joi.string().optional().allow("").max(50),
     description: Joi.string().optional().allow("").max(300),
     role: Joi.number().greater(0).integer(),
+    nsfw: Joi.boolean().optional(),
     enableMarketingEmails: Joi.boolean().optional(),
+    quota: Joi.number().greater(0).integer().optional(),
   }),
 };
 
@@ -28,4 +35,40 @@ export const updateUserRoleSchema = {
   body: Joi.object<UpdateUserRoleRequest>().keys({
     role: Joi.string().required().valid(ROLES.ADMIN_GROUP, ROLES.USER_GROUP),
   }),
+};
+
+export const validateUserSchema = async (
+  req: RequestType,
+  res: ResponseType,
+  next: NextFunction,
+) => {
+  const user = res.locals.user;
+  const role = user?.role.name;
+  let schema;
+
+  if (role !== ROLES.ADMIN_GROUP) {
+    // quota is allowed to be updated only by admins
+    schema = updateUserSchema.body.keys({
+      quota: Joi.forbidden(),
+    });
+  } else {
+    schema = updateUserSchema.body.keys();
+  }
+
+  /**
+   * get async schema
+   */
+  const { error } = schema.validate(req.body);
+
+  if (error) {
+    const errors = mapValidatorErrors(error);
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(
+        jsonResponse({ success: false, data: errors, message: error.message }),
+      );
+  }
+
+  next();
 };

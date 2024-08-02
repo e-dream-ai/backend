@@ -16,6 +16,7 @@ import { Role } from "./Role.entity";
 import { Vote } from "./Vote.entity";
 import { Invite } from "./Invite.entity";
 import { NEW_USER_DEFAULT_QUOTA } from "constants/user.constants";
+import { ApiKey } from "./ApiKey.entity";
 
 @Entity()
 export class User {
@@ -39,6 +40,9 @@ export class User {
 
   @OneToMany(() => Dream, (dream) => dream.user)
   dreams: Dream[];
+
+  @OneToMany(() => ApiKey, (apikey) => apikey.user)
+  apikeys: ApiKey[];
 
   @OneToMany(() => Vote, (vote) => vote.user, {
     cascade: ["soft-remove"],

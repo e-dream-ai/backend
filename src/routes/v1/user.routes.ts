@@ -444,4 +444,33 @@ userRouter.put(
   userController.handleUpdateRole,
 );
 
+userRouter.get(
+  "/:id/apikey",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  userController.handleGetApiKey,
+);
+
+userRouter.put(
+  "/:id/apikey",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  userController.handleGenerateApiKey,
+);
+
+userRouter.delete(
+  "/:id/apikey",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  userController.handleRevokeApiKey,
+);
+
 export default userRouter;

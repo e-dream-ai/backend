@@ -7,6 +7,7 @@ import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { Playlist, User } from "entities";
+import { ApiKey } from "entities/ApiKey.entity";
 import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
@@ -40,6 +41,7 @@ import {
 const userRepository = appDataSource.getRepository(User);
 const roleRepository = appDataSource.getRepository(Role);
 const playlistRepository = appDataSource.getRepository(Playlist);
+const apiKeyRepository = appDataSource.getRepository(ApiKey);
 
 /**
  * Handles get roles
@@ -447,6 +449,181 @@ export const handleUpdateRole = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { user: updatedUser } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles get apikey
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - apikey
+ * BAD_REQUEST 400 - error getting apikey
+ *
+ */
+export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
+  try {
+    const id = Number(req.params.id) || 0;
+    const requestUser = res.locals.user;
+    const user = await userRepository.findOne({
+      where: { id },
+      select: getUserSelectedColumns(),
+    });
+
+    if (!user) {
+      return handleNotFound(req, res);
+    }
+
+    const isOwner = user.id === requestUser?.id;
+    const isAllowed = canExecuteAction({
+      isOwner,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: requestUser?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req, res);
+    }
+    const apikey = await apiKeyRepository.findOne({
+      where: {
+        user: {
+          id: user.id,
+        },
+      },
+    });
+
+    if (!apikey) {
+      return handleNotFound(req, res);
+    }
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { apikey } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles generate apikey
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - apikey
+ * BAD_REQUEST 400 - error generating apikey
+ *
+ */
+export const handleGenerateApiKey = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  try {
+    const id = Number(req.params.id) || 0;
+    const requestUser = res.locals.user;
+    const user = await userRepository.findOne({
+      where: { id },
+      select: getUserSelectedColumns(),
+    });
+
+    if (!user) {
+      return handleNotFound(req, res);
+    }
+
+    const isOwner = user.id === requestUser?.id;
+    const isAllowed = canExecuteAction({
+      isOwner,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: requestUser?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req, res);
+    }
+    const foundApikey = await apiKeyRepository.findOne({
+      where: {
+        user: {
+          id: user.id,
+        },
+      },
+    });
+
+    if (foundApikey) {
+      await apiKeyRepository.softRemove(foundApikey);
+    }
+
+    const apikey = new ApiKey();
+    apikey.user = user;
+    await apiKeyRepository.save(apikey);
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { apikey } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles revoke apikey
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - apikey
+ * BAD_REQUEST 400 - error revoking apikey
+ *
+ */
+export const handleRevokeApiKey = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  try {
+    const id = Number(req.params.id) || 0;
+    const requestUser = res.locals.user;
+    const user = await userRepository.findOne({
+      where: { id },
+      select: getUserSelectedColumns(),
+    });
+
+    if (!user) {
+      return handleNotFound(req, res);
+    }
+
+    const isOwner = user.id === requestUser?.id;
+    const isAllowed = canExecuteAction({
+      isOwner,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: requestUser?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req, res);
+    }
+    const foundApikey = await apiKeyRepository.findOne({
+      where: {
+        user: {
+          id: user.id,
+        },
+      },
+    });
+
+    if (!foundApikey) {
+      return handleNotFound(req, res);
+    }
+
+    await apiKeyRepository.softRemove(foundApikey);
+
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);

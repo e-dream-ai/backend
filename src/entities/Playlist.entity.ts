@@ -49,7 +49,11 @@ export class Playlist {
    * Items which belong to current playlist
    */
   @OneToMany(() => PlaylistItem, (playlistItem) => playlistItem.playlist, {
-    cascade: ["soft-remove"],
+    /**
+     * soft-remove - helps to delete playlist items in cascade when a playlist is deleted
+     * update - helps to update playlist items in cascade (to update playlist order)
+     */
+    cascade: ["soft-remove", "update"],
   })
   items: PlaylistItem[];
 

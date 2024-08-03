@@ -86,6 +86,16 @@ export const env = cleanEnv(process.env, {
    * SESSION_SECRET
    */
   SESSION_SECRET: str(),
+
+  /**
+   * CIPHER_KEY
+   */
+  CIPHER_KEY: str(),
+
+  /**
+   * HEROKU_APIKEY
+   */
+  HEROKU_APIKEY: str(),
 });
 
 export default env;

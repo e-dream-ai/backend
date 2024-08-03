@@ -5,6 +5,7 @@ import { APP_LOGGER } from "shared/logger";
 
 const HEROKU_API_URL = env.HEROKU_API_URL;
 const VIDEO_SERVICE_APP_ID_OR_NAME = env.VIDEO_SERVICE_APP_ID_OR_NAME;
+const HEROKU_APIKEY = env.HEROKU_APIKEY;
 
 /**
  * Function to list values in a queue
@@ -42,7 +43,7 @@ export const updateHerokuFormation = async (config: {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/vnd.heroku+json; version=3",
-          Authorization: "Bearer 5cf85b7b-cd39-4460-b4c3-61f1a54efb68",
+          Authorization: `Bearer ${HEROKU_APIKEY}`,
         },
       },
     );

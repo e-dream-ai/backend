@@ -10,18 +10,25 @@ import {
   ManyToOne,
   JoinColumn,
 } from "typeorm";
-import { generateSecret } from "utils/crypto.util";
+import { encrypt, hashApiKey } from "utils/crypto.util";
 import { User } from "./User.entity";
+import { v4 as uuidv4 } from "uuid";
 
 @Entity()
-// create an index on the 'apikey' column
-@Index("IDX_APIKEY_KEY", ["apikey"])
+// create an index on the 'hash' column
+@Index("IDX_HASH", ["hash"])
 export class ApiKey {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: "varchar", length: 256, unique: true })
+  @Column({ type: "varchar" })
   apikey: string;
+
+  @Column({ type: "varchar" })
+  hash: string;
+
+  @Column({ type: "varchar" })
+  iv: string;
 
   @ManyToOne(() => User, (user) => user.apikeys)
   @JoinColumn()
@@ -41,6 +48,10 @@ export class ApiKey {
 
   @BeforeInsert()
   generateApiKey() {
-    this.apikey = generateSecret(32);
+    const apikey = uuidv4();
+    const { iv, content } = encrypt(apikey);
+    this.apikey = content;
+    this.iv = iv;
+    this.hash = hashApiKey(apikey);
   }
 }

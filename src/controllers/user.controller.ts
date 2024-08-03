@@ -19,6 +19,7 @@ import {
   UpdateUserRoleRequest,
 } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { decrypt } from "utils/crypto.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
   getPlaylistFindOptionsRelations,
@@ -501,9 +502,24 @@ export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
       return handleNotFound(req, res);
     }
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { apikey } }));
+    /**
+     * decrypt api key to send to frontend
+     */
+    const decryptedKey = decrypt({
+      iv: apikey.iv,
+      content: apikey.apikey,
+    });
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          apikey: {
+            apikey: decryptedKey,
+          },
+        },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);
@@ -563,9 +579,7 @@ export const handleGenerateApiKey = async (
     apikey.user = user;
     await apiKeyRepository.save(apikey);
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { apikey } }));
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);

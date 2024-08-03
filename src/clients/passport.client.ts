@@ -72,8 +72,8 @@ export default function configurePassport() {
       false,
       async (apikey, done) => {
         try {
-          const userId = await validateApiKey(apikey);
           let user: User | null = null;
+          const userId = await validateApiKey(apikey);
 
           if (userId) {
             user = await fetchUserById(userId);

@@ -9,6 +9,7 @@ node_modules
 .env.test.local
 .env.production.local
 .env.stage.local
+.env.staging.local
 .env.local.local
 .idea
 .eslintcache

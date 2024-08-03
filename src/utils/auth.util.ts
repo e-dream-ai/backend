@@ -3,6 +3,11 @@ import jwksClient, { DecodedToken } from "jwks-rsa";
 import env from "shared/env";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import { JwtPayloadType } from "types/auth.types";
+import { ApiKey } from "entities";
+import appDataSource from "database/app-data-source";
+import { hashApiKey } from "./crypto.util";
+
+const apiKeyRepository = appDataSource.getRepository(ApiKey);
 
 /**
  * Validates cognito jwt
@@ -45,6 +50,10 @@ export const validateCognitoJWT = async (
  */
 export const validateApiKey = async (apiKey: string) => {
   /**
+   * search for API_KEYS on ENV file values
+   */
+
+  /**
    * now api keys are obteined from ENV with API_KEYS in this format:
    *
    * { userId: number; apiKey: string }
@@ -52,18 +61,32 @@ export const validateApiKey = async (apiKey: string) => {
    * will be changed on future for storing on sql or other strategy
    */
   const apiKeys: { userId: number; apiKey: string }[] = env.API_KEYS;
-  if (!apiKeys) {
-    return undefined;
-  }
-  if (!Array.isArray(apiKeys)) {
-    return undefined;
-  }
 
-  const validApiKey = apiKeys.find((ak) => ak.apiKey === apiKey);
+  const validApiKey = apiKeys?.find((ak) => ak?.apiKey === apiKey);
 
   if (validApiKey) {
     return validApiKey.userId;
-  } else {
-    return undefined;
   }
+
+  /**
+   * search for API_KEYS on database
+   */
+
+  const hashedKey = hashApiKey(apiKey);
+
+  const dbApiKey = await apiKeyRepository.findOne({
+    where: {
+      hash: hashedKey,
+    },
+    /**
+     * add user relation to obtain user id
+     */
+    relations: { user: true },
+  });
+
+  if (dbApiKey) {
+    return dbApiKey?.user.id;
+  }
+
+  return undefined;
 };

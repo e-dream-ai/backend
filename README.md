@@ -169,6 +169,18 @@ Authenticates users using JWT issued by Amazon Cognito.
 
 Authenticates users using an API key provided in the request header.
 
+#### API KEY on env
+
+Performs a search for the api key in the `API_KEYS` environment variable, if it exists, it allows the request to continue, the value of the `API_KEYS` environment variable is defined as follows.
+
+```json
+[{ "userId": 1, "apiKey": "API_KEY" }]
+```
+
+#### API KEY on db
+
+Performs a search for the api key in the database, if it exists, it allows the request to continue. Definition of [ApiKey](src/entities/ApiKey.entity.ts) entity and its values on the entity file.
+
 ## Scripts
 
 TS scripts to execute a process.

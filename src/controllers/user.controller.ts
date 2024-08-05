@@ -29,7 +29,6 @@ import {
   handleForbidden,
   handleInternalServerError,
   handleNotFound,
-  handleUnauthorized,
   jsonResponse,
 } from "utils/responses.util";
 import {
@@ -376,7 +375,7 @@ export const handleUpdateUserAvatar = async (
     });
 
     if (!isAllowed) {
-      return handleUnauthorized(req, res);
+      return handleForbidden(req, res);
     }
 
     // update playlist

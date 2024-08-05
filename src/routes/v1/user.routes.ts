@@ -444,6 +444,50 @@ userRouter.put(
   userController.handleUpdateRole,
 );
 
+/**
+ * @swagger
+ * /user/{id}/apikey:
+ *  get:
+ *    tags:
+ *      - user
+ *    summary: Gets user api key
+ *    description: Gets user api key
+ *    parameters:
+ *      - name: id
+ *        in: query
+ *        description: User id
+ *        required: true
+ *        schema:
+ *          type: integer
+ *          example: 1
+ *    responses:
+ *      '200':
+ *        description: Gets user api key
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        apikey:
+ *                          type: object
+ *                          properties:
+ *                            apikey:
+ *                              type: string
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
 userRouter.get(
   "/:id/apikey",
   requireAuth,
@@ -455,6 +499,41 @@ userRouter.get(
   userController.handleGetApiKey,
 );
 
+/**
+ * @swagger
+ * /user/{id}/apikey:
+ *  put:
+ *    tags:
+ *      - user
+ *    summary: Generates user api key
+ *    description: Generates user api key
+ *    parameters:
+ *      - name: id
+ *        in: query
+ *        description: User id
+ *        required: true
+ *        schema:
+ *          type: integer
+ *          example: 1
+ *    responses:
+ *      '200':
+ *        description: Generates user api key
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
 userRouter.put(
   "/:id/apikey",
   requireAuth,
@@ -466,6 +545,41 @@ userRouter.put(
   userController.handleGenerateApiKey,
 );
 
+/**
+ * @swagger
+ * /user/{id}/apikey:
+ *  delete:
+ *    tags:
+ *      - user
+ *    summary: Revokes user api key
+ *    description: Revokes user api key
+ *    parameters:
+ *      - name: id
+ *        in: query
+ *        description: User id
+ *        required: true
+ *        schema:
+ *          type: integer
+ *          example: 1
+ *    responses:
+ *      '200':
+ *        description: Revokes user api key
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
 userRouter.delete(
   "/:id/apikey",
   requireAuth,

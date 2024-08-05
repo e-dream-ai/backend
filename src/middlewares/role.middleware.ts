@@ -23,10 +23,10 @@ export const checkRoleMiddleware = (roles: Array<RoleType>) => {
     //Check if array of authorized roles includes the user's role
     if (roles.indexOf(user?.role.name) > -1) next();
     else
-      return res.status(httpStatus.UNAUTHORIZED).json(
+      return res.status(httpStatus.FORBIDDEN).json(
         jsonResponse({
           success: false,
-          message: GENERAL_MESSAGES.UNAUTHORIZED,
+          message: GENERAL_MESSAGES.FORBIDDEN,
         }),
       );
   };

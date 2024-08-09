@@ -4,6 +4,10 @@ export enum PlaylistItemType {
   DREAM = "dream",
 }
 
+export type PlaylistParamsRequest = {
+  uuid: string;
+};
+
 export type CreatePlaylistRequest = {
   name: string;
   nsfw?: boolean;
@@ -27,5 +31,10 @@ export type OrderPlaylistRequest = {
 
 export type AddPlaylistItemRequest = {
   type: PlaylistItemType;
-  id: number;
+  uuid: string;
+};
+
+export type RemovePlaylistItemRequest = {
+  uuid: string;
+  itemId: number;
 };

@@ -9,26 +9,27 @@ import {
   addPlaylistItemSchema,
   createPlaylistSchema,
   orderPlaylistSchema,
+  removePlaylistItemSchema,
+  requestPlaylistSchema,
   updatePlaylistSchema,
 } from "schemas/playlist.schema";
 const playlistRouter = Router();
 
 /**
  * @swagger
- * /playlist/{id}:
+ * /playlist/{uuid}:
  *  get:
  *    tags:
  *      - playlist
  *    summary: Gets playlist
  *    description: Gets playlist
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: path
- *        description: Playlist id
+ *        description: Playlist uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Gets playlist
@@ -55,19 +56,20 @@ const playlistRouter = Router();
  *      - apiKeyAuth: []
  */
 playlistRouter.get(
-  "/:id",
+  "/:uuid",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestPlaylistSchema),
   playlistController.handleGetPlaylist,
 );
 
 /**
  * @swagger
- * /playlist/{id}:
+ * /playlist/{uuid}:
  *  get:
  *    tags:
  *      - playlist
@@ -162,7 +164,7 @@ playlistRouter.post(
 
 /**
  * @swagger
- * /playlist/{id}:
+ * /playlist/{uuid}:
  *  put:
  *    tags:
  *      - playlist
@@ -175,13 +177,12 @@ playlistRouter.post(
  *          schema:
  *            $ref: '#/components/schemas/Playlist'
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: User id
+ *        description: Playlist uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Updates playlist
@@ -208,7 +209,7 @@ playlistRouter.post(
  *      - apiKeyAuth: []
  */
 playlistRouter.put(
-  "/:id",
+  "/:uuid",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
@@ -221,20 +222,19 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{id}/thumbnail:
+ * /playlist/{uuid}/thumbnail:
  *  put:
  *    tags:
  *      - playlist
  *    summary: Updates playlist thumbnail
  *    description: Updates playlist thumbnail
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: playlist id
+ *        description: Playlist uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    requestBody:
  *      required: true
  *      content:
@@ -272,33 +272,33 @@ playlistRouter.put(
  *      - apiKeyAuth: []
  */
 playlistRouter.put(
-  "/:id/thumbnail",
+  "/:uuid/thumbnail",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestPlaylistSchema),
   multerSingleFileMiddleware,
   playlistController.handleUpdateThumbnailPlaylist,
 );
 
 /**
  * @swagger
- * /playlist/{id}:
+ * /playlist/{uuid}:
  *  delete:
  *    tags:
  *      - playlist
  *    summary: Deletes playlist
  *    description: Deletes playlist
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: playlist id
+ *        description: Playlist uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Deletes playlist
@@ -318,19 +318,20 @@ playlistRouter.put(
  *      - apiKeyAuth: []
  */
 playlistRouter.delete(
-  "/:id",
+  "/:uuid",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestPlaylistSchema),
   playlistController.handleDeletePlaylist,
 );
 
 /**
  * @swagger
- * /playlist/{id}/order:
+ * /playlist/{uuid}/order:
  *  put:
  *    tags:
  *      - playlist
@@ -363,13 +364,12 @@ playlistRouter.delete(
  *                  - id: 2
  *                    order: 1
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: User id
+ *        description: Playlist uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Updates playlist order
@@ -396,7 +396,7 @@ playlistRouter.delete(
  *      - apiKeyAuth: []
  */
 playlistRouter.put(
-  "/:id/order",
+  "/:uuid/order",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
@@ -409,7 +409,7 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{id}/add-item:
+ * /playlist/{uuid}/add-item:
  *  put:
  *    tags:
  *      - playlist
@@ -427,13 +427,12 @@ playlistRouter.put(
  *              id:
  *                type: number
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: User id
+ *        description: Playlist uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Updates playlist order
@@ -460,7 +459,7 @@ playlistRouter.put(
  *      - apiKeyAuth: []
  */
 playlistRouter.put(
-  "/:id/add-item",
+  "/:uuid/add-item",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
@@ -473,20 +472,19 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{id}/remove-item/{itemId}:
+ * /playlist/{uuid}/remove-item/{itemId}:
  *  delete:
  *    tags:
  *      - playlist
  *    summary: Deletes playlist item
  *    description: Deletes playlist item
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: playlist id
+ *        description: Playlist uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *      - name: itemId
  *        in: query
  *        description: playlist item id
@@ -520,13 +518,14 @@ playlistRouter.put(
  *      - apiKeyAuth: []
  */
 playlistRouter.delete(
-  "/:id/remove-item/:itemId",
+  "/:uuid/remove-item/:itemId",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(removePlaylistItemSchema),
   playlistController.handleRemovePlaylistItem,
 );
 

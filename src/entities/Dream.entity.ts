@@ -5,6 +5,7 @@ import {
   DeleteDateColumn,
   Entity,
   Generated,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -28,6 +29,7 @@ export class Dream {
 
   @Column({ type: "string" })
   @Generated("uuid")
+  @Index()
   uuid: string;
 
   @ManyToOne(() => User, (user) => user.dreams)

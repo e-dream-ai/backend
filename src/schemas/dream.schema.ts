@@ -7,13 +7,21 @@ import {
   ConfirmDreamRequest,
   CreateMultipartUploadDreamRequest,
   CreatePresignedDreamRequest,
+  DreamParamsRequest,
   DreamStatusType,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
+import { RequestValidationSchema } from "types/validator.types";
 
-export const getDreamsSchema = {
+export const requestDreamSchema: RequestValidationSchema = {
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const getDreamsSchema: RequestValidationSchema = {
   query: Joi.object<GetDreamsQuery>().keys({
     status: Joi.string().valid(...Object.values(DreamStatusType)),
     skip: Joi.number(),
@@ -22,16 +30,19 @@ export const getDreamsSchema = {
   }),
 };
 
-export const updateDreamSchema = {
+export const updateDreamSchema: RequestValidationSchema = {
   body: Joi.object<UpdateDreamRequest>().keys({
     name: Joi.string(),
     activityLevel: Joi.number(),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0),
   }),
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
 };
 
-export const createPresignedDreamSchema = {
+export const createPresignedDreamSchema: RequestValidationSchema = {
   body: Joi.object<CreatePresignedDreamRequest>().keys({
     name: Joi.string(),
     extension: Joi.string()
@@ -40,17 +51,23 @@ export const createPresignedDreamSchema = {
   }),
 };
 
-export const confirmDreamSchema = {
+export const confirmDreamSchema: RequestValidationSchema = {
   body: Joi.object<ConfirmDreamRequest>().keys({
     name: Joi.string(),
     extension: Joi.string()
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
   }),
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
 };
 
-export const createMultipartUploadDreamSchema = {
+export const createMultipartUploadDreamSchema: RequestValidationSchema = {
   body: Joi.object<CreateMultipartUploadDreamRequest>().keys({
+    /**
+     * uuid not required since this endpoint may be used to update a dream file
+     */
     uuid: Joi.string().uuid(),
     name: Joi.string(),
     extension: Joi.string()
@@ -60,7 +77,7 @@ export const createMultipartUploadDreamSchema = {
   }),
 };
 
-export const refreshMultipartUploadUrlSchema = {
+export const refreshMultipartUploadUrlSchema: RequestValidationSchema = {
   body: Joi.object<RefreshMultipartUploadUrlRequest>().keys({
     uploadId: Joi.string().required(),
     part: Joi.number().required(),
@@ -68,9 +85,12 @@ export const refreshMultipartUploadUrlSchema = {
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
   }),
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
 };
 
-export const completeMultipartUploadDreamSchema = {
+export const completeMultipartUploadDreamSchema: RequestValidationSchema = {
   body: Joi.object<CompleteMultipartUploadDreamRequest>().keys({
     name: Joi.string(),
     extension: Joi.string()
@@ -79,13 +99,19 @@ export const completeMultipartUploadDreamSchema = {
     uploadId: Joi.string().required(),
     parts: Joi.array<CompletedPart>().required(),
   }),
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
 };
 
-export const abortMultipartUploadDreamSchema = {
+export const abortMultipartUploadDreamSchema: RequestValidationSchema = {
   body: Joi.object<AbortMultipartUploadDreamRequest>().keys({
     extension: Joi.string()
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
     uploadId: Joi.string().required(),
+  }),
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
   }),
 };

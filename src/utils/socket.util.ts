@@ -25,12 +25,9 @@ export const setUserCurrentDream = async (
   return dreamExists;
 };
 
-export const setUserCurrentPlaylist = async (
-  user: User,
-  playlistId?: number,
-) => {
+export const setUserCurrentPlaylist = async (user: User, uuid?: string) => {
   const playlistExists = await playlistRepository.findOne({
-    where: { id: playlistId },
+    where: { uuid },
   });
 
   if (!playlistExists) return;

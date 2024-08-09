@@ -13,6 +13,7 @@ import {
   createPresignedDreamSchema,
   getDreamsSchema,
   refreshMultipartUploadUrlSchema,
+  requestDreamSchema,
   updateDreamSchema,
 } from "schemas/dream.schema";
 import jobRouter from "routes/v1/job.routes";
@@ -443,6 +444,7 @@ dreamRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleGetDreamVote,
 );
 
@@ -493,6 +495,7 @@ dreamRouter.post(
   "/:uuid/process-dream",
   requireAuth,
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleProcessDream,
 );
 
@@ -542,6 +545,7 @@ dreamRouter.post(
   "/:uuid/status/processing",
   requireAuth,
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleSetDreamStatusProcessing,
 );
 
@@ -654,6 +658,7 @@ dreamRouter.post(
   "/:uuid/status/failed",
   requireAuth,
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleSetDreamStatusFailed,
 );
 
@@ -705,6 +710,7 @@ dreamRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleGetDream,
 );
 
@@ -823,6 +829,7 @@ dreamRouter.put(
     ROLES.ADMIN_GROUP,
   ]),
   multerSingleFileMiddleware,
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleUpdateThumbnailDream,
 );
 
@@ -867,6 +874,7 @@ dreamRouter.delete(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleDeleteDream,
 );
 
@@ -918,6 +926,7 @@ dreamRouter.put(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleUpvoteDream,
 );
 
@@ -969,6 +978,7 @@ dreamRouter.put(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleDownvoteDream,
 );
 
@@ -1020,6 +1030,7 @@ dreamRouter.put(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestDreamSchema),
   dreamController.handleUnvoteDream,
 );
 

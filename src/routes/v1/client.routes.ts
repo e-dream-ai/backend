@@ -4,7 +4,9 @@ import { Router } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
-import { feedSchema } from "schemas/feed.schema";
+import { clientDreamsSchema } from "schemas/client.schema";
+import { requestDreamSchema } from "schemas/dream.schema";
+import { requestPlaylistSchema } from "schemas/playlist.schema";
 
 const clientRouter = Router();
 
@@ -103,20 +105,19 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/playlist/{id}:
+ * /client/playlist/{uuid}:
  *  get:
  *    tags:
  *      - client
  *    summary: Gets client playlist data
  *    description: Gets client playlist data
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: path
- *        description: playlist id
+ *        description: playlist uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Gets client playlist data
@@ -144,13 +145,14 @@ clientRouter.get(
  *      - apiKeyAuth: []
  */
 clientRouter.get(
-  "/playlist/:id",
+  "/playlist/:uuid",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestPlaylistSchema),
   clientController.handleGetPlaylist,
 );
 
@@ -202,7 +204,7 @@ clientRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
-  validatorMiddleware(feedSchema),
+  validatorMiddleware(requestDreamSchema),
   clientController.handleGetDownloadUrl,
 );
 
@@ -256,7 +258,7 @@ clientRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
-  validatorMiddleware(feedSchema),
+  validatorMiddleware(clientDreamsSchema),
   clientController.handleGetDreams,
 );
 

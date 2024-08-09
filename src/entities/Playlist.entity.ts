@@ -4,6 +4,8 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Generated,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -19,6 +21,11 @@ import { User } from "./User.entity";
 export class Playlist {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({ type: "string" })
+  @Generated("uuid")
+  @Index()
+  uuid: string;
 
   @ManyToOne(() => User, (user) => user.playlists)
   @JoinColumn()

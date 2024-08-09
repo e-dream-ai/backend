@@ -5,8 +5,9 @@ import type { DeepPartial } from "utility-types";
 export type RequestType<
   ReqBody = Record<string, unknown>,
   QueryString = Record<string, unknown>,
+  Params = Record<string, unknown>,
 > = Request<
-  Record<string, unknown>,
+  DeepPartial<Params>,
   Record<string, unknown>,
   DeepPartial<ReqBody>,
   DeepPartial<QueryString>

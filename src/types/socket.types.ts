@@ -38,6 +38,5 @@ export type RemoteControlEvent = {
   event: string;
   name?: string | null;
   uuid?: string;
-  id?: number;
   key?: string;
 };

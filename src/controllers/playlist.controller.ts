@@ -19,6 +19,8 @@ import {
   CreatePlaylistRequest,
   OrderPlaylistRequest,
   PlaylistItemType,
+  PlaylistParamsRequest,
+  RemovePlaylistItemRequest,
   UpdatePlaylistRequest,
 } from "types/playlist.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
@@ -52,20 +54,20 @@ const userRepository = appDataSource.getRepository(User);
  *
  */
 export const handleGetPlaylist = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
   res: ResponseType,
 ) => {
-  const id: number = Number(req.params?.id) || 0;
+  const uuid: string = req.params.uuid!;
   const user = res.locals.user;
   try {
     const playlist = await findOnePlaylist({
-      where: { id },
+      where: { uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
       filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     /*
@@ -81,7 +83,7 @@ export const handleGetPlaylist = async (
       .json(jsonResponse({ success: true, data: { playlist } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -198,31 +200,31 @@ export const handleCreatePlaylist = async (
  *
  */
 export const handleUpdatePlaylist = async (
-  req: RequestType<UpdatePlaylistRequest>,
+  req: RequestType<UpdatePlaylistRequest, unknown, PlaylistParamsRequest>,
   res: ResponseType,
 ) => {
-  const id: number = Number(req.params.id) || 0;
-  const user = res.locals.user;
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
 
   try {
     const playlist = await findOnePlaylist({
-      where: { id },
+      where: { uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
       filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user?.id,
+      isOwner: playlist.user.id === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     // Define an object to hold the fields that are allowed to be updated
@@ -276,7 +278,7 @@ export const handleUpdatePlaylist = async (
       );
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -292,31 +294,31 @@ export const handleUpdatePlaylist = async (
  *
  */
 export const handleUpdateThumbnailPlaylist = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
   res: ResponseType,
 ) => {
-  const user = res.locals.user;
-  const id: number = Number(req.params.id) || 0;
+  const user = res.locals.user!;
+  const uuid: string = req.params.uuid!;
 
   try {
     const playlist = await findOnePlaylist({
-      where: { id: id },
+      where: { uuid },
       select: getPlaylistSelectedColumns(),
       filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user?.id,
+      isOwner: playlist.user.id === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     // update playlist
@@ -326,7 +328,7 @@ export const handleUpdateThumbnailPlaylist = async (
     const fileExtension =
       MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
     const fileName = `${THUMBNAIL}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${PLAYLIST_PREFIX}-${id}/${fileName}`;
+    const filePath = `${user?.cognitoId}/${PLAYLIST_PREFIX}-${playlist.id}/${fileName}`;
 
     if (thumbnailBuffer) {
       const command = new PutObjectCommand({
@@ -352,7 +354,7 @@ export const handleUpdateThumbnailPlaylist = async (
       );
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -368,42 +370,42 @@ export const handleUpdateThumbnailPlaylist = async (
  *
  */
 export const handleDeletePlaylist = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
   res: ResponseType,
 ) => {
-  const id: number = Number(req.params?.id) || 0;
-  const user = res.locals.user;
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
   try {
     const playlist = await findOnePlaylist({
-      where: { id },
+      where: { uuid },
       select: getPlaylistSelectedColumns(),
       filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user?.id,
+      isOwner: playlist.user.id === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     const affected = await playlistRepository.softRemove(playlist);
 
     if (!affected) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -420,32 +422,32 @@ export const handleDeletePlaylist = async (
  */
 
 export const handleOrderPlaylist = async (
-  req: RequestType<OrderPlaylistRequest>,
+  req: RequestType<OrderPlaylistRequest, unknown, PlaylistParamsRequest>,
   res: ResponseType,
 ) => {
-  const id: number = Number(req.params.id) || 0;
-  const user = res.locals.user;
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
   const order = req.body.order!;
 
   try {
     const playlist = await findOnePlaylist({
-      where: { id },
+      where: { uuid },
       select: getPlaylistSelectedColumns(),
       filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user?.id,
+      isOwner: playlist.user.id === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     playlist.items = playlist.items.map((item) => {
@@ -465,7 +467,7 @@ export const handleOrderPlaylist = async (
       .json(jsonResponse({ success: true, data: { playlist } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -481,46 +483,46 @@ export const handleOrderPlaylist = async (
  *
  */
 export const handleAddPlaylistItem = async (
-  req: RequestType<AddPlaylistItemRequest>,
+  req: RequestType<AddPlaylistItemRequest, unknown, PlaylistParamsRequest>,
   res: ResponseType,
 ) => {
-  const id: number = Number(req.params?.id) || 0;
-  const { type, id: item } = req.body;
-  const itemId = Number(item) ?? 0;
-  const user = res.locals.user;
+  const uuid: string = req.params.uuid!;
+  const type = req.body.type!;
+  const itemUUID = req.body.uuid!;
+  const user = res.locals.user!;
 
   try {
     const playlist = await findOnePlaylist({
-      where: { id },
+      where: { uuid },
       select: getPlaylistSelectedColumns(),
       filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user?.id,
+      isOwner: playlist.user.id === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
-    if (PlaylistItemType.PLAYLIST && id === itemId) {
-      return handleForbidden(req, res);
+    if (PlaylistItemType.PLAYLIST && playlist.uuid === itemUUID) {
+      return handleForbidden(req as RequestType, res);
     }
 
     const playlistSearch =
       type === PlaylistItemType.DREAM
-        ? { dreamItem: { id: itemId } }
-        : { playlistItem: { id: itemId } };
+        ? { dreamItem: { uuid: itemUUID } }
+        : { playlistItem: { uuid: itemUUID } };
 
     let [playlistItem] = await playlistItemRepository.find({
-      where: { playlist: { id }, type: type, ...playlistSearch },
+      where: { playlist: { uuid }, type: type, ...playlistSearch },
     });
 
     if (playlistItem) {
@@ -540,23 +542,23 @@ export const handleAddPlaylistItem = async (
     if (type === PlaylistItemType.DREAM) {
       const dreamRepository = appDataSource.getRepository(Dream);
       const dreamToAdd = await dreamRepository.findOne({
-        where: { id: itemId },
+        where: { uuid: itemUUID },
       });
 
       if (!dreamToAdd) {
-        return handleNotFound(req, res);
+        return handleNotFound(req as RequestType, res);
       }
 
       playlistItem.dreamItem = dreamToAdd;
     } else if (type === PlaylistItemType.PLAYLIST) {
       const playlistToAdd = await findOnePlaylist({
-        where: { id: itemId },
+        where: { uuid: itemUUID },
         select: getPlaylistSelectedColumns(),
         filter: { nsfw: user?.nsfw },
       });
 
       if (!playlistToAdd) {
-        return handleNotFound(req, res);
+        return handleNotFound(req as RequestType, res);
       }
 
       playlistItem.playlistItem = playlistToAdd;
@@ -572,7 +574,7 @@ export const handleAddPlaylistItem = async (
     );
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -588,31 +590,31 @@ export const handleAddPlaylistItem = async (
  *
  */
 export const handleRemovePlaylistItem = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, RemovePlaylistItemRequest>,
   res: ResponseType,
 ) => {
-  const id: number = Number(req.params?.id) || 0;
-  const itemId: number = Number(req.params?.itemId) || 0;
-  const user = res.locals.user;
+  const uuid: string = req.params.uuid!;
+  const itemId: number = req.params.itemId!;
+  const user = res.locals.user!;
   try {
     const playlist = await findOnePlaylist({
-      where: { id },
+      where: { uuid },
       select: getPlaylistSelectedColumns(),
       filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user?.id,
+      isOwner: playlist.user.id === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     const { affected } = await playlistItemRepository.softDelete({
@@ -621,12 +623,12 @@ export const handleRemovePlaylistItem = async (
     });
 
     if (!affected) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };

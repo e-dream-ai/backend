@@ -23,8 +23,8 @@ import {
   ConfirmDreamRequest,
   CreateMultipartUploadDreamRequest,
   CreatePresignedDreamRequest,
+  DreamParamsRequest,
   DreamStatusType,
-  GetDreamQuery,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
   UpdateDreamProcessedRequest,
@@ -168,11 +168,11 @@ export const handleCreatePresignedPost = async (
  *
  */
 export const handleConfirmPresignedPost = async (
-  req: RequestType<ConfirmDreamRequest>,
+  req: RequestType<ConfirmDreamRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
   const user = res.locals.user;
-  const dreamUUID: string = String(req.params?.uuid);
+  const dreamUUID: string = req.params.uuid!;
   let dream: Dream | undefined;
   try {
     const findDreamResult = await dreamRepository.find({
@@ -183,7 +183,7 @@ export const handleConfirmPresignedPost = async (
     dream = findDreamResult[0];
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -193,7 +193,7 @@ export const handleConfirmPresignedPost = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     /**
@@ -232,7 +232,7 @@ export const handleConfirmPresignedPost = async (
       await dreamRepository.save(dream);
     }
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -280,7 +280,7 @@ export const handleCreateMultipartUpload = async (
     }
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const uuid = dream.uuid;
@@ -303,7 +303,7 @@ export const handleCreateMultipartUpload = async (
     );
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -319,14 +319,18 @@ export const handleCreateMultipartUpload = async (
  *
  */
 export const handleRefreshMultipartUploadUrl = async (
-  req: RequestType<RefreshMultipartUploadUrlRequest>,
+  req: RequestType<
+    RefreshMultipartUploadUrlRequest,
+    unknown,
+    DreamParamsRequest
+  >,
   res: ResponseType,
 ) => {
   // setting vars
   const user = res.locals.user;
 
   try {
-    const dreamUUID: string = String(req.params?.uuid);
+    const dreamUUID: string = req.params.uuid!;
     const uploadId = req.body.uploadId;
     const extension = req.body.extension;
     const part = req.body.part;
@@ -339,7 +343,7 @@ export const handleRefreshMultipartUploadUrl = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -349,7 +353,7 @@ export const handleRefreshMultipartUploadUrl = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     const uuid = dream.uuid;
@@ -367,7 +371,7 @@ export const handleRefreshMultipartUploadUrl = async (
     );
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -383,11 +387,15 @@ export const handleRefreshMultipartUploadUrl = async (
  *
  */
 export const handleCompleteMultipartUpload = async (
-  req: RequestType<CompleteMultipartUploadDreamRequest>,
+  req: RequestType<
+    CompleteMultipartUploadDreamRequest,
+    unknown,
+    DreamParamsRequest
+  >,
   res: ResponseType,
 ) => {
   const user = res.locals.user;
-  const dreamUUID: string = String(req.params?.uuid);
+  const dreamUUID: string = req.params.uuid!;
   let dream: Dream | undefined;
   try {
     const findDreamResult = await dreamRepository.find({
@@ -398,7 +406,7 @@ export const handleCompleteMultipartUpload = async (
     dream = findDreamResult[0];
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -408,7 +416,7 @@ export const handleCompleteMultipartUpload = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     /**
@@ -454,7 +462,7 @@ export const handleCompleteMultipartUpload = async (
       await dreamRepository.save(dream);
     }
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -470,11 +478,15 @@ export const handleCompleteMultipartUpload = async (
  *
  */
 export const handleAbortMultipartUpload = async (
-  req: RequestType<AbortMultipartUploadDreamRequest>,
+  req: RequestType<
+    AbortMultipartUploadDreamRequest,
+    unknown,
+    DreamParamsRequest
+  >,
   res: ResponseType,
 ) => {
   const user = res.locals.user;
-  const dreamUUID: string = String(req.params?.uuid);
+  const dreamUUID: string = req.params.uuid!;
   let dream: Dream | undefined;
   try {
     const findDreamResult = await dreamRepository.find({
@@ -485,7 +497,7 @@ export const handleAbortMultipartUpload = async (
     dream = findDreamResult[0];
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -495,7 +507,7 @@ export const handleAbortMultipartUpload = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     /**
@@ -519,7 +531,7 @@ export const handleAbortMultipartUpload = async (
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -535,11 +547,11 @@ export const handleAbortMultipartUpload = async (
  *
  */
 export const handleGetDreamVote = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
   const user = res.locals.user;
-  const dreamUUID: string = String(req.params?.uuid);
+  const dreamUUID: string = req.params.uuid!;
   try {
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
@@ -551,7 +563,7 @@ export const handleGetDreamVote = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const vote = await voteRepository.findOne({
@@ -566,7 +578,7 @@ export const handleGetDreamVote = async (
       .json(jsonResponse({ success: true, data: { vote } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -582,12 +594,12 @@ export const handleGetDreamVote = async (
  *
  */
 export const handleGetDream = async (
-  req: RequestType<GetDreamQuery>,
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const isBrowser = isBrowserRequest(req);
+  const isBrowser = isBrowserRequest(req as RequestType);
   const user = res.locals.user;
-  const dreamUUID: string = String(req.params?.uuid);
+  const dreamUUID: string = req.params.uuid!;
   try {
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
@@ -604,7 +616,7 @@ export const handleGetDream = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -633,7 +645,7 @@ export const handleGetDream = async (
       .json(jsonResponse({ success: true, data: { dream: dream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -674,7 +686,7 @@ export const handleGetMyDreams = async (
       .json(jsonResponse({ success: true, data: { dreams, count } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -690,10 +702,10 @@ export const handleGetMyDreams = async (
  *
  */
 export const handleProcessDream = async (
-  req: RequestType<UpdateDreamRequest>,
+  req: RequestType<UpdateDreamRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const dreamUUID: string = String(req.params.uuid);
+  const dreamUUID: string = req.params.uuid!;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -706,7 +718,7 @@ export const handleProcessDream = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     /**
@@ -729,7 +741,7 @@ export const handleProcessDream = async (
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -745,10 +757,10 @@ export const handleProcessDream = async (
  *
  */
 export const handleSetDreamStatusProcessing = async (
-  req: RequestType<UpdateDreamRequest>,
+  req: RequestType<UpdateDreamRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const dreamUUID: string = String(req.params.uuid);
+  const dreamUUID: string = req.params.uuid!;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -758,7 +770,7 @@ export const handleSetDreamStatusProcessing = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const updatedDream = await dreamRepository.save({
@@ -771,7 +783,7 @@ export const handleSetDreamStatusProcessing = async (
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -787,10 +799,10 @@ export const handleSetDreamStatusProcessing = async (
  *
  */
 export const handleSetDreamStatusProcessed = async (
-  req: RequestType<UpdateDreamProcessedRequest>,
+  req: RequestType<UpdateDreamProcessedRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const dreamUUID: string = String(req.params.uuid);
+  const dreamUUID: string = req.params.uuid!;
   const processedVideoSize = req.body.processedVideoSize;
   const processedVideoFrames = req.body.processedVideoFrames;
   const processedVideoFPS = req.body.processedVideoFPS;
@@ -807,7 +819,7 @@ export const handleSetDreamStatusProcessed = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     /**
@@ -858,7 +870,7 @@ export const handleSetDreamStatusProcessed = async (
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -874,10 +886,10 @@ export const handleSetDreamStatusProcessed = async (
  *
  */
 export const handleSetDreamStatusFailed = async (
-  req: RequestType<UpdateDreamRequest>,
+  req: RequestType<UpdateDreamRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const dreamUUID: string = String(req.params.uuid);
+  const dreamUUID: string = req.params.uuid!;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -887,7 +899,7 @@ export const handleSetDreamStatusFailed = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const updatedDream = await dreamRepository.save({
@@ -900,7 +912,7 @@ export const handleSetDreamStatusFailed = async (
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -916,10 +928,10 @@ export const handleSetDreamStatusFailed = async (
  *
  */
 export const handleUpdateDream = async (
-  req: RequestType<UpdateDreamRequest>,
+  req: RequestType<UpdateDreamRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const dreamUUID: string = String(req.params.uuid);
+  const dreamUUID: string = req.params.uuid!;
   const user = res.locals.user;
 
   try {
@@ -930,7 +942,7 @@ export const handleUpdateDream = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -940,7 +952,7 @@ export const handleUpdateDream = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     /*
@@ -994,7 +1006,7 @@ export const handleUpdateDream = async (
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -1010,11 +1022,11 @@ export const handleUpdateDream = async (
  *
  */
 export const handleUpdateThumbnailDream = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
   const user = res.locals.user;
-  const dreamUUID: string = String(req.params.uuid);
+  const dreamUUID: string = req.params.uuid!;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -1024,7 +1036,7 @@ export const handleUpdateThumbnailDream = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -1034,7 +1046,7 @@ export const handleUpdateThumbnailDream = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     // update dream
@@ -1067,7 +1079,7 @@ export const handleUpdateThumbnailDream = async (
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -1083,10 +1095,10 @@ export const handleUpdateThumbnailDream = async (
  *
  */
 export const handleUpvoteDream = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const dreamUUID: string = String(req.params.uuid);
+  const dreamUUID: string = req.params.uuid!;
   const user = res.locals.user!;
 
   try {
@@ -1095,7 +1107,7 @@ export const handleUpvoteDream = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     await handleVoteDream({ dream, user, voteType: VoteType.UPVOTE });
@@ -1111,7 +1123,7 @@ export const handleUpvoteDream = async (
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -1127,10 +1139,10 @@ export const handleUpvoteDream = async (
  *
  */
 export const handleDownvoteDream = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const dreamUUID: string = String(req.params.uuid);
+  const dreamUUID: string = req.params.uuid!;
   const user = res.locals.user!;
   try {
     const [dream] = await dreamRepository.find({
@@ -1138,7 +1150,7 @@ export const handleDownvoteDream = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     await handleVoteDream({ dream, user, voteType: VoteType.DOWNVOTE });
@@ -1154,7 +1166,7 @@ export const handleDownvoteDream = async (
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -1170,10 +1182,10 @@ export const handleDownvoteDream = async (
  *
  */
 export const handleUnvoteDream = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const dreamUUID: string = String(req.params.uuid);
+  const dreamUUID: string = req.params.uuid!;
   const user = res.locals.user!;
   try {
     const [dream] = await dreamRepository.find({
@@ -1181,7 +1193,7 @@ export const handleUnvoteDream = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     await handleVoteDream({ dream, user, voteType: VoteType.NONE });
@@ -1197,7 +1209,7 @@ export const handleUnvoteDream = async (
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -1213,10 +1225,10 @@ export const handleUnvoteDream = async (
  *
  */
 export const handleDeleteDream = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const uuid: string = String(req.params?.uuid) || "";
+  const uuid: string = req.params.uuid!;
   const user = res.locals.user;
   try {
     const dream = await dreamRepository.findOne({
@@ -1229,7 +1241,7 @@ export const handleDeleteDream = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -1239,18 +1251,18 @@ export const handleDeleteDream = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     const affected = await dreamRepository.softRemove(dream);
 
     if (!affected) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };

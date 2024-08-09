@@ -8,8 +8,9 @@ import {
   ClientPlaylist,
   GetDreamsQuery,
 } from "types/client.types";
-import { GetDreamQuery } from "types/dream.types";
+import { DreamParamsRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
+import { PlaylistParamsRequest } from "types/playlist.types";
 import {
   formatClientDream,
   formatClientPlaylist,
@@ -121,21 +122,21 @@ export const handleGetDefaultPlaylist = async (
  *
  */
 export const handleGetPlaylist = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
   res: ResponseType,
 ) => {
-  const id = Number(req.params.id) || 0;
+  const uuid = req.params.uuid!;
   const user = res.locals?.user;
 
   try {
     const playlist = await findOnePlaylist({
-      where: { id },
+      where: { uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
       filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const clientPlaylist: ClientPlaylist = formatClientPlaylist(playlist);
@@ -163,11 +164,11 @@ export const handleGetPlaylist = async (
  *
  */
 export const handleGetDownloadUrl = async (
-  req: RequestType<GetDreamQuery>,
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
   const user = res.locals.user;
-  const dreamUUID: string = String(req.params?.uuid);
+  const dreamUUID: string = req.params.uuid!;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -180,7 +181,7 @@ export const handleGetDownloadUrl = async (
     });
 
     if (!dream) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     await reduceUserQuota(user!, dream?.processedVideoSize ?? 0);

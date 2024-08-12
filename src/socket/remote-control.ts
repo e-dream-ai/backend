@@ -88,10 +88,8 @@ export const remoteControlEventListener = (
     /**
      * Set user current playlist
      */
-    console.log("aaa");
     if (event === REMOTE_CONTROLS.PLAY_PLAYLIST) {
       const playlist = await setUserCurrentPlaylist(user, data.uuid);
-      console.log({ playlist });
       if (!playlist) {
         socket.emit(GENERAL_MESSAGES.ERROR, {
           error: GENERAL_MESSAGES.NOT_FOUND,

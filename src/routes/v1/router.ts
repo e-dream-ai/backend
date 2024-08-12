@@ -284,8 +284,8 @@ export const registerRoutes = (app: express.Application) => {
    *       properties:
    *         quota:
    *           type: number
-   *         currentPlaylistId:
-   *           type: number
+   *         currentPlaylistUUID:
+   *           type: string
    *     ClientDream:
    *       type: object
    *       properties:

@@ -48,7 +48,10 @@ const defaultPlaylistRepository = appDataSource.getRepository(DefaultPlaylist);
 export const handleHello = async (req: RequestType, res: ResponseType) => {
   const user = res.locals.user;
   const quota: number = Number(user?.quota ?? 0);
-  const currentPlaylistId = user?.currentPlaylist?.id;
+  /**
+   *  if there's no playlist, will return empty string ""
+   */
+  const currentPlaylistUUID = user?.currentPlaylist?.uuid ?? "";
 
   try {
     return res.status(httpStatus.OK).json(
@@ -56,7 +59,7 @@ export const handleHello = async (req: RequestType, res: ResponseType) => {
         success: true,
         data: {
           quota,
-          currentPlaylistId,
+          currentPlaylistUUID,
         },
       }),
     );

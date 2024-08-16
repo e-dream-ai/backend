@@ -25,3 +25,7 @@ export const AUTH_MESSAGES = {
   FORGOT_PASSWORD_REQUEST: "Forgot password request successfully created.",
   NOT_AUTHORIZED: "Not authorized.",
 };
+
+export const SOCKET_AUTH_ERROR_MESSAGES = {
+  UNAUTHORIZED: "UNAUTHORIZED",
+};

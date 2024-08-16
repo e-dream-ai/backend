@@ -4,9 +4,9 @@ import { ALLOWED_VIDEO_TYPES } from "constants/file.constants";
 import {
   AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
-  ConfirmDreamRequest,
   CreateMultipartUploadDreamRequest,
-  CreatePresignedDreamRequest,
+  CreateMultipartUploadFileRequest,
+  DreamFileType,
   DreamParamsRequest,
   DreamStatusType,
   GetDreamsQuery,
@@ -42,27 +42,6 @@ export const updateDreamSchema: RequestValidationSchema = {
   }),
 };
 
-export const createPresignedDreamSchema: RequestValidationSchema = {
-  body: Joi.object<CreatePresignedDreamRequest>().keys({
-    name: Joi.string(),
-    extension: Joi.string()
-      .valid(...ALLOWED_VIDEO_TYPES)
-      .required(),
-  }),
-};
-
-export const confirmDreamSchema: RequestValidationSchema = {
-  body: Joi.object<ConfirmDreamRequest>().keys({
-    name: Joi.string(),
-    extension: Joi.string()
-      .valid(...ALLOWED_VIDEO_TYPES)
-      .required(),
-  }),
-  params: Joi.object<DreamParamsRequest>().keys({
-    uuid: Joi.string().uuid().required(),
-  }),
-};
-
 export const createMultipartUploadDreamSchema: RequestValidationSchema = {
   body: Joi.object<CreateMultipartUploadDreamRequest>().keys({
     /**
@@ -77,13 +56,51 @@ export const createMultipartUploadDreamSchema: RequestValidationSchema = {
   }),
 };
 
+export const createMultipartUploadFileSchema: RequestValidationSchema = {
+  body: Joi.object<CreateMultipartUploadFileRequest>().keys({
+    type: Joi.string()
+      .valid(...Object.values(DreamFileType))
+      .required(),
+    extension: Joi.string()
+      .valid(...ALLOWED_VIDEO_TYPES)
+      .required(),
+    parts: Joi.number().greater(0).integer().required(),
+    frameNumber: Joi.number().when("type", {
+      is: DreamFileType.FILMSTRIP,
+      then: Joi.required(),
+      otherwise: Joi.forbidden(),
+    }),
+    processed: Joi.boolean().when("type", {
+      is: DreamFileType.DREAM,
+      then: Joi.boolean(),
+      otherwise: Joi.forbidden(),
+    }),
+  }),
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
 export const refreshMultipartUploadUrlSchema: RequestValidationSchema = {
   body: Joi.object<RefreshMultipartUploadUrlRequest>().keys({
     uploadId: Joi.string().required(),
+    type: Joi.string()
+      .valid(...Object.values(DreamFileType))
+      .required(),
     part: Joi.number().required(),
     extension: Joi.string()
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
+    frameNumber: Joi.number().when("type", {
+      is: DreamFileType.FILMSTRIP,
+      then: Joi.required(),
+      otherwise: Joi.forbidden(),
+    }),
+    processed: Joi.boolean().when("type", {
+      is: DreamFileType.DREAM,
+      then: Joi.boolean(),
+      otherwise: Joi.forbidden(),
+    }),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -92,12 +109,29 @@ export const refreshMultipartUploadUrlSchema: RequestValidationSchema = {
 
 export const completeMultipartUploadDreamSchema: RequestValidationSchema = {
   body: Joi.object<CompleteMultipartUploadDreamRequest>().keys({
-    name: Joi.string(),
+    type: Joi.string()
+      .valid(...Object.values(DreamFileType))
+      .required(),
     extension: Joi.string()
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
     uploadId: Joi.string().required(),
     parts: Joi.array<CompletedPart>().required(),
+    frameNumber: Joi.number().when("type", {
+      is: DreamFileType.FILMSTRIP,
+      then: Joi.required(),
+      otherwise: Joi.forbidden(),
+    }),
+    processed: Joi.boolean().when("type", {
+      is: DreamFileType.DREAM,
+      then: Joi.boolean(),
+      otherwise: Joi.forbidden(),
+    }),
+    name: Joi.string().when("type", {
+      is: DreamFileType.DREAM,
+      then: Joi.string(),
+      otherwise: Joi.forbidden(),
+    }),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

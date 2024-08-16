@@ -14,6 +14,8 @@ import { BUCKET_ACL, EXPIRATION_TIME } from "constants/aws/s3.constants";
 
 const BUCKET_NAME = env.AWS_BUCKET_NAME;
 
+const PROCESSED_VIDEO_SUFFIX = "processed";
+
 /**
  *
  * @param {string} objectKey - object key on s3
@@ -145,3 +147,40 @@ export const generatePresignedPost = async (objectKey: string) => {
 
   return { url, fields };
 };
+
+export const generateThumbnailPath = ({
+  userUUID,
+  dreamUUID,
+  extension,
+}: {
+  userUUID: string;
+  dreamUUID: string;
+  extension: string;
+}) => `${userUUID}/${dreamUUID}/thumbnails/${dreamUUID}.${extension}`;
+
+export const generateFilmstripPath = ({
+  userUUID,
+  dreamUUID,
+  extension,
+  frameNumber,
+}: {
+  userUUID: string;
+  dreamUUID: string;
+  extension: string;
+  frameNumber: number;
+}) => `${userUUID}/${dreamUUID}/filmstrip/frame-${frameNumber}.${extension}`;
+
+export const generateDreamPath = ({
+  userUUID,
+  dreamUUID,
+  extension,
+  processed,
+}: {
+  userUUID: string;
+  dreamUUID: string;
+  extension: string;
+  processed?: boolean;
+}) =>
+  `${userUUID}/${dreamUUID}/${dreamUUID}${
+    processed ? `_${PROCESSED_VIDEO_SUFFIX}` : ""
+  }.${extension}`;

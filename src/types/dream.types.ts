@@ -30,16 +30,6 @@ export type UpdateDreamProcessedRequest = {
   filmstrip?: string[];
 };
 
-export type CreatePresignedDreamRequest = {
-  name: string;
-  extension: string;
-};
-
-export type ConfirmDreamRequest = {
-  name: string;
-  extension: string;
-};
-
 export type CreateMultipartUploadDreamRequest = {
   uuid?: string;
   name: string;
@@ -48,23 +38,43 @@ export type CreateMultipartUploadDreamRequest = {
   nsfw?: boolean;
 };
 
+export type CreateMultipartUploadFileRequest = {
+  type: DreamFileType;
+  extension: string;
+  parts: number;
+  frameNumber?: number;
+  processed?: boolean;
+};
+
 export type RefreshMultipartUploadUrlRequest = {
+  type: DreamFileType;
   extension: string;
   uploadId: string;
   part: number;
+  frameNumber?: number;
+  processed?: boolean;
 };
 
 export type CompleteMultipartUploadDreamRequest = {
+  type: DreamFileType;
   name: string;
   extension: string;
   uploadId: string;
   parts: Array<CompletedPart>;
+  frameNumber?: number;
+  processed?: boolean;
 };
 
 export type AbortMultipartUploadDreamRequest = {
   extension: string;
   uploadId: string;
 };
+
+export enum DreamFileType {
+  THUMBNAIL = "thumbnail",
+  FILMSTRIP = "filmstrip",
+  DREAM = "dream",
+}
 
 export enum DreamStatusType {
   NONE = "none",

@@ -31,6 +31,20 @@ export const ALLOWED_VIDEO_TYPES = [
   "avchd",
 ];
 
+export const ALLOWED_IMAGE_TYPES = [
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "bmp",
+  "webp",
+  "tiff",
+  "svg",
+  "ico",
+  "heif",
+  "heic",
+];
+
 export const MYME_TYPES_EXTENSIONS = {
   [MYME_TYPES.MP4]: FILE_EXTENSIONS.MP4,
   [MYME_TYPES.JPG]: FILE_EXTENSIONS.JPG,

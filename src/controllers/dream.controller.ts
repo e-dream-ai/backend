@@ -20,9 +20,9 @@ import env from "shared/env";
 import {
   AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
-  ConfirmDreamRequest,
   CreateMultipartUploadDreamRequest,
-  CreatePresignedDreamRequest,
+  CreateMultipartUploadFileRequest,
+  DreamFileType,
   DreamParamsRequest,
   DreamStatusType,
   GetDreamsQuery,
@@ -53,7 +53,9 @@ import {
   abortMultipartUpload,
   completeMultipartUpload,
   createMultipartUpload,
-  generatePresignedPost,
+  generateDreamPath,
+  generateFilmstripPath,
+  generateThumbnailPath,
   getUploadPartSignedUrl,
 } from "utils/s3.util";
 import { truncateString } from "utils/string.util";
@@ -106,131 +108,6 @@ export const handleGetDreams = async (
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dreams: dreams, count } }));
   } catch (err) {
-    const error = err as Error;
-    return handleInternalServerError(error, req as RequestType, res);
-  }
-};
-
-/**
- * Handles create dream presigned post
- *
- * @param {RequestType} req - Request object
- * @param {Response} res - Response object
- *
- * @returns {Response} Returns response
- * OK 200 - dream created
- * BAD_REQUEST 400 - error creating dream
- *
- */
-export const handleCreatePresignedPost = async (
-  req: RequestType<CreatePresignedDreamRequest>,
-  res: ResponseType,
-) => {
-  // setting vars
-  const user = res.locals.user;
-  let dream: Dream | undefined;
-
-  try {
-    // create dream
-    const name = req.body.name
-      ? truncateString(req.body.name, 1000, false)
-      : undefined;
-    const extension = req.body.extension;
-    dream = new Dream();
-    dream.name = name;
-    dream.user = user!;
-    await dreamRepository.save(dream);
-    const dreamUUID = dream.uuid;
-    const fileExtension = extension;
-    const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
-    const { url, fields } = await generatePresignedPost(filePath);
-    return res
-      .status(httpStatus.CREATED)
-      .json(
-        jsonResponse({ success: true, data: { url, fields, uuid: dreamUUID } }),
-      );
-  } catch (err) {
-    const error = err as Error;
-    return handleInternalServerError(error, req, res);
-  }
-};
-
-/**
- * Handles confirm dream presigned URL
- *
- * @param {RequestType} req - Request object
- * @param {Response} res - Response object
- *
- * @returns {Response} Returns response
- * OK 200 - dream created
- * BAD_REQUEST 400 - error creating dream
- *
- */
-export const handleConfirmPresignedPost = async (
-  req: RequestType<ConfirmDreamRequest, unknown, DreamParamsRequest>,
-  res: ResponseType,
-) => {
-  const user = res.locals.user;
-  const dreamUUID: string = req.params.uuid!;
-  let dream: Dream | undefined;
-  try {
-    const findDreamResult = await dreamRepository.find({
-      where: { uuid: dreamUUID! },
-      relations: { user: true, playlistItems: true },
-      select: getDreamSelectedColumns(),
-    });
-    dream = findDreamResult[0];
-
-    if (!dream) {
-      return handleNotFound(req as RequestType, res);
-    }
-
-    const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
-      allowedRoles: [ROLES.ADMIN_GROUP],
-      userRole: user?.role?.name,
-    });
-
-    if (!isAllowed) {
-      return handleForbidden(req as RequestType, res);
-    }
-
-    /**
-     * update dream
-     */
-
-    const extension = req.body.extension;
-    const name = req.body.name
-      ? truncateString(req.body.name, 1000, false)
-      : dreamUUID;
-    const fileExtension = extension;
-    const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
-
-    dream.original_video = generateBucketObjectURL(filePath);
-    dream.name = name;
-    dream.status = DreamStatusType.QUEUE;
-    const createdDream = await dreamRepository.save(dream);
-
-    /**
-     * turn on video service worker
-     */
-    await updateVideoServiceWorker(TURN_ON_QUANTITY);
-
-    /**
-     * process dream
-     */
-    await processDreamRequest(dream);
-
-    return res
-      .status(httpStatus.CREATED)
-      .json(jsonResponse({ success: true, data: { dream: createdDream } }));
-  } catch (err) {
-    if (dream) {
-      dream.status = DreamStatusType.FAILED;
-      await dreamRepository.save(dream);
-    }
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
   }
@@ -308,6 +185,91 @@ export const handleCreateMultipartUpload = async (
 };
 
 /**
+ * Handles create multipart upload with presigned urls to post for dream files
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream created
+ * BAD_REQUEST 400 - error creating dream
+ *
+ */
+export const handleCreateMultipartUploadDreamFile = async (
+  req: RequestType<
+    CreateMultipartUploadFileRequest,
+    unknown,
+    DreamParamsRequest
+  >,
+  res: ResponseType,
+) => {
+  // setting vars
+  const user = res.locals.user;
+  const userUUID = user!.cognitoId;
+  const dreamUUID: string = req.params.uuid!;
+  const fileExtension = req.body.extension!;
+  const parts = req.body.parts!;
+  const type = req.body.type!;
+  const frameNumber = req.body.frameNumber;
+  const processed = req.body.processed;
+
+  try {
+    // find dream
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true, playlistItems: true },
+      select: getDreamSelectedColumns({ originalVideo: true }),
+    });
+
+    if (!dream) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    let filePath: string;
+
+    if (type === DreamFileType.THUMBNAIL) {
+      filePath = generateThumbnailPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+      });
+    } else if (type === DreamFileType.FILMSTRIP) {
+      filePath = generateFilmstripPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+        frameNumber: frameNumber!,
+      });
+    } else if (type === DreamFileType.DREAM) {
+      filePath = generateDreamPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+        processed,
+      });
+    }
+
+    const uploadId = await createMultipartUpload(filePath!);
+    const arrayUrls = Array.from({ length: parts });
+    const urls = await Promise.all(
+      arrayUrls.map(
+        async (_, index) =>
+          await getUploadPartSignedUrl(filePath, uploadId!, index + 1),
+      ),
+    );
+    return res.status(httpStatus.CREATED).json(
+      jsonResponse({
+        success: true,
+        data: { urls, dream: dream, uploadId },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
  * Handles refresh multipart upload presigned urls to post
  *
  * @param {RequestType} req - Request object
@@ -328,13 +290,16 @@ export const handleRefreshMultipartUploadUrl = async (
 ) => {
   // setting vars
   const user = res.locals.user;
+  const userUUID = user!.cognitoId;
+  const dreamUUID: string = req.params.uuid!;
+  const uploadId = req.body.uploadId!;
+  const fileExtension = req.body.extension!;
+  const part = req.body.part!;
+  const type = req.body.type!;
+  const frameNumber = req.body.frameNumber;
+  const processed = req.body.processed;
 
   try {
-    const dreamUUID: string = req.params.uuid!;
-    const uploadId = req.body.uploadId;
-    const extension = req.body.extension;
-    const part = req.body.part;
-
     // find dream
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
@@ -356,12 +321,31 @@ export const handleRefreshMultipartUploadUrl = async (
       return handleForbidden(req as RequestType, res);
     }
 
-    const uuid = dream.uuid;
-    const fileExtension = extension;
-    const fileName = `${uuid}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${uuid}/${fileName}`;
+    let filePath: string;
 
-    const url = await getUploadPartSignedUrl(filePath, uploadId!, part!);
+    if (type === DreamFileType.THUMBNAIL) {
+      filePath = generateThumbnailPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+      });
+    } else if (type === DreamFileType.FILMSTRIP) {
+      filePath = generateFilmstripPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+        frameNumber: frameNumber!,
+      });
+    } else if (type === DreamFileType.DREAM) {
+      filePath = generateDreamPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+        processed,
+      });
+    }
+
+    const url = await getUploadPartSignedUrl(filePath!, uploadId!, part!);
 
     return res.status(httpStatus.CREATED).json(
       jsonResponse({
@@ -394,8 +378,19 @@ export const handleCompleteMultipartUpload = async (
   >,
   res: ResponseType,
 ) => {
-  const user = res.locals.user;
+  const user = res.locals.user!;
+  const userUUID = user.cognitoId;
   const dreamUUID: string = req.params.uuid!;
+  const uploadId = req.body.uploadId!;
+  const fileExtension = req.body.extension!;
+  const name = req.body.name
+    ? truncateString(req.body.name, 1000, false)
+    : dreamUUID;
+  const parts = req.body.parts!;
+  const type = req.body.type!;
+  const frameNumber = req.body.frameNumber;
+  const processed = req.body.processed;
+
   let dream: Dream | undefined;
   try {
     const findDreamResult = await dreamRepository.find({
@@ -419,43 +414,64 @@ export const handleCompleteMultipartUpload = async (
       return handleForbidden(req as RequestType, res);
     }
 
-    /**
-     * dream props
-     */
+    let filePath: string;
 
-    const extension = req.body.extension;
-    const name = req.body.name
-      ? truncateString(req.body.name, 1000, false)
-      : dreamUUID;
-    const uploadId = req.body.uploadId;
-    const parts = req.body.parts;
-    const fileExtension = extension;
-    const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+    if (type === DreamFileType.THUMBNAIL) {
+      filePath = generateThumbnailPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+      });
 
-    await completeMultipartUpload(filePath, uploadId!, parts!);
+      /**
+       * update thumbnail
+       */
+      dream.thumbnail = generateBucketObjectURL(filePath);
+    } else if (type === DreamFileType.FILMSTRIP) {
+      filePath = generateFilmstripPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+        frameNumber: frameNumber!,
+      });
+    } else if (type === DreamFileType.DREAM) {
+      filePath = generateDreamPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+        processed,
+      });
+
+      /**
+       * update dream
+       */
+      dream.name = name;
+      dream.original_video = generateBucketObjectURL(filePath!);
+      dream.status = DreamStatusType.QUEUE;
+    }
+
+    await completeMultipartUpload(filePath!, uploadId!, parts!);
 
     /**
      * update dream
      */
-    dream.original_video = generateBucketObjectURL(filePath);
-    dream.name = name;
-    dream.status = DreamStatusType.QUEUE;
-    const createdDream = await dreamRepository.save(dream);
+    const updatedDream = await dreamRepository.save(dream);
 
-    /**
-     * turn on video service worker
-     */
-    await updateVideoServiceWorker(TURN_ON_QUANTITY);
+    if (type === DreamFileType.DREAM) {
+      /**
+       * turn on video service worker
+       */
+      await updateVideoServiceWorker(TURN_ON_QUANTITY);
 
-    /**
-     * process dream
-     */
-    await processDreamRequest(dream);
+      /**
+       * process dream
+       */
+      await processDreamRequest(dream);
+    }
 
     return res
       .status(httpStatus.CREATED)
-      .json(jsonResponse({ success: true, data: { dream: createdDream } }));
+      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
   } catch (err) {
     if (dream) {
       dream.status = DreamStatusType.FAILED;
@@ -830,8 +846,6 @@ export const handleSetDreamStatusProcessed = async (
     const processedSufix = "_processed";
     const videoFileName = `${dreamUUID}${processedSufix}.${FILE_EXTENSIONS.MP4}`;
     const videoFilePath = `${user?.cognitoId}/${dreamUUID}/${videoFileName}`;
-    const thumbnailFileName = `${dreamUUID}.${FILE_EXTENSIONS.PNG}`;
-    const thumbnailFilePath = `${user?.cognitoId}/${dreamUUID}/thumbnails/${thumbnailFileName}`;
     const formatedFilmstrip = filmstrip?.map((frame) =>
       generateBucketObjectURL(
         `${user?.cognitoId}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
@@ -842,7 +856,6 @@ export const handleSetDreamStatusProcessed = async (
       ...dream,
       status: DreamStatusType.PROCESSED,
       video: generateBucketObjectURL(videoFilePath),
-      thumbnail: generateBucketObjectURL(thumbnailFilePath),
       processed_at: new Date(),
       processedVideoSize,
       processedVideoFrames,

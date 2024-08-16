@@ -8,9 +8,8 @@ import validatorMiddleware from "middlewares/validator.middleware";
 import {
   abortMultipartUploadDreamSchema,
   completeMultipartUploadDreamSchema,
-  confirmDreamSchema,
   createMultipartUploadDreamSchema,
-  createPresignedDreamSchema,
+  createMultipartUploadFileSchema,
   getDreamsSchema,
   refreshMultipartUploadUrlSchema,
   requestDreamSchema,
@@ -81,22 +80,6 @@ dreamRouter.get(
   dreamController.handleGetDreams,
 );
 
-dreamRouter.post(
-  "/create-presigned-post",
-  requireAuth,
-  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
-  validatorMiddleware(createPresignedDreamSchema),
-  dreamController.handleCreatePresignedPost,
-);
-
-dreamRouter.post(
-  "/:uuid/confirm-presigned-post",
-  requireAuth,
-  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
-  validatorMiddleware(confirmDreamSchema),
-  dreamController.handleConfirmPresignedPost,
-);
-
 /**
  * @swagger
  * /dream/create-multipart-upload:
@@ -156,6 +139,14 @@ dreamRouter.post(
   checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(createMultipartUploadDreamSchema),
   dreamController.handleCreateMultipartUpload,
+);
+
+dreamRouter.post(
+  "/:uuid/create-multipart-upload",
+  requireAuth,
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(createMultipartUploadFileSchema),
+  dreamController.handleCreateMultipartUploadDreamFile,
 );
 
 /**
@@ -501,8 +492,8 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}/processing:
- *  put:
+ * /dream/{uuid}/status/processing:
+ *  post:
  *    tags:
  *      - dream
  *    summary: Set dream status to processing
@@ -551,8 +542,8 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}/processed:
- *  put:
+ * /dream/{uuid}/status/processed:
+ *  post:
  *    tags:
  *      - dream
  *    summary: Set dream status to processed
@@ -613,8 +604,8 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}/failed:
- *  put:
+ * /dream/{uuid}/status/failed:
+ *  post:
  *    tags:
  *      - dream
  *    summary: Set dream status to failed

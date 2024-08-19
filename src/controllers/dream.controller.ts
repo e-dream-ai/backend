@@ -395,7 +395,7 @@ export const handleCompleteMultipartUpload = async (
   try {
     const findDreamResult = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true, playlistItems: true },
+      relations: { user: true },
       select: getDreamSelectedColumns(),
     });
     dream = findDreamResult[0];
@@ -434,7 +434,7 @@ export const handleCompleteMultipartUpload = async (
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
-    } else if (type === DreamFileType.DREAM) {
+    } else if (type === DreamFileType.DREAM && !processed) {
       filePath = generateDreamPath({
         userUUID,
         dreamUUID,
@@ -445,19 +445,36 @@ export const handleCompleteMultipartUpload = async (
       /**
        * update dream
        */
-      dream.name = name;
-      dream.original_video = generateBucketObjectURL(filePath!);
-      dream.status = DreamStatusType.QUEUE;
+      await dreamRepository.update(dream.id, {
+        name,
+        original_video: generateBucketObjectURL(filePath!),
+        status: DreamStatusType.QUEUE,
+      });
+    } else if (type === DreamFileType.DREAM && processed) {
+      filePath = generateDreamPath({
+        userUUID,
+        dreamUUID,
+        extension: fileExtension,
+        processed,
+      });
+
+      /**
+       * update dream
+       */
+      await dreamRepository.update(dream.id, {
+        video: generateBucketObjectURL(filePath!),
+      });
     }
 
     await completeMultipartUpload(filePath!, uploadId!, parts!);
 
-    /**
-     * update dream
-     */
-    const updatedDream = await dreamRepository.save(dream);
+    const [updatedDream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true, playlistItems: true },
+      select: getDreamSelectedColumns(),
+    });
 
-    if (type === DreamFileType.DREAM) {
+    if (type === DreamFileType.DREAM && !processed) {
       /**
        * turn on video service worker
        */

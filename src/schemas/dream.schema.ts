@@ -1,6 +1,9 @@
 import Joi from "joi";
 import { CompletedPart } from "@aws-sdk/client-s3";
-import { ALLOWED_VIDEO_TYPES } from "constants/file.constants";
+import {
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_VIDEO_TYPES,
+} from "constants/file.constants";
 import {
   AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
@@ -62,7 +65,7 @@ export const createMultipartUploadFileSchema: RequestValidationSchema = {
       .valid(...Object.values(DreamFileType))
       .required(),
     extension: Joi.string()
-      .valid(...ALLOWED_VIDEO_TYPES)
+      .valid(...ALLOWED_VIDEO_TYPES, ...ALLOWED_IMAGE_TYPES)
       .required(),
     parts: Joi.number().greater(0).integer().required(),
     frameNumber: Joi.number().when("type", {
@@ -89,7 +92,7 @@ export const refreshMultipartUploadUrlSchema: RequestValidationSchema = {
       .required(),
     part: Joi.number().required(),
     extension: Joi.string()
-      .valid(...ALLOWED_VIDEO_TYPES)
+      .valid(...ALLOWED_VIDEO_TYPES, ...ALLOWED_IMAGE_TYPES)
       .required(),
     frameNumber: Joi.number().when("type", {
       is: DreamFileType.FILMSTRIP,
@@ -113,7 +116,7 @@ export const completeMultipartUploadDreamSchema: RequestValidationSchema = {
       .valid(...Object.values(DreamFileType))
       .required(),
     extension: Joi.string()
-      .valid(...ALLOWED_VIDEO_TYPES)
+      .valid(...ALLOWED_VIDEO_TYPES, ...ALLOWED_IMAGE_TYPES)
       .required(),
     uploadId: Joi.string().required(),
     parts: Joi.array<CompletedPart>().required(),

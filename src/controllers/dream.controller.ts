@@ -860,25 +860,26 @@ export const handleSetDreamStatusProcessed = async (
      */
 
     const user = dream.user;
-    const processedSufix = "_processed";
-    const videoFileName = `${dreamUUID}${processedSufix}.${FILE_EXTENSIONS.MP4}`;
-    const videoFilePath = `${user?.cognitoId}/${dreamUUID}/${videoFileName}`;
     const formatedFilmstrip = filmstrip?.map((frame) =>
       generateBucketObjectURL(
         `${user?.cognitoId}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
       ),
     );
 
-    const updatedDream = await dreamRepository.save({
-      ...dream,
+    await dreamRepository.update(dream.id, {
       status: DreamStatusType.PROCESSED,
-      video: generateBucketObjectURL(videoFilePath),
       processed_at: new Date(),
       processedVideoSize,
       processedVideoFrames,
       processedVideoFPS,
       activityLevel,
       filmstrip: formatedFilmstrip,
+    });
+
+    const [updatedDream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+      select: getDreamSelectedColumns(),
     });
 
     await createFeedItem(updatedDream);

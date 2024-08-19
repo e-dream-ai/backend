@@ -13,6 +13,7 @@ import {
   getDreamsSchema,
   refreshMultipartUploadUrlSchema,
   requestDreamSchema,
+  updateDreamProcessedSchema,
   updateDreamSchema,
 } from "schemas/dream.schema";
 import jobRouter from "routes/v1/job.routes";
@@ -598,7 +599,7 @@ dreamRouter.post(
   "/:uuid/status/processed",
   requireAuth,
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
-  validatorMiddleware(updateDreamSchema),
+  validatorMiddleware(updateDreamProcessedSchema),
   dreamController.handleSetDreamStatusProcessed,
 );
 

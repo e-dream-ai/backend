@@ -160,7 +160,7 @@ export const createFeedItem = async (dream: Dream) => {
   if (!feedItem) {
     feedItem = new FeedItem();
     feedItem.type = FeedItemType.DREAM;
-    feedItem.user = dream?.user;
+    feedItem.user = dream.user;
     feedItem.dreamItem = dream;
     await feedRepository.save(feedItem);
   }

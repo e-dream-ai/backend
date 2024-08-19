@@ -14,6 +14,7 @@ import {
   DreamStatusType,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
+  UpdateDreamProcessedRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
 import { RequestValidationSchema } from "types/validator.types";
@@ -39,6 +40,19 @@ export const updateDreamSchema: RequestValidationSchema = {
     activityLevel: Joi.number(),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0),
+  }),
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const updateDreamProcessedSchema: RequestValidationSchema = {
+  body: Joi.object<UpdateDreamProcessedRequest>().keys({
+    activityLevel: Joi.number(),
+    processedVideoFPS: Joi.number(),
+    processedVideoFrames: Joi.number().integer(),
+    processedVideoSize: Joi.number().integer(),
+    filmstrip: Joi.array<string>(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

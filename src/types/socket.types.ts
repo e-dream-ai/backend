@@ -32,6 +32,7 @@ export const REMOTE_CONTROLS = {
   CAPTURE: "capture",
   REPORT: "report",
   RESET_PLAYLIST: "reset_playlist",
+  DESKTOP_CLIENT: "desktop_client",
 };
 
 export type RemoteControlEvent = {

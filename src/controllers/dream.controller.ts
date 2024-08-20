@@ -393,12 +393,11 @@ export const handleCompleteMultipartUpload = async (
 
   let dream: Dream | undefined;
   try {
-    const findDreamResult = await dreamRepository.find({
+    const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
       select: getDreamSelectedColumns(),
     });
-    dream = findDreamResult[0];
 
     if (!dream) {
       return handleNotFound(req as RequestType, res);
@@ -472,8 +471,11 @@ export const handleCompleteMultipartUpload = async (
 
     const [updatedDream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true, playlistItems: true },
-      select: getDreamSelectedColumns(),
+      relations: { user: true },
+      /**
+       * originalVideo - needed field to process dream request
+       */
+      select: getDreamSelectedColumns({ originalVideo: true }),
     });
 
     if (type === DreamFileType.DREAM && !processed) {
@@ -483,9 +485,9 @@ export const handleCompleteMultipartUpload = async (
       await updateVideoServiceWorker(TURN_ON_QUANTITY);
 
       /**
-       * process dream
+       * process dream - provide updated dream
        */
-      await processDreamRequest(dream);
+      await processDreamRequest(updatedDream);
     }
 
     return res
@@ -762,7 +764,7 @@ export const handleProcessDream = async (
     await updateVideoServiceWorker(TURN_ON_QUANTITY);
 
     /**
-     * process dream
+     * process dream - provide updated dream
      */
     await processDreamRequest(dream);
 

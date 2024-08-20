@@ -426,7 +426,9 @@ export const handleCompleteMultipartUpload = async (
       /**
        * update thumbnail
        */
-      dream.thumbnail = generateBucketObjectURL(filePath);
+      await dreamRepository.update(dream.id, {
+        thumbnail: generateBucketObjectURL(filePath),
+      });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
         userUUID,

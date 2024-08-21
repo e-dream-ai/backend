@@ -205,7 +205,6 @@ export const handleCreateMultipartUploadDreamFile = async (
 ) => {
   // setting vars
   const user = res.locals.user;
-  const userUUID = user!.cognitoId;
   const dreamUUID: string = req.params.uuid!;
   const fileExtension = req.body.extension!;
   const parts = req.body.parts!;
@@ -225,24 +224,35 @@ export const handleCreateMultipartUploadDreamFile = async (
       return handleNotFound(req as RequestType, res);
     }
 
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP, ROLES.CREATOR_GROUP, ROLES.USER_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
     let filePath: string;
+    const dreamOwnerUserUUID = dream.user.cognitoId;
 
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
     } else if (type === DreamFileType.DREAM) {
       filePath = generateDreamPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
         processed,
@@ -290,7 +300,6 @@ export const handleRefreshMultipartUploadUrl = async (
 ) => {
   // setting vars
   const user = res.locals.user;
-  const userUUID = user!.cognitoId;
   const dreamUUID: string = req.params.uuid!;
   const uploadId = req.body.uploadId!;
   const fileExtension = req.body.extension!;
@@ -322,23 +331,24 @@ export const handleRefreshMultipartUploadUrl = async (
     }
 
     let filePath: string;
+    const dreamOwnerUserUUID = dream.user.cognitoId;
 
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
     } else if (type === DreamFileType.DREAM) {
       filePath = generateDreamPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
         processed,
@@ -379,7 +389,6 @@ export const handleCompleteMultipartUpload = async (
   res: ResponseType,
 ) => {
   const user = res.locals.user!;
-  const userUUID = user.cognitoId;
   const dreamUUID: string = req.params.uuid!;
   const uploadId = req.body.uploadId!;
   const fileExtension = req.body.extension!;
@@ -414,10 +423,11 @@ export const handleCompleteMultipartUpload = async (
     }
 
     let filePath: string;
+    const dreamOwnerUserUUID = dream.user.cognitoId;
 
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
       });
@@ -430,14 +440,14 @@ export const handleCompleteMultipartUpload = async (
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
     } else if (type === DreamFileType.DREAM && !processed) {
       filePath = generateDreamPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
         processed,
@@ -453,7 +463,7 @@ export const handleCompleteMultipartUpload = async (
       });
     } else if (type === DreamFileType.DREAM && processed) {
       filePath = generateDreamPath({
-        userUUID,
+        userUUID: dreamOwnerUserUUID,
         dreamUUID,
         extension: fileExtension,
         processed,

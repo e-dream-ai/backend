@@ -226,7 +226,7 @@ export const handleCreateMultipartUploadDreamFile = async (
 
     const isAllowed = canExecuteAction({
       isOwner: dream.user.id === user?.id,
-      allowedRoles: [ROLES.ADMIN_GROUP, ROLES.CREATOR_GROUP, ROLES.USER_GROUP],
+      allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
 
@@ -235,8 +235,14 @@ export const handleCreateMultipartUploadDreamFile = async (
     }
 
     let filePath: string;
+    /**
+     * dream owner uuid to generate s3 file path
+     */
     const dreamOwnerUserUUID = dream.user.cognitoId;
 
+    /**
+     * filePath s3 generation
+     */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
         userUUID: dreamOwnerUserUUID,
@@ -331,8 +337,14 @@ export const handleRefreshMultipartUploadUrl = async (
     }
 
     let filePath: string;
+    /**
+     * dream owner uuid to generate s3 file path
+     */
     const dreamOwnerUserUUID = dream.user.cognitoId;
 
+    /**
+     * filePath s3 generation
+     */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
         userUUID: dreamOwnerUserUUID,
@@ -398,6 +410,9 @@ export const handleCompleteMultipartUpload = async (
   const parts = req.body.parts!;
   const type = req.body.type!;
   const frameNumber = req.body.frameNumber;
+  /**
+   * flag to verify if dream file uploaded is the original or the processed
+   */
   const processed = req.body.processed;
 
   let dream: Dream | undefined;
@@ -423,8 +438,14 @@ export const handleCompleteMultipartUpload = async (
     }
 
     let filePath: string;
+    /**
+     * dream owner uuid to generate s3 file path
+     */
     const dreamOwnerUserUUID = dream.user.cognitoId;
 
+    /**
+     * filePath s3 generation, updates database values if needed
+     */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
         userUUID: dreamOwnerUserUUID,
@@ -433,7 +454,7 @@ export const handleCompleteMultipartUpload = async (
       });
 
       /**
-       * update thumbnail
+       * updates thumbnail url on database
        */
       await dreamRepository.update(dream.id, {
         thumbnail: generateBucketObjectURL(filePath),
@@ -454,7 +475,7 @@ export const handleCompleteMultipartUpload = async (
       });
 
       /**
-       * update dream
+       * if dream file is the original then updates name, original_video url and status
        */
       await dreamRepository.update(dream.id, {
         name,
@@ -470,20 +491,23 @@ export const handleCompleteMultipartUpload = async (
       });
 
       /**
-       * update dream
+       * if dream file is the processed then updates video url
        */
       await dreamRepository.update(dream.id, {
         video: generateBucketObjectURL(filePath!),
       });
     }
 
+    /**
+     * completes multipart upload with path, upload id and parts
+     */
     await completeMultipartUpload(filePath!, uploadId!, parts!);
 
     const [updatedDream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
       /**
-       * originalVideo - needed field to process dream request
+       * originalVideo - needed field on process dream request to video ingestion
        */
       select: getDreamSelectedColumns({ originalVideo: true }),
     });
@@ -495,7 +519,7 @@ export const handleCompleteMultipartUpload = async (
       await updateVideoServiceWorker(TURN_ON_QUANTITY);
 
       /**
-       * process dream - provide updated dream
+       * process dream requests: it needs to provide updated dream with originalVideo value
        */
       await processDreamRequest(updatedDream);
     }

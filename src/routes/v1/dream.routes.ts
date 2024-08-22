@@ -88,7 +88,7 @@ dreamRouter.get(
  *    tags:
  *      - dream
  *    summary: Creates multipart upload
- *    description: Creates multipart upload
+ *    description: Creates multipart upload. Use it to upload a new video file and create a new dream.
  *    requestBody:
  *      content:
  *        application/json:
@@ -142,6 +142,72 @@ dreamRouter.post(
   dreamController.handleCreateMultipartUpload,
 );
 
+/**
+ * @swagger
+ * /dream/:uuid/create-multipart-upload:
+ *  post:
+ *    tags:
+ *      - dream
+ *    summary: Creates multipart upload for a dream file type (dream, thumbnail or filmstrip file)
+ *    description: Creates multipart upload. Use it to upload a new video file type (dream, thumbnail or filmstrip file) or update processed dream..
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               type:
+ *                 type: string
+ *                 enum:
+ *                  - dream
+ *                  - thumbnail
+ *                  - filmstrip
+ *               extension:
+ *                 type: string
+ *               parts:
+ *                 type: number
+ *               frameNumber:
+ *                 type: number
+ *               processed:
+ *                 type: boolean
+ *    responses:
+ *      '200':
+ *        description: Creates multipart upload for a dream file.
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        uploadId:
+ *                          type: string
+ *                        urls:
+ *                          type: array
+ *                          items:
+ *                            type: string
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
 dreamRouter.post(
   "/:uuid/create-multipart-upload",
   requireAuth,
@@ -171,12 +237,22 @@ dreamRouter.post(
  *           schema:
  *             type: object
  *             properties:
+ *               type:
+ *                 type: string
+ *                 enum:
+ *                  - dream
+ *                  - thumbnail
+ *                  - filmstrip
  *               uploadId:
  *                 type: string
  *               extension:
  *                 type: string
  *               part:
  *                 type: number
+ *               frameNumber:
+ *                 type: number
+ *               processed:
+ *                 type: boolean
  *    responses:
  *      '200':
  *        description: Refreshes multipart upload
@@ -190,6 +266,12 @@ dreamRouter.post(
  *                    data:
  *                      type: object
  *                      properties:
+ *                        type:
+ *                          type: string
+ *                          enum:
+ *                           - dream
+ *                           - thumbnail
+ *                           - filmstrip
  *                        uploadId:
  *                          type: string
  *                        urls:
@@ -222,8 +304,8 @@ dreamRouter.post(
  *  post:
  *    tags:
  *      - dream
- *    summary: Refreshes multipart upload
- *    description: Refreshes multipart upload
+ *    summary: Completes multipart upload
+ *    description: Completes multipart upload
  *    parameters:
  *      - name: uuid
  *        in: path
@@ -237,6 +319,12 @@ dreamRouter.post(
  *           schema:
  *             type: object
  *             properties:
+ *              type:
+ *                type: string
+ *                enum:
+ *                 - dream
+ *                 - thumbnail
+ *                 - filmstrip
  *              uploadId:
  *                type: string
  *              parts:
@@ -250,9 +338,13 @@ dreamRouter.post(
  *                      type: number
  *              extension:
  *                type: string
+ *              frameNumber:
+ *                type: number
+ *              processed:
+ *                type: boolean
  *    responses:
  *      '200':
- *        description: Refreshes multipart upload
+ *        description: Completes multipart upload
  *        content:
  *          application/json:
  *            schema:

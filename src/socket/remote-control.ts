@@ -17,13 +17,10 @@ import {
 } from "utils/socket.util";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
+const PING_EVENT = "ping";
 
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
-  /**
-   * Temporal info log
-   */
-  APP_LOGGER.info(`User ${user?.cognitoId} connected to socket.io`);
 
   /**
    * Joins a room to avoid send all messages to all users
@@ -33,15 +30,21 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
 
   socket.on(
     NEW_REMOTE_CONTROL_EVENT,
-    remoteControlEventListener(socket, user, roomId),
+    handleNewControlEvent({ socket, user, roomId }),
   );
+
+  socket.on(PING_EVENT, handlePingEvent({ socket, user, roomId }));
 };
 
-export const remoteControlEventListener = (
-  socket: Socket,
-  user: User,
-  roomId: string,
-) => {
+export const handleNewControlEvent = ({
+  user,
+  socket,
+  roomId,
+}: {
+  user: User;
+  socket: Socket;
+  roomId: string;
+}) => {
   return async (data: RemoteControlEvent) => {
     // Validate incoming message against the schema
     const { error } = remoteControlSchema.validate(data);
@@ -50,15 +53,6 @@ export const remoteControlEventListener = (
       socket.emit("Validation error", { error: error.message });
       return;
     }
-    /**
-     * Temporal info log
-     */
-
-    APP_LOGGER.info(
-      `User ${user?.cognitoId} sent ${NEW_REMOTE_CONTROL_EVENT} - ${JSON.stringify(
-        data,
-      )}`,
-    );
 
     /**
      * Get event
@@ -194,5 +188,24 @@ export const remoteControlEventListener = (
      * Emit boradcast {NEW_REMOTE_CONTROL_EVENT} event
      */
     socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
+  };
+};
+
+export const handlePingEvent = ({
+  user,
+  socket,
+  roomId,
+}: {
+  user: User;
+  socket: Socket;
+  roomId: string;
+}) => {
+  return async () => {
+    APP_LOGGER.info(`User ${user?.cognitoId} sent client ${PING_EVENT}`);
+
+    /**
+     * Emit boradcast {PING_EVENT} event
+     */
+    socket.broadcast.to(roomId).emit(PING_EVENT);
   };
 };

@@ -9,8 +9,6 @@ export const socketAuthMiddleware = async (
   socket: Socket,
   next: (err?: ExtendedError | undefined) => void,
 ) => {
-  APP_LOGGER.info("Socket connection attempt has begun");
-
   /**
    * setup auth error
    */

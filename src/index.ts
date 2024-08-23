@@ -42,7 +42,7 @@ appDataSource
     APP_LOGGER.info("Connected with postgres");
   })
   .catch((err) => {
-    APP_LOGGER.error("Error during postgres connection", err);
+    APP_LOGGER.error(err);
   });
 
 if (env.NODE_ENV !== "development") {

@@ -617,14 +617,15 @@ export const handleRemovePlaylistItem = async (
       return handleForbidden(req as RequestType, res);
     }
 
-    const { affected } = await playlistItemRepository.softDelete({
-      id: itemId,
-      playlist: { id: playlist.id },
+    const playlistItem = await playlistItemRepository.findOne({
+      where: { id: itemId, playlist: { id: playlist.id } },
     });
 
-    if (!affected) {
+    if (!playlistItem) {
       return handleNotFound(req as RequestType, res);
     }
+
+    await playlistItemRepository.softRemove(playlistItem);
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {

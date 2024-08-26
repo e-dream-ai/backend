@@ -54,7 +54,7 @@ import { CognitoIPSExceptions } from "constants/aws/erros.constant";
 import { validateAndUseCode } from "utils/invite.util";
 import { isFeatureActive } from "utils/feature.util";
 import { FEATURES } from "constants/feature.constants";
-import { authenticateUser } from "utils/user.util";
+import { authenticateUser, setUserLastLoginAt } from "utils/user.util";
 
 /**
  * Repositories
@@ -293,9 +293,7 @@ export const handleLogin = async (
     /**
      * save last login date
      */
-    await userRepository.update(user.id, {
-      last_login_at: new Date(),
-    });
+    await setUserLastLoginAt(user);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

@@ -111,6 +111,13 @@ export class User {
   @Column({ nullable: true, type: "timestamp" })
   last_login_at: Date;
 
+  /**
+   * last_client_ping_at saves the client ping sent
+   * users with null last_client_ping_at are those doesn't have used client
+   */
+  @Column({ nullable: true, type: "timestamp" })
+  last_client_ping_at: Date;
+
   @CreateDateColumn()
   created_at: Date;
 

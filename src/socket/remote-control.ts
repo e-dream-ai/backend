@@ -1,7 +1,6 @@
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { User } from "entities";
 import { remoteControlSchema } from "schemas/socket.schema";
-import { APP_LOGGER } from "shared/logger";
 import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import { VoteType } from "types/vote.types";
@@ -15,6 +14,7 @@ import {
   setUserCurrentDream,
   setUserCurrentPlaylist,
 } from "utils/socket.util";
+import { setUserLastClientPingAt } from "utils/user.util";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
 const PING_EVENT = "ping";
@@ -201,7 +201,10 @@ export const handlePingEvent = ({
   roomId: string;
 }) => {
   return async () => {
-    APP_LOGGER.info(`User ${user?.cognitoId} sent client ${PING_EVENT}`);
+    /**
+     * Save last client ping time
+     */
+    await setUserLastClientPingAt(user);
 
     /**
      * Emit boradcast {PING_EVENT} event

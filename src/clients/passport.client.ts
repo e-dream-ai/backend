@@ -3,7 +3,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Strategy as BearerStrategy } from "passport-http-bearer";
 import { HeaderAPIKeyStrategy } from "passport-headerapikey";
-import { authenticateUser } from "utils/user.util";
+import { authenticateUser, setUserLastLoginAt } from "utils/user.util";
 import { validateApiKey, validateCognitoJWT } from "utils/auth.util";
 import {
   fetchUserByCognitoId,
@@ -24,10 +24,17 @@ export default function configurePassport() {
       async (username, password, done) => {
         try {
           const authResult = await authenticateUser({ username, password });
+
+          /**
+           * save last login date
+           */
+          await setUserLastLoginAt(authResult.user);
+
           const user = {
             ...authResult.user,
             token: authResult.token,
           };
+
           done(null, user);
         } catch (error) {
           done(null, false, { message: AUTH_MESSAGES.INVALID_CREDENTIALS });

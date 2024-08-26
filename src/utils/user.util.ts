@@ -16,6 +16,7 @@ import {
   InitiateAuthCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { fetchCognitoUser } from "controllers/auth.controller";
+import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 
 /**
  * Repositories
@@ -48,6 +49,10 @@ export const authenticateUser = async ({
   });
 
   const token = commandResponse.AuthenticationResult;
+
+  if (!user || !token) {
+    throw new Error(AUTH_MESSAGES.INVALID_CREDENTIALS);
+  }
 
   return { user, token };
 };
@@ -129,4 +134,12 @@ export const reduceUserQuota = async (user: User, quotaToReduce: number) => {
   );
 
   await userRepository.update(user.id, { quota: newQuota });
+};
+
+export const setUserLastClientPingAt = async (user: User) => {
+  await userRepository.update(user.id, { last_client_ping_at: new Date() });
+};
+
+export const setUserLastLoginAt = async (user: User) => {
+  await userRepository.update(user.id, { last_login_at: new Date() });
 };

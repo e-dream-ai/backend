@@ -37,6 +37,7 @@ export default function configurePassport() {
 
           done(null, user);
         } catch (error) {
+          APP_LOGGER.error(error);
           done(null, false, { message: AUTH_MESSAGES.INVALID_CREDENTIALS });
         }
       },

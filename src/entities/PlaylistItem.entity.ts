@@ -85,22 +85,28 @@ implements EntitySubscriberInterface<PlaylistItem>
   /**
    * After insert event handler
    */
-  async afterInsert(event: InsertEvent<PlaylistItem>) {
-    await this.updatePlaylistTimestamp(event, event.entity.id);
+  afterInsert(event: InsertEvent<PlaylistItem>) {
+    if (event?.entity?.id) {
+      this.updatePlaylistTimestamp(event, event.entity.id);
+    }
   }
 
   /**
    * After update event handler
    */
-  async afterUpdate(event: UpdateEvent<PlaylistItem>) {
-    await this.updatePlaylistTimestamp(event, event.databaseEntity.id);
+  afterUpdate(event: UpdateEvent<PlaylistItem>) {
+    if (event?.databaseEntity?.id) {
+      this.updatePlaylistTimestamp(event, event.databaseEntity.id);
+    }
   }
 
   /**
    * After soft remove event handler
    */
-  async afterSoftRemove(event: SoftRemoveEvent<PlaylistItem>) {
-    await this.updatePlaylistTimestamp(event, event.entityId);
+  afterSoftRemove(event: SoftRemoveEvent<PlaylistItem>) {
+    if (event?.entityId) {
+      this.updatePlaylistTimestamp(event, event.entityId);
+    }
   }
 
   /**

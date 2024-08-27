@@ -450,21 +450,27 @@ export const handleOrderPlaylist = async (
       return handleForbidden(req as RequestType, res);
     }
 
-    playlist.items = playlist.items.map((item) => {
-      const reorderItem = order.find((i) => i.id === item.id);
-      if (!reorderItem) return item;
+    /**
+     * update item order
+     */
+    for (const item of order) {
+      await playlistItemRepository.update(
+        {
+          id: item.id,
+          playlist: {
+            id: playlist.id,
+          },
+        },
+        { order: item.order },
+      );
+    }
 
-      return {
-        ...item,
-        order: reorderItem.order!,
-      };
-    });
+    /**
+     * playlist updated_at updated after ordering
+     */
+    await playlistRepository.update(playlist.id, { updated_at: new Date() });
 
-    await playlistRepository.save(playlist);
-
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { playlist } }));
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

@@ -14,10 +14,14 @@ import {
   setUserCurrentDream,
   setUserCurrentPlaylist,
 } from "utils/socket.util";
-import { setUserLastClientPingAt } from "utils/user.util";
+import {
+  resetUserLastClientPingAt,
+  setUserLastClientPingAt,
+} from "utils/user.util";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
 const PING_EVENT = "ping";
+const GOOD_BYE_EVENT = "goodbye";
 
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
@@ -33,7 +37,15 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     handleNewControlEvent({ socket, user, roomId }),
   );
 
+  /**
+   * Register ping handler
+   */
   socket.on(PING_EVENT, handlePingEvent({ socket, user, roomId }));
+
+  /**
+   * Register goodbye handler
+   */
+  socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, user, roomId }));
 };
 
 export const handleNewControlEvent = ({
@@ -191,6 +203,15 @@ export const handleNewControlEvent = ({
   };
 };
 
+/**
+ * Handles a ping event from a client.
+ *
+ * @param {Object} param0
+ * @param {User} param0.user - User object.
+ * @param {Socket} param0.socket - Socket instance.
+ * @param {string} param0.roomId - Unique identifier of the room.
+ * @returns void
+ */
 export const handlePingEvent = ({
   user,
   socket,
@@ -210,5 +231,36 @@ export const handlePingEvent = ({
      * Emit boradcast {PING_EVENT} event
      */
     socket.broadcast.to(roomId).emit(PING_EVENT);
+  };
+};
+
+/**
+ * Handles a goodbye event from a client.
+ *
+ * @param {Object} param0
+ * @param {User} param0.user - User object.
+ * @param {Socket} param0.socket - Socket instance.
+ * @param {string} param0.roomId - Unique identifier of the room.
+ * @returns void
+ */
+export const handleGoodbyeEvent = ({
+  user,
+  socket,
+  roomId,
+}: {
+  user: User;
+  socket: Socket;
+  roomId: string;
+}) => {
+  return async () => {
+    /**
+     * Save last client ping time
+     */
+    await resetUserLastClientPingAt(user);
+
+    /**
+     * Emit boradcast {PING_EVENT} event
+     */
+    socket.broadcast.to(roomId).emit(GOOD_BYE_EVENT);
   };
 };

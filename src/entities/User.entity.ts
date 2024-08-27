@@ -116,7 +116,7 @@ export class User {
    * users with null last_client_ping_at are those doesn't have used client
    */
   @Column({ nullable: true, type: "timestamp" })
-  last_client_ping_at: Date;
+  last_client_ping_at: Date | null;
 
   @CreateDateColumn()
   created_at: Date;

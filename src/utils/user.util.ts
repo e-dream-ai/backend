@@ -140,6 +140,10 @@ export const setUserLastClientPingAt = async (user: User) => {
   await userRepository.update(user.id, { last_client_ping_at: new Date() });
 };
 
+export const resetUserLastClientPingAt = async (user: User) => {
+  await userRepository.update(user.id, { last_client_ping_at: null });
+};
+
 export const setUserLastLoginAt = async (user: User) => {
   await userRepository.update(user.id, { last_login_at: new Date() });
 };

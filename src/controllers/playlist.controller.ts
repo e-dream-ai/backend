@@ -12,6 +12,7 @@ import { Dream, FeedItem, Playlist, PlaylistItem, User } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { ILike } from "typeorm";
+import { DreamStatusType } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import {
@@ -28,6 +29,7 @@ import { canExecuteAction } from "utils/permissions.util";
 import {
   findOnePlaylist,
   getPlaylistSelectedColumns,
+  refreshPlaylistUpdatedAtTimestamp,
 } from "utils/playlist.util";
 import {
   handleNotFound,
@@ -39,6 +41,7 @@ import { isAdmin } from "utils/user.util";
 
 const playlistRepository = appDataSource.getRepository(Playlist);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
+const dreamRepository = appDataSource.getRepository(Dream);
 const feedItemRepository = appDataSource.getRepository(FeedItem);
 const userRepository = appDataSource.getRepository(User);
 
@@ -468,7 +471,7 @@ export const handleOrderPlaylist = async (
     /**
      * playlist updated_at updated after ordering
      */
-    await playlistRepository.update(playlist.id, { updated_at: new Date() });
+    await refreshPlaylistUpdatedAtTimestamp(playlist.id);
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
@@ -518,10 +521,16 @@ export const handleAddPlaylistItem = async (
       return handleForbidden(req as RequestType, res);
     }
 
+    /**
+     * Handle adding playlist itself
+     */
     if (PlaylistItemType.PLAYLIST && playlist.uuid === itemUUID) {
       return handleForbidden(req as RequestType, res);
     }
 
+    /**
+     * Handle duplicated item
+     */
     const playlistSearch =
       type === PlaylistItemType.DREAM
         ? { dreamItem: { uuid: itemUUID } }
@@ -540,22 +549,30 @@ export const handleAddPlaylistItem = async (
       );
     }
 
+    /**
+     * Creating playlist item
+     */
     playlistItem = new PlaylistItem();
     playlistItem.playlist = playlist;
     playlistItem.type = type!;
     playlistItem.order = (playlist.items?.length || 0) + 1;
 
+    let shouldUpdatePlaylistTimestamp = false;
+
     if (type === PlaylistItemType.DREAM) {
-      const dreamRepository = appDataSource.getRepository(Dream);
       const dreamToAdd = await dreamRepository.findOne({
         where: { uuid: itemUUID },
       });
+
+      console.log({ dreamToAdd });
 
       if (!dreamToAdd) {
         return handleNotFound(req as RequestType, res);
       }
 
       playlistItem.dreamItem = dreamToAdd;
+      shouldUpdatePlaylistTimestamp =
+        dreamToAdd.status === DreamStatusType.PROCESSED;
     } else if (type === PlaylistItemType.PLAYLIST) {
       const playlistToAdd = await findOnePlaylist({
         where: { uuid: itemUUID },
@@ -571,6 +588,10 @@ export const handleAddPlaylistItem = async (
     }
 
     const createdPlaylistItem = await playlistItemRepository.save(playlistItem);
+
+    if (shouldUpdatePlaylistTimestamp) {
+      refreshPlaylistUpdatedAtTimestamp(playlist.id);
+    }
 
     return res.status(httpStatus.CREATED).json(
       jsonResponse({
@@ -632,6 +653,7 @@ export const handleRemovePlaylistItem = async (
     }
 
     await playlistItemRepository.softRemove(playlistItem);
+    await refreshPlaylistUpdatedAtTimestamp(playlist.id);
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {

@@ -91,6 +91,13 @@ export class Playlist {
   @CreateDateColumn()
   created_at: Date;
 
+  /**
+   * updated_at is considered to change in next cases
+   * - After adding a processed dream to playlist
+   * - After deleting a playlist item
+   * - After playlist reordering
+   * - After a dream is processed, will change all playlist updated_at field where this dream is included
+   */
   @UpdateDateColumn()
   updated_at: Date;
 

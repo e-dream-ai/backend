@@ -6,6 +6,7 @@ import {
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
+import { DreamStatusType } from "types/dream.types";
 
 type PlaylistFindOptions = {
   showNSFW?: boolean;
@@ -17,6 +18,7 @@ type GetPlaylistFindOptionsWhere = (
 ) => FindOptionsWhere<Playlist>[];
 
 const playlistRepository = appDataSource.getRepository(Playlist);
+const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 
 export const getPlaylistFindOptionsWhere: GetPlaylistFindOptionsWhere = (
   options,
@@ -34,6 +36,7 @@ export const getPlaylistSelectedColumns = ({
 }: {
   userEmail?: boolean;
   featureRank?: boolean;
+  status?: boolean;
 } = {}): FindOptionsSelect<Playlist> => {
   return {
     id: true,
@@ -86,6 +89,7 @@ export const getPlaylistItemSelectedColumns =
         user: getUserSelectedColumns(),
         displayedOwner: getUserSelectedColumns(),
         updated_at: true,
+        status: true,
       },
       playlistItem: {
         id: true,
@@ -110,6 +114,7 @@ export const findOnePlaylist = async ({
   select: FindOptionsSelect<Playlist>;
   filter?: {
     nsfw?: boolean;
+    onlyProcessedDreams?: boolean;
   };
 }): Promise<Playlist | null> => {
   const playlist = await playlistRepository.findOne({
@@ -121,11 +126,42 @@ export const findOnePlaylist = async ({
 
   if (!playlist) return null;
 
+  /**
+   * Filter for NSFW
+   */
   if (!filter?.nsfw) {
     playlist.items = playlist.items.filter(
       (item) =>
         item?.dreamItem?.nsfw === false || item?.playlist?.nsfw === false,
     );
   }
+
+  /**
+   * Filter for onlyProcessedDreams
+   */
+  if (filter?.onlyProcessedDreams) {
+    playlist.items = playlist.items.filter(
+      (item) => item?.dreamItem?.status === DreamStatusType.PROCESSED,
+    );
+  }
   return playlist;
+};
+
+export const refreshPlaylistUpdatedAtTimestamp = (id: number) =>
+  playlistRepository.update(id, {});
+
+export const refreshPlaylistUpdatedAtTimestampFromPlaylistItems = async (
+  playlistItemsIds: number[],
+) => {
+  for (const id of playlistItemsIds) {
+    const pi = await playlistItemRepository.findOne({
+      where: { id },
+      relations: {
+        playlist: true,
+      },
+    });
+    if (pi?.playlist) {
+      await refreshPlaylistUpdatedAtTimestamp(pi.playlist.id);
+    }
+  }
 };

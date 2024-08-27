@@ -109,8 +109,8 @@ clientRouter.get(
  *  get:
  *    tags:
  *      - client
- *    summary: Gets client playlist data
- *    description: Gets client playlist data
+ *    summary: Gets client playlist data with processed dreams only
+ *    description: Gets client playlist data with processed dreams only
  *    parameters:
  *      - name: uuid
  *        in: path

@@ -41,7 +41,10 @@ import {
 } from "utils/dream.util";
 import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
-import { getPlaylistFindOptionsRelations } from "utils/playlist.util";
+import {
+  getPlaylistFindOptionsRelations,
+  refreshPlaylistUpdatedAtTimestampFromPlaylistItems,
+} from "utils/playlist.util";
 import { isBrowserRequest } from "utils/request.util";
 import {
   jsonResponse,
@@ -916,11 +919,14 @@ export const handleSetDreamStatusProcessed = async (
 
     const [updatedDream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true },
+      relations: { user: true, playlistItems: true },
       select: getDreamSelectedColumns(),
     });
 
     await createFeedItem(updatedDream);
+    await refreshPlaylistUpdatedAtTimestampFromPlaylistItems(
+      updatedDream.playlistItems?.map((pi) => pi.id),
+    );
 
     /**
      * get jobs queue on video service

@@ -1,5 +1,4 @@
 import {
-  InsertEvent,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -8,10 +7,6 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  EventSubscriber,
-  EntitySubscriberInterface,
-  UpdateEvent,
-  SoftRemoveEvent,
 } from "typeorm";
 import { PlaylistItemType } from "types/playlist.types";
 import { Dream } from "./Dream.entity";
@@ -61,77 +56,4 @@ export class PlaylistItem {
 
   @DeleteDateColumn()
   deleted_at: Date;
-}
-
-/**
- * Subscriber for PlaylistItem
- * Automatically updates the associated Playlist's updated_at timestamp when a PlaylistItem is inserted, updated, or soft-removed
- */
-@EventSubscriber()
-export class PlaylistItemSubscriber
-implements EntitySubscriberInterface<PlaylistItem>
-{
-  // constructor(dataSource: DataSource) {
-  //   dataSource.subscribers.push(this);
-  // }
-
-  /**
-   * Specifies that this subscriber listens to PlaylistItem events
-   */
-  listenTo() {
-    return PlaylistItem;
-  }
-
-  /**
-   * After insert event handler
-   */
-  afterInsert(event: InsertEvent<PlaylistItem>) {
-    if (event?.entity?.id) {
-      this.updatePlaylistTimestamp(event, event.entity.id);
-    }
-  }
-
-  /**
-   * After update event handler
-   */
-  afterUpdate(event: UpdateEvent<PlaylistItem>) {
-    if (event?.databaseEntity?.id) {
-      this.updatePlaylistTimestamp(event, event.databaseEntity.id);
-    }
-  }
-
-  /**
-   * After soft remove event handler
-   */
-  afterSoftRemove(event: SoftRemoveEvent<PlaylistItem>) {
-    if (event?.entityId) {
-      this.updatePlaylistTimestamp(event, event.entityId);
-    }
-  }
-
-  /**
-   * Updates the timestamp of the associated Playlist
-   */
-  private async updatePlaylistTimestamp(
-    event:
-      | InsertEvent<PlaylistItem>
-      | UpdateEvent<PlaylistItem>
-      | SoftRemoveEvent<PlaylistItem>,
-    playlistItemId: number,
-  ): Promise<void> {
-    const manager = event.manager;
-    const playlistItemRepository = manager.getRepository(PlaylistItem);
-    const playlistItem = await playlistItemRepository.findOne({
-      where: { id: playlistItemId },
-      relations: ["playlist"],
-      withDeleted: true,
-    });
-
-    if (playlistItem && playlistItem.playlist) {
-      const playlistRepository = manager.getRepository(Playlist);
-      await playlistRepository.update(playlistItem.playlist.id, {
-        updated_at: new Date(),
-      });
-    }
-  }
 }

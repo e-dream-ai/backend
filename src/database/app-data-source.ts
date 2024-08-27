@@ -1,9 +1,6 @@
 import path from "path";
 import { DataSource } from "typeorm";
 import env from "shared/env";
-import { PlaylistItemSubscriber } from "entities";
-
-const subscribers = [PlaylistItemSubscriber];
 
 const appDataSource = new DataSource({
   type: "postgres",
@@ -21,7 +18,6 @@ const appDataSource = new DataSource({
   ssl: env.TYPEORM_SSL ?? {
     rejectUnauthorized: false,
   },
-  subscribers: subscribers,
 });
 
 export default appDataSource;

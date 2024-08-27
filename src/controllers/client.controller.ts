@@ -135,7 +135,10 @@ export const handleGetPlaylist = async (
     const playlist = await findOnePlaylist({
       where: { uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      filter: { nsfw: user?.nsfw },
+      /**
+       * Filter to get only processed dreams for client
+       */
+      filter: { nsfw: user?.nsfw, onlyProcessedDreams: true },
     });
 
     if (!playlist) {

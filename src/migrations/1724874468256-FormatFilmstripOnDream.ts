@@ -6,7 +6,7 @@ export class FormatFilmstripOnDream1724874468256 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const repository = queryRunner.manager.getRepository(Dream);
 
-    const records = await repository.find();
+    const records = await repository.find({ withDeleted: true });
 
     for (const record of records) {
       if (Array.isArray(record.filmstrip)) {
@@ -32,7 +32,7 @@ export class FormatFilmstripOnDream1724874468256 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     const repository = queryRunner.manager.getRepository(Dream);
 
-    const records = await repository.find();
+    const records = await repository.find({ withDeleted: true });
 
     for (const record of records) {
       if (Array.isArray(record.filmstrip)) {

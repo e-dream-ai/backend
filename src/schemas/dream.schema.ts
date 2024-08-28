@@ -52,7 +52,7 @@ export const updateDreamProcessedSchema: RequestValidationSchema = {
     processedVideoFPS: Joi.number(),
     processedVideoFrames: Joi.number().integer(),
     processedVideoSize: Joi.number().integer(),
-    filmstrip: Joi.array<string>(),
+    filmstrip: Joi.array<number>(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

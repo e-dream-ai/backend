@@ -8,4 +8,5 @@ export const remoteControlSchema = Joi.object<RemoteControlEvent>({
   name: Joi.string(),
   uuid: Joi.string().uuid(),
   key: Joi.string(),
+  frameNumber: Joi.number().integer(),
 }).required();

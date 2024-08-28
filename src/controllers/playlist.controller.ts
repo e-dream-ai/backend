@@ -564,8 +564,6 @@ export const handleAddPlaylistItem = async (
         where: { uuid: itemUUID },
       });
 
-      console.log({ dreamToAdd });
-
       if (!dreamToAdd) {
         return handleNotFound(req as RequestType, res);
       }

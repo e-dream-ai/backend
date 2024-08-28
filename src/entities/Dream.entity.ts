@@ -17,7 +17,7 @@ import { FeedItem } from "./FeedItem.entity";
 import { PlaylistItem } from "./PlaylistItem.entity";
 import { User } from "./User.entity";
 import { Vote } from "./Vote.entity";
-import { DreamStatusType } from "types/dream.types";
+import { DreamStatusType, Frame } from "types/dream.types";
 import { ColumnNumericTransformer } from "transformers/numeric.transformer";
 import { ColumnVideoTransformer } from "transformers/video.transformer";
 import env from "shared/env";
@@ -135,7 +135,7 @@ export class Dream {
 
   // filmstrip
   @Column({ type: "json", nullable: true })
-  filmstrip: string[];
+  filmstrip: string[] | Frame[];
 
   // computed frontend url field
   frontendUrl: string;

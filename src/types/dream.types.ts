@@ -6,6 +6,8 @@ export type DreamParamsRequest = {
 
 export type CreateDreamRequest = object;
 
+export type Frame = { frameNumber: number; url: string };
+
 export type GetDreamsQuery = {
   status: DreamStatusType;
   take: number;
@@ -27,7 +29,7 @@ export type UpdateDreamProcessedRequest = {
   processedVideoFrames?: number;
   processedVideoFPS?: number;
   activityLevel?: number;
-  filmstrip?: string[];
+  filmstrip?: number[];
 };
 
 export type CreateMultipartUploadDreamRequest = {

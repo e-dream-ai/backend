@@ -25,6 +25,7 @@ import {
   DreamFileType,
   DreamParamsRequest,
   DreamStatusType,
+  Frame,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
   UpdateDreamProcessedRequest,
@@ -882,7 +883,7 @@ export const handleSetDreamStatusProcessed = async (
   const processedVideoFPS = req.body.processedVideoFPS;
   const activityLevel = req.body.activityLevel;
   const filmstrip = req.body.filmstrip
-    ? (req.body.filmstrip as string[])
+    ? (req.body.filmstrip as number[])
     : undefined;
 
   try {
@@ -901,10 +902,14 @@ export const handleSetDreamStatusProcessed = async (
      */
 
     const user = dream.user;
-    const formatedFilmstrip = filmstrip?.map((frame) =>
-      generateBucketObjectURL(
-        `${user?.cognitoId}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
-      ),
+    const formatedFilmstrip: Frame[] = (filmstrip ?? [])?.map(
+      (frame) =>
+        ({
+          frameNumber: Number(frame),
+          url: generateBucketObjectURL(
+            `${user?.cognitoId}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
+          ),
+        }) as Frame,
     );
 
     await dreamRepository.update(dream.id, {

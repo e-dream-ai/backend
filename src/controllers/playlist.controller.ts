@@ -555,7 +555,11 @@ export const handleAddPlaylistItem = async (
     playlistItem = new PlaylistItem();
     playlistItem.playlist = playlist;
     playlistItem.type = type!;
-    playlistItem.order = (playlist.items?.length || 0) + 1;
+
+    /**
+     * Set the order of the new item based on the current number of items in the playlist
+     */
+    playlistItem.order = playlist.items?.length || 0;
 
     let shouldUpdatePlaylistTimestamp = false;
 

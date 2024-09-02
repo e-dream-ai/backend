@@ -45,6 +45,10 @@ export class PlaylistItem {
   @ManyToOne(() => Playlist, (playlist) => playlist.playlistItems)
   playlistItem: Playlist;
 
+  /**
+   * Zero-based indexing for ordering
+   * Set default order value to 0
+   */
   @Column({ default: 0, type: "integer" })
   order: number;
 

@@ -165,3 +165,49 @@ export const refreshPlaylistUpdatedAtTimestampFromPlaylistItems = async (
     }
   }
 };
+
+/**
+ * Deletes playlist item and resets playlist order
+ */
+export const deletePlaylistItemAndResetOrder = async ({
+  playlistId,
+  itemIdToDelete,
+}: {
+  playlistId: number;
+  itemIdToDelete: number;
+}) => {
+  // Start a transaction and following steps
+  await appDataSource.transaction(async (transactionalEntityManager) => {
+    const itemToDelete = await transactionalEntityManager.findOne(
+      PlaylistItem,
+      {
+        where: { id: itemIdToDelete, playlist: { id: playlistId } },
+      },
+    );
+
+    // Handle not found
+    if (!itemToDelete) {
+      throw new Error("Playlist item not found");
+    }
+
+    // 1. Soft remove the specified item
+    await transactionalEntityManager.softRemove(itemToDelete);
+
+    // 2. Fetch all remaining items in the playlist, ordered by their current order
+    const remainingItems = await transactionalEntityManager.find(PlaylistItem, {
+      where: { playlist: { id: playlistId } },
+      order: { order: "ASC" },
+    });
+
+    for (let i = 0; i < remainingItems.length; i++) {
+      // 3. Update the order of all remaining items using zero-based indexing
+      const newOrder = i;
+      const itemId = remainingItems[i].id;
+
+      // 4. Update the items
+      await transactionalEntityManager.update(PlaylistItem, itemId, {
+        order: newOrder,
+      });
+    }
+  });
+};

@@ -27,6 +27,7 @@ import {
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
+  deletePlaylistItemAndResetOrder,
   findOnePlaylist,
   getPlaylistSelectedColumns,
   refreshPlaylistUpdatedAtTimestamp,
@@ -654,7 +655,11 @@ export const handleRemovePlaylistItem = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    await playlistItemRepository.softRemove(playlistItem);
+    // Delete item and reset order
+    await deletePlaylistItemAndResetOrder({
+      playlistId: playlist.id,
+      itemIdToDelete: playlistItem.id,
+    });
     await refreshPlaylistUpdatedAtTimestamp(playlist.id);
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));

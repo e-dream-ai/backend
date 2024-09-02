@@ -17,9 +17,7 @@ export class Vote {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, (user) => user.votes, {
-    cascade: ["soft-remove"],
-  })
+  @ManyToOne(() => User, (user) => user.votes)
   @JoinColumn()
   user: User;
 

@@ -1315,8 +1315,12 @@ export const handleDeleteDream = async (
       where: { uuid },
       relations: {
         user: true,
+        /**
+         * Adding `playlistItems`, `feedItem` and `votes` helps to soft remove relations
+         */
         playlistItems: true,
         feedItem: true,
+        votes: true,
       },
     });
 

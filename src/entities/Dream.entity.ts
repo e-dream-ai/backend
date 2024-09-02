@@ -102,8 +102,9 @@ export class Dream {
   @Column({ nullable: true, type: "varchar" })
   thumbnail?: string | null;
 
-  @OneToMany(() => Vote, (vote) => vote.dream)
-  @JoinColumn()
+  @OneToMany(() => Vote, (vote) => vote.dream, {
+    cascade: ["soft-remove"],
+  })
   votes: Vote[];
 
   @Column({ default: 0, type: "integer" })

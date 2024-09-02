@@ -1,5 +1,5 @@
 import appDataSource from "database/app-data-source";
-import { Dream } from "entities";
+import { Dream, Vote } from "entities";
 import { DefaultPlaylist } from "entities/DefaultPlaylist.entity";
 import httpStatus from "http-status";
 import { In } from "typeorm";
@@ -11,6 +11,7 @@ import {
 import { DreamParamsRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { PlaylistParamsRequest } from "types/playlist.types";
+import { VoteType } from "types/vote.types";
 import {
   formatClientDream,
   formatClientPlaylist,
@@ -33,6 +34,7 @@ import { reduceUserQuota } from "utils/user.util";
  */
 const dreamRepository = appDataSource.getRepository(Dream);
 const defaultPlaylistRepository = appDataSource.getRepository(DefaultPlaylist);
+const voteRepository = appDataSource.getRepository(Vote);
 
 /**
  * Handles hello
@@ -46,8 +48,16 @@ const defaultPlaylistRepository = appDataSource.getRepository(DefaultPlaylist);
  *
  */
 export const handleHello = async (req: RequestType, res: ResponseType) => {
-  const user = res.locals.user;
+  const user = res.locals.user!;
   const quota: number = Number(user?.quota ?? 0);
+
+  /**
+   * Count total user dislikes
+   */
+  const dislikesCount = await voteRepository.count({
+    where: { user: { id: user.id }, vote: VoteType.DOWNVOTE },
+  });
+
   /**
    *  if there's no playlist, will return empty string ""
    */
@@ -60,6 +70,7 @@ export const handleHello = async (req: RequestType, res: ResponseType) => {
         data: {
           quota,
           currentPlaylistUUID,
+          dislikesCount,
         },
       }),
     );
@@ -239,6 +250,53 @@ export const handleGetDreams = async (
         success: true,
         data: {
           dreams: clientDreams,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles get list of dream dislikes
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - hello data
+ * BAD_REQUEST 400 - error getting hello data
+ *
+ */
+export const handleGetUserDislikes = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const user = res.locals.user!;
+
+  /**
+   * Count total user dislikes
+   */
+  const downvotes = await voteRepository.find({
+    where: { user: { id: user.id }, vote: VoteType.DOWNVOTE },
+    relations: {
+      dream: true,
+    },
+  });
+
+  /**
+   * Return dislikes uuids
+   */
+  const dislikes = downvotes.map((dv) => dv.dream.uuid);
+
+  try {
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          dislikes,
         },
       }),
     );

@@ -96,6 +96,31 @@ export const env = cleanEnv(process.env, {
    * HEROKU_APIKEY
    */
   HEROKU_APIKEY: str(),
+
+  /**
+   * WORKOS_CLIENT_ID
+   */
+  WORKOS_CLIENT_ID: str(),
+
+  /**
+   * WORKOS_API_KEY
+   */
+  WORKOS_API_KEY: str(),
+
+  /**
+   * WORKOS_CALLBACK_URL
+   */
+  WORKOS_CALLBACK_URL: str(),
+
+  /**
+   * WORKOS_COOKIE_PASSWORD
+   */
+  WORKOS_COOKIE_PASSWORD: str(),
+
+  /**
+   * WORKOS_AUTH_URL
+   */
+  WORKOS_AUTH_URL: str(),
 });
 
 export default env;

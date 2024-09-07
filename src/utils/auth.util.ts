@@ -6,8 +6,13 @@ import { JwtPayloadType } from "types/auth.types";
 import { ApiKey } from "entities";
 import appDataSource from "database/app-data-source";
 import { hashApiKey } from "./crypto.util";
+import { WorkOS } from "@workos-inc/node";
 
 const apiKeyRepository = appDataSource.getRepository(ApiKey);
+
+export const workos = new WorkOS(env.WORKOS_API_KEY, {
+  clientId: env.WORKOS_CLIENT_ID,
+});
 
 /**
  * Validates cognito jwt

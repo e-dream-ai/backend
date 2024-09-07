@@ -55,6 +55,8 @@ import { validateAndUseCode } from "utils/invite.util";
 import { isFeatureActive } from "utils/feature.util";
 import { FEATURES } from "constants/feature.constants";
 import { authenticateUser, setUserLastLoginAt } from "utils/user.util";
+import { workos } from "utils/auth.util";
+import env from "shared/env";
 
 /**
  * Repositories
@@ -642,6 +644,226 @@ export const handleConfirmForgotPassword = async (
     APP_LOGGER.error(error);
     const awsError = error as CognitoIdentityProviderServiceException;
     const message: string = getErrorMessage(awsError.name);
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};
+
+/**
+ * Handles callbacks from WorkOS authkit
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ *
+ */
+export const handleWorkOSCallback = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  try {
+    const { user, sealedSession } =
+      await workos.userManagement.authenticateWithCode({
+        code: req.query.code as string,
+        clientId: env.WORKOS_CLIENT_ID,
+        session: {
+          sealSession: true,
+          cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+        },
+      });
+
+    if (!user) {
+      return handleNotFound(req, res);
+    }
+
+    res.cookie("wos-session", sealedSession, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+    });
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        message: AUTH_MESSAGES.USER_LOGGED_IN,
+        data: {
+          user,
+          sealedSession,
+        },
+      }),
+    );
+  } catch (err) {
+    const message = err.message;
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};
+
+/**
+ * Handles login with email and password
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - user logged in
+ * BAD_REQUEST 400 - error logging in user
+ *
+ */
+export const loginWithPassword = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const { email, password } = req.body;
+  try {
+    const { user, sealedSession } =
+      await workos.userManagement.authenticateWithPassword({
+        clientId: env.WORKOS_CLIENT_ID,
+        email: email,
+        password: password,
+        session: {
+          sealSession: true,
+          cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+        },
+      });
+
+    res.cookie("wos-session", sealedSession, {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+    });
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        message: AUTH_MESSAGES.USER_LOGGED_IN,
+        data: {
+          user,
+          sealedSession,
+        },
+      }),
+    );
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const message: string = error.message;
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};
+
+/**
+ * Handles login with email and code sent to email.
+ * If no code is provided, an email is sent with a new code.
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - user logged in
+ * BAD_REQUEST 400 - error logging in user
+ *
+ */
+export const loginWithMagicAuth = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const { email, code } = req.body;
+  try {
+    if (code) {
+      // Authenticate using the code
+      const { user, sealedSession } =
+        await workos.userManagement.authenticateWithMagicAuth({
+          clientId: env.WORKOS_CLIENT_ID,
+          code: code,
+          email: email,
+          session: {
+            sealSession: true,
+            cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+          },
+        });
+
+      res.cookie("wos-session", sealedSession, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+      });
+
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          message: AUTH_MESSAGES.USER_LOGGED_IN,
+          data: {
+            user,
+            sealedSession,
+          },
+        }),
+      );
+    } else {
+      // request a code to be sent to the email
+      await workos.userManagement.createMagicAuth({
+        email,
+      });
+
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          message: AUTH_MESSAGES.SENT_CODE_TO_EMAIL,
+        }),
+      );
+    }
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const message: string = error.message;
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};
+
+/**
+ * Handles logout
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - user logged out
+ * BAD_REQUEST 400 - error logging out user
+ *
+ */
+export const logout = async (req: RequestType, res: ResponseType) => {
+  const authHeader = req.headers.authorization?.split("Wos-Api-Key ")[1];
+  const authToken = authHeader || req.cookies["wos-session"];
+  res.clearCookie("wos-session");
+
+  try {
+    if (authToken) {
+      const logoutUrl =
+        await workos.userManagement.getLogoutUrlFromSessionCookie({
+          sessionData: authToken,
+          cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+        });
+      console.log(logoutUrl);
+
+      res.redirect(logoutUrl);
+    } else {
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          message: AUTH_MESSAGES.USER_LOGGED_OUT,
+        }),
+      );
+    }
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const message: string = error.message;
 
     return res
       .status(httpStatus.BAD_REQUEST)

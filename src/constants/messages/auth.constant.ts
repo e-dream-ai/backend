@@ -24,6 +24,7 @@ export const AUTH_MESSAGES = {
   PASSWORD_RESET_REQUIRED: "Password reset required.",
   FORGOT_PASSWORD_REQUEST: "Forgot password request successfully created.",
   NOT_AUTHORIZED: "Not authorized.",
+  SENT_CODE_TO_EMAIL: "Sent an authorization code to your email.",
 };
 
 export const SOCKET_AUTH_ERROR_MESSAGES = {

@@ -11,6 +11,7 @@ import { APP_LOGGER } from "shared/logger";
 import passport from "passport";
 import session from "express-session";
 import configurePassport from "clients/passport.client";
+import cookieParser from "cookie-parser";
 
 const swaggerPath = "/api/v1/api-docs";
 
@@ -47,6 +48,9 @@ export const registerMiddlewares = (app: express.Application) => {
     next();
   };
 
+  // parse cookies
+  app.use(cookieParser());
+
   // parse json request body
   app.use(bodyParser.json());
 
@@ -64,7 +68,7 @@ export const registerMiddlewares = (app: express.Application) => {
 
   app.use(
     session({
-      secret: "your_secret_key",
+      secret: env.SESSION_SECRET,
       resave: false,
       saveUninitialized: true,
     }),

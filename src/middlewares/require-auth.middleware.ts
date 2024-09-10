@@ -8,6 +8,7 @@ import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
 import { AuthenticateWithSessionCookieFailureReason } from "@workos-inc/node";
 import { workos } from "utils/auth.util";
+import env from "shared/env";
 
 /**
  * Callback handler for passport authenticate strategies
@@ -60,14 +61,18 @@ const handleAuthCallback = (
 };
 
 // WorkOS auth middleware function
-const workOSAuth = async (req, res, next) => {
+const workOSAuth = async (
+  req: RequestType,
+  res: ResponseType,
+  next: NextFunction,
+) => {
   const authHeader = req.headers.authorization?.split("Wos-Api-Key ")[1];
   const authToken = authHeader || req.cookies["wos-session"];
 
   const authenticationResponse =
     await workos.userManagement.authenticateWithSessionCookie({
       sessionData: authToken,
-      cookiePassword: process.env.WORKOS_COOKIE_PASSWORD,
+      cookiePassword: env.WORKOS_COOKIE_PASSWORD,
     });
 
   const { authenticated, reason } = authenticationResponse;
@@ -76,7 +81,7 @@ const workOSAuth = async (req, res, next) => {
   if (authenticated) {
     const session = await workos.userManagement.getSessionFromCookie({
       sessionData: authToken,
-      cookiePassword: process.env.WORKOS_COOKIE_PASSWORD,
+      cookiePassword: env.WORKOS_COOKIE_PASSWORD,
     });
 
     const organizationMemberships =
@@ -93,7 +98,6 @@ const workOSAuth = async (req, res, next) => {
     };
 
     // console.log(`User ${JSON.stringify(user)} is logged in and belongs to groups ${JSON.stringify(organizationMemberships)}`);
-    res.user = user;
     res.locals.user = user;
 
     return next();
@@ -105,7 +109,7 @@ const workOSAuth = async (req, res, next) => {
     const refreshResponse =
       await workos.userManagement.refreshAndSealSessionData({
         sessionData: authToken,
-        cookiePassword: process.env.WORKOS_COOKIE_PASSWORD,
+        cookiePassword: env.WORKOS_COOKIE_PASSWORD,
       });
 
     if (!refreshResponse.authenticated) {
@@ -113,7 +117,9 @@ const workOSAuth = async (req, res, next) => {
         jsonResponse({
           success: false,
           message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
-          authorizationUrl: process.env.WORKOS_AUTH_URL,
+          data: {
+            authorizationUrl: env.WORKOS_AUTH_URL,
+          },
         }),
       );
     }
@@ -135,7 +141,9 @@ const workOSAuth = async (req, res, next) => {
       jsonResponse({
         success: false,
         message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
-        authorizationUrl: process.env.WORKOS_AUTH_URL,
+        data: {
+          authorizationUrl: env.WORKOS_AUTH_URL,
+        },
       }),
     );
   }
@@ -150,7 +158,9 @@ const workOSAuth = async (req, res, next) => {
       jsonResponse({
         success: false,
         message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
-        authorizationUrl: process.env.WORKOS_AUTH_URL,
+        data: {
+          authorizationUrl: env.WORKOS_AUTH_URL,
+        },
       }),
     );
   }
@@ -183,11 +193,15 @@ const requireAuth = (
     // for now
     return workOSAuth(req, res, next);
   } else {
-    return res.status(httpStatus.UNAUTHORIZED).json({
-      success: false,
-      message: AUTH_MESSAGES.INVALID_CREDENTIALS,
-      authorizationUrl: process.env.WORKOS_AUTH_URL,
-    });
+    return res.status(httpStatus.UNAUTHORIZED).json(
+      jsonResponse({
+        success: false,
+        message: AUTH_MESSAGES.INVALID_CREDENTIALS,
+        data: {
+          authorizationUrl: env.WORKOS_AUTH_URL,
+        },
+      }),
+    );
   }
 };
 

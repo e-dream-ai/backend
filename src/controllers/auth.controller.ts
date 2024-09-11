@@ -651,6 +651,13 @@ export const handleConfirmForgotPassword = async (
   }
 };
 
+const workOSCookieConfig = {
+  path: "/",
+  httpOnly: true,
+  sameSite: "lax",
+  secure: env.WORKOS_CALLBACK_URL.indexOf("https:") === 0,
+};
+
 /**
  * Handles callbacks from WorkOS authkit
  *
@@ -679,11 +686,7 @@ export const handleWorkOSCallback = async (
       return handleNotFound(req, res);
     }
 
-    res.cookie("wos-session", sealedSession, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-    });
+    res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -732,11 +735,7 @@ export const loginWithPassword = async (
         },
       });
 
-    res.cookie("wos-session", sealedSession, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-    });
+    res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -789,11 +788,7 @@ export const loginWithMagicAuth = async (
           },
         });
 
-      res.cookie("wos-session", sealedSession, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "lax",
-      });
+      res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
       return res.status(httpStatus.OK).json(
         jsonResponse({
@@ -864,6 +859,71 @@ export const logout = async (req: RequestType, res: ResponseType) => {
   } catch (error) {
     APP_LOGGER.error(error);
     const message: string = (error as Error)?.message;
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};
+
+/**
+ * Handles token refresh
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - token was successfully refreshed
+ * BAD_REQUEST 400 - error refreshing token
+ *
+ */
+export const refresh = async (req: RequestType, res: ResponseType) => {
+  const authHeader = req.headers.authorization?.split("Wos-Api-Key ")[1];
+  const authToken = authHeader || req.cookies["wos-session"];
+
+  try {
+    const { authenticated, ...restOfRefreshResponse } =
+      await workos.userManagement.refreshAndSealSessionData({
+        sessionData: authToken,
+        cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+      });
+
+    if (authenticated) {
+      const { sealedSession } = restOfRefreshResponse;
+
+      // Set the sealed session in a cookie
+      res.cookie("wos-session", sealedSession, workOSCookieConfig);
+
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          message: AUTH_MESSAGES.USER_LOGGED_IN,
+          data: {
+            sealedSession,
+          },
+        }),
+      );
+    } else {
+      const { reason } = restOfRefreshResponse;
+
+      let message = AUTH_MESSAGES.EXPIRED_TOKEN;
+      if (
+        message ===
+        RefreshAndSealSessionDataFailureReason.NO_SESSION_COOKIE_PROVIDED
+      ) {
+        message = AUTH_MESSAGES.INVALID_TOKEN;
+      }
+
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message: reason,
+        }),
+      );
+    }
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const message: string = error.message;
 
     return res
       .status(httpStatus.BAD_REQUEST)

@@ -16,7 +16,9 @@ export const checkRoleMiddleware = (roles: Array<RoleType>) => {
         jsonResponse({
           success: false,
           message: AUTH_MESSAGES.USER_NOT_FOUND,
-          authorizationUrl: process.env.WORKOS_AUTH_URL,
+          data: {
+            authorizationUrl: process.env.WORKOS_AUTH_URL,
+          },
         }),
       );
     }

@@ -55,7 +55,13 @@ export const registerMiddlewares = (app: express.Application) => {
   app.use(bodyParser.json());
 
   // cors middleware
-  app.use(cors());
+  app.use(
+    cors({
+      credentials: true,
+      methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    }),
+  );
 
   // parse urlencoded request body
   app.use(express.urlencoded({ extended: true }));

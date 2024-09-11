@@ -1,6 +1,7 @@
 import { User } from "entities";
 import type { Request, Response } from "express";
 import type { DeepPartial } from "utility-types";
+import type { User as WorkosUser } from "@workos-inc/node";
 
 export type RequestType<
   ReqBody = Record<string, unknown>,
@@ -17,6 +18,8 @@ export type RequestType<
 
 export type LocalsType = {
   user?: User;
+  userRole?: string;
+  workosUser?: WorkosUser;
   accessToken?: string;
 } & Record<string, unknown>;
 

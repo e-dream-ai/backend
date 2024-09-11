@@ -695,8 +695,9 @@ export const handleWorkOSCallback = async (
         },
       }),
     );
-  } catch (err) {
-    const message = err.message;
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const message: string = (error as Error)?.message;
     return res
       .status(httpStatus.BAD_REQUEST)
       .json(jsonResponse({ success: false, message }));
@@ -749,7 +750,7 @@ export const loginWithPassword = async (
     );
   } catch (error) {
     APP_LOGGER.error(error);
-    const message: string = error.message;
+    const message: string = (error as Error)?.message;
 
     return res
       .status(httpStatus.BAD_REQUEST)
@@ -819,7 +820,7 @@ export const loginWithMagicAuth = async (
     }
   } catch (error) {
     APP_LOGGER.error(error);
-    const message: string = error.message;
+    const message: string = (error as Error)?.message;
 
     return res
       .status(httpStatus.BAD_REQUEST)
@@ -850,7 +851,6 @@ export const logout = async (req: RequestType, res: ResponseType) => {
           sessionData: authToken,
           cookiePassword: env.WORKOS_COOKIE_PASSWORD,
         });
-      console.log(logoutUrl);
 
       res.redirect(logoutUrl);
     } else {
@@ -863,7 +863,7 @@ export const logout = async (req: RequestType, res: ResponseType) => {
     }
   } catch (error) {
     APP_LOGGER.error(error);
-    const message: string = error.message;
+    const message: string = (error as Error)?.message;
 
     return res
       .status(httpStatus.BAD_REQUEST)

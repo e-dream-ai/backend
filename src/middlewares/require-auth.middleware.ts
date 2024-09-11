@@ -6,9 +6,9 @@ import httpStatus from "http-status";
 import passport from "passport";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
-import { AuthenticateWithSessionCookieFailureReason } from "@workos-inc/node";
 import { workos } from "utils/auth.util";
 import env from "shared/env";
+import { APP_LOGGER } from "shared/logger";
 
 /**
  * Callback handler for passport authenticate strategies
@@ -66,7 +66,7 @@ const workOSAuth = async (
   res: ResponseType,
   next: NextFunction,
 ) => {
-  const authHeader = req.headers.authorization?.split("Wos-Api-Key ")[1];
+  const authHeader = req.headers.authorization?.split("Bearer ")[1];
   const authToken = authHeader || req.cookies["wos-session"];
 
   const authenticationResponse =
@@ -75,30 +75,38 @@ const workOSAuth = async (
       cookiePassword: env.WORKOS_COOKIE_PASSWORD,
     });
 
-  const { authenticated, reason } = authenticationResponse;
+  const {
+    //  reason,
+    authenticated,
+  } = authenticationResponse;
 
-  // console.log('workOSAuth middle', authenticated, reason);
+  // console.log("workOSAuth middle", authenticated, reason);
   if (authenticated) {
     const session = await workos.userManagement.getSessionFromCookie({
       sessionData: authToken,
       cookiePassword: env.WORKOS_COOKIE_PASSWORD,
     });
 
+    if (!session) {
+      return res.status(httpStatus.UNAUTHORIZED).json(
+        jsonResponse({
+          success: false,
+          message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
+          data: {
+            authorizationUrl: env.WORKOS_AUTH_URL,
+          },
+        }),
+      );
+    }
+
     const organizationMemberships =
       await workos.userManagement.listOrganizationMemberships({
         userId: session.user.id,
       });
 
-    // construct user object compatible with v1 role management
-    const user = {
-      ...session.user,
-      role: {
-        name: organizationMemberships.data[0]?.role.slug,
-      },
-    };
-
     // console.log(`User ${JSON.stringify(user)} is logged in and belongs to groups ${JSON.stringify(organizationMemberships)}`);
-    res.locals.user = user;
+    res.locals.workosUser = session.user;
+    res.locals.userRole = organizationMemberships.data[0]?.role.slug;
 
     return next();
   }
@@ -134,6 +142,7 @@ const workOSAuth = async (
 
     return next();
   } catch (e) {
+    APP_LOGGER.error(e);
     // Failed to refresh access token, redirect user to login page
     // after deleting the cookie
     res.clearCookie("wos-session");
@@ -148,22 +157,23 @@ const workOSAuth = async (
     );
   }
 
+  // This code is inaccesible
   // If no session, redirect the user to the login page
-  if (
-    !authenticated &&
-    reason ===
-      AuthenticateWithSessionCookieFailureReason.NO_SESSION_COOKIE_PROVIDED
-  ) {
-    return res.status(httpStatus.UNAUTHORIZED).json(
-      jsonResponse({
-        success: false,
-        message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
-        data: {
-          authorizationUrl: env.WORKOS_AUTH_URL,
-        },
-      }),
-    );
-  }
+  // if (
+  //   !authenticated &&
+  //   reason ===
+  //     AuthenticateWithSessionCookieFailureReason.NO_SESSION_COOKIE_PROVIDED
+  // ) {
+  //   return res.status(httpStatus.UNAUTHORIZED).json(
+  //     jsonResponse({
+  //       success: false,
+  //       message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
+  //       data: {
+  //         authorizationUrl: env.WORKOS_AUTH_URL,
+  //       },
+  //     }),
+  //   );
+  // }
 };
 
 const requireAuth = (
@@ -176,6 +186,7 @@ const requireAuth = (
    * Applies different strategies: for Api-Key and Bearer authorization headers
    */
   if (authHeader && authHeader.startsWith("Bearer ")) {
+    // return workOSAuth(req, res, next);
     return passport.authenticate(
       ["bearer"],
       { session: false },

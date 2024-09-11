@@ -55,7 +55,7 @@ import { validateAndUseCode } from "utils/invite.util";
 import { isFeatureActive } from "utils/feature.util";
 import { FEATURES } from "constants/feature.constants";
 import { authenticateUser, setUserLastLoginAt } from "utils/user.util";
-import { workos } from "utils/auth.util";
+import { workos, workOSCookieConfig } from "utils/auth.util";
 import env from "shared/env";
 
 /**
@@ -649,13 +649,6 @@ export const handleConfirmForgotPassword = async (
       .status(httpStatus.BAD_REQUEST)
       .json(jsonResponse({ success: false, message }));
   }
-};
-
-const workOSCookieConfig = {
-  path: "/",
-  httpOnly: true,
-  sameSite: "lax",
-  secure: env.WORKOS_CALLBACK_URL.indexOf("https:") === 0,
 };
 
 /**

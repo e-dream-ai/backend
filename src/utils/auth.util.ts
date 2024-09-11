@@ -14,6 +14,13 @@ export const workos = new WorkOS(env.WORKOS_API_KEY, {
   clientId: env.WORKOS_CLIENT_ID,
 });
 
+export const workOSCookieConfig = {
+  path: "/",
+  httpOnly: true,
+  sameSite: "lax",
+  secure: env.WORKOS_CALLBACK_URL.indexOf("https:") === 0,
+};
+
 /**
  * Validates cognito jwt
  * @param token

@@ -6,7 +6,7 @@ import httpStatus from "http-status";
 import passport from "passport";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
-import { workos } from "utils/auth.util";
+import { workos, workOSCookieConfig } from "utils/auth.util";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 
@@ -133,12 +133,11 @@ const workOSAuth = async (
     }
 
     // Update the cookie
-    res.cookie("wos-session", refreshResponse.sealedSession, {
-      path: "/",
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-    });
+    res.cookie(
+      "wos-session",
+      refreshResponse.sealedSession,
+      workOSCookieConfig,
+    );
 
     return next();
   } catch (e) {

@@ -149,4 +149,31 @@ authRouter.post("/magic", authController.loginWithMagicAuth);
  */
 authRouter.post("/logout", authController.logout);
 
+/**
+ * @swagger
+ * /auth/refresh:
+ *  post:
+ *    tags:
+ *      - auth
+ *    summary: Refresh token
+ *    description: Handles refresh token passed in via cookie or headers.
+ *    responses:
+ *      '200':
+ *        description: Token refreshed successfully
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/ApiResponse'
+ *              properties:
+ *                data:
+ *                  $ref: '#/components/schemas/Tokens'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ */
+authRouter.post("/refresh", authController.refreshWorkOS);
+
 export default authRouter;

@@ -61,6 +61,7 @@ import {
 } from "utils/user.util";
 import { workos, workOSCookieConfig } from "utils/auth.util";
 import env from "shared/env";
+import { RefreshAndSealSessionDataFailureReason } from "@workos-inc/node";
 
 /**
  * Repositories
@@ -710,7 +711,10 @@ export const loginWithPassword = async (
   req: RequestType,
   res: ResponseType,
 ) => {
-  const { email, password } = req.body;
+  // next to be validated by middleware
+  // const { email, password } = req.body;
+  const email: string = String(req.body.email);
+  const password: string = String(req.body.email);
   try {
     const { user: workOSUser, sealedSession } =
       await workos.userManagement.authenticateWithPassword({
@@ -763,7 +767,10 @@ export const loginWithMagicAuth = async (
   req: RequestType,
   res: ResponseType,
 ) => {
-  const { email, code } = req.body;
+  // next to be validated by middleware
+  // const { email, code } = req.body;
+  const email: string = String(req.body.email);
+  const code: string = String(req.body.email);
   try {
     if (code) {
       // Authenticate using the code
@@ -874,14 +881,16 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
   const authToken = authHeader || req.cookies["wos-session"];
 
   try {
-    const { authenticated, ...restOfRefreshResponse } =
+    const refreshAndSealResponse =
       await workos.userManagement.refreshAndSealSessionData({
         sessionData: authToken,
         cookiePassword: env.WORKOS_COOKIE_PASSWORD,
       });
 
-    if (authenticated) {
-      const { sealedSession } = restOfRefreshResponse;
+    const authenticated = refreshAndSealResponse.authenticated;
+
+    if (authenticated && refreshAndSealResponse?.sealedSession) {
+      const { sealedSession } = refreshAndSealResponse;
 
       // Set the sealed session in a cookie
       res.cookie("wos-session", sealedSession, workOSCookieConfig);
@@ -895,8 +904,8 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
           },
         }),
       );
-    } else {
-      const { reason } = restOfRefreshResponse;
+    } else if (!authenticated && refreshAndSealResponse?.reason) {
+      const reason = refreshAndSealResponse?.reason ?? "";
 
       let message = AUTH_MESSAGES.EXPIRED_TOKEN;
       if (
@@ -913,9 +922,15 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
         }),
       );
     }
+
+    return res.status(httpStatus.BAD_REQUEST).json(
+      jsonResponse({
+        success: false,
+      }),
+    );
   } catch (error) {
     APP_LOGGER.error(error);
-    const message: string = error.message;
+    const message: string = (error as Error).message;
 
     return res
       .status(httpStatus.BAD_REQUEST)

@@ -15,6 +15,19 @@ import cookieParser from "cookie-parser";
 
 const swaggerPath = "/api/v1/api-docs";
 
+/**
+ * Allowed origin values
+ */
+const allowedDomainPatterns = [
+  /^https:\/\/.*\.netlify\.app\/?$/,
+  /^https:\/\/.*\.e-dream\.ai\/?$/,
+];
+
+const additionalOrigins = [
+  env.FRONTEND_URL,
+  // Add any other specific origins here
+];
+
 configurePassport();
 
 const options: swaggerJSDoc.Options = {
@@ -57,7 +70,27 @@ export const registerMiddlewares = (app: express.Application) => {
   // cors middleware
   app.use(
     cors({
-      origin: env.FRONTEND_URL,
+      // Cors callback function
+      origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        // Check if the origin is in the list of additional origins
+        if (additionalOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
+        // Check if the origin matches any of the allowed domain patterns
+        const isAllowedDomain = allowedDomainPatterns.some((pattern) =>
+          pattern.test(origin),
+        );
+
+        if (isAllowedDomain) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
       credentials: true,
       methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: [

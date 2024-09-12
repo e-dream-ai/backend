@@ -844,8 +844,6 @@ export const logout = async (req: RequestType, res: ResponseType) => {
           cookiePassword: env.WORKOS_COOKIE_PASSWORD,
         });
 
-      console.log({ logoutUrl });
-
       return res.redirect(logoutUrl);
     } else {
       return res.status(httpStatus.OK).json(

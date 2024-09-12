@@ -13,6 +13,8 @@ import { remoteControlConnectionListener } from "socket/remote-control";
 import Bugsnag from "@bugsnag/js";
 import BugsnagPluginExpress from "@bugsnag/plugin-express";
 import { getReleaseStage } from "utils/bugsnag.util";
+import { ALLOWED_HEADERS, ALLOWED_METHODS } from "constants/socket.constants";
+import { handleCustomOrigin } from "utils/api.util";
 
 Bugsnag.start({
   apiKey: "eb986254778e3ae5b0f7045ec7fdb9ec",
@@ -26,8 +28,11 @@ const bugsnagmiddleware = Bugsnag.getPlugin("express");
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Replace with your client's origin
-    methods: ["GET", "POST"],
+    // Cors callback function
+    origin: handleCustomOrigin,
+    credentials: true,
+    methods: ALLOWED_METHODS,
+    allowedHeaders: ALLOWED_HEADERS,
   },
 });
 const port = env.PORT ?? 8080;

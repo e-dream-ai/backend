@@ -1,3 +1,5 @@
+import env from "shared/env";
+
 export enum ContentType {
   json = "json",
   none = "none",
@@ -23,3 +25,33 @@ export const getRequestHeaders = ({
     "Access-Control-Allow-Origin": "*",
   };
 };
+
+export const ALLOWED_METHODS = [
+  "GET",
+  "HEAD",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "OPTIONS",
+];
+
+export const ALLOWED_HEADERS = [
+  "Content-Type",
+  "Authorization",
+  "Access-Control-Allow-Origin",
+  "Access-Control-Allow-Credentials",
+];
+
+/**
+ * Allowed origin values
+ */
+export const ALLOWED_DOMAIN_PATTERNS = [
+  /^https:\/\/.*\.netlify\.app\/?$/,
+  /^https:\/\/.*\.e-dream\.ai\/?$/,
+];
+
+export const ORIGINS = [
+  env.FRONTEND_URL,
+  // Add any other specific origins here
+];

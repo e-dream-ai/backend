@@ -17,6 +17,7 @@ import { getUserSelectedColumns } from "./user.util";
 import { FeedItemType } from "types/feed-item.types";
 import { APP_LOGGER } from "shared/logger";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
+import { DreamStatusType } from "types/dream.types";
 
 const queueUrl = ""; // env.AWS_SQS_URL;
 
@@ -279,6 +280,9 @@ export const handleDownvoteDream = async ({
 export const getTopDreams = async (take: number = 50) => {
   const dreams = await dreamRepository.find({
     take,
+    where: {
+      status: DreamStatusType.PROCESSED,
+    },
     order: { upvotes: "DESC" },
   });
 

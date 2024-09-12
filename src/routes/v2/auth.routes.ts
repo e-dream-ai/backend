@@ -147,7 +147,7 @@ authRouter.post("/magic", authController.loginWithMagicAuth);
  *            schema:
  *              $ref: '#/components/schemas/BadApiResponse'
  */
-authRouter.post("/logout", authController.logout);
+authRouter.get("/logout", authController.logout);
 
 /**
  * @swagger

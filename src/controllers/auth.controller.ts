@@ -714,7 +714,7 @@ export const loginWithPassword = async (
   // next to be validated by middleware
   // const { email, password } = req.body;
   const email: string = String(req.body.email);
-  const password: string = String(req.body.email);
+  const password: string = String(req.body.password);
   try {
     const { user: workOSUser, sealedSession } =
       await workos.userManagement.authenticateWithPassword({

@@ -13,7 +13,6 @@ import session from "express-session";
 import configurePassport from "clients/passport.client";
 import cookieParser from "cookie-parser";
 
-const IS_DEVELOPMENT = env.NODE_ENV === "development";
 const swaggerPath = "/api/v1/api-docs";
 
 configurePassport();
@@ -58,7 +57,7 @@ export const registerMiddlewares = (app: express.Application) => {
   // cors middleware
   app.use(
     cors({
-      origin: IS_DEVELOPMENT ? env.FRONTEND_URL : "*",
+      origin: env.FRONTEND_URL,
       credentials: true,
       methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: [

@@ -4,6 +4,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -23,6 +24,10 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
+  @Column({ nullable: true, type: "varchar", length: 64 })
+  workOSId: string | null;
+
   @Column({ type: "varchar" })
   cognitoId: string;
 
@@ -31,6 +36,9 @@ export class User {
 
   @Column({ nullable: true, type: "varchar", length: 50 })
   name?: string | null;
+
+  @Column({ nullable: true, type: "varchar" })
+  lastName?: string | null;
 
   @Column({ nullable: true, type: "varchar" })
   description?: string | null;

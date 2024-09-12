@@ -2,6 +2,7 @@ import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { NextFunction } from "express";
 import httpStatus from "http-status";
+import env from "shared/env";
 import { RequestType, ResponseType } from "types/express.types";
 import { RoleType } from "types/role.types";
 import { jsonResponse } from "utils/responses.util";
@@ -17,7 +18,7 @@ export const checkRoleMiddleware = (roles: Array<RoleType>) => {
           success: false,
           message: AUTH_MESSAGES.USER_NOT_FOUND,
           data: {
-            authorizationUrl: process.env.WORKOS_AUTH_URL,
+            authorizationUrl: env.WORKOS_AUTH_URL,
           },
         }),
       );

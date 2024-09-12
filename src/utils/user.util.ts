@@ -6,6 +6,7 @@ import {
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { User } from "entities";
+import type { User as WorkOSUser } from "@workos-inc/node";
 import { Role } from "entities/Role.entity";
 import {
   DAILY_USER_DEFAULT_QUOTA,
@@ -17,11 +18,13 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { fetchCognitoUser } from "controllers/auth.controller";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
+import { RoleType } from "types/role.types";
 
 /**
  * Repositories
  */
 const userRepository = appDataSource.getRepository(User);
+const roleRepository = appDataSource.getRepository(Role);
 
 export const authenticateUser = async ({
   username,
@@ -104,6 +107,57 @@ export const getUserFindOptionsRelations = (): FindOptionsRelations<User> => {
  */
 export const isAdmin = (user?: User): boolean =>
   user?.role?.name === ROLES.ADMIN_GROUP;
+
+/**
+ * This function checks if a user with the same email as the provided `workOSUser` already exists in the database.
+ * @param workOSUser - WorkOS user object to be synchronized.
+ * @param roleSlug - (Optional) Slug of the role to be assigned to the new user.
+ * @returns A Promise that resolves to the synchronized user.
+ */
+export const syncWorkOSUser = async (
+  workOSUser: WorkOSUser,
+  roleSlug?: string,
+) => {
+  let user = await userRepository.findOne({
+    where: {
+      email: workOSUser.email,
+    },
+    relations: { role: true, currentPlaylist: true, currentDream: true },
+  });
+
+  // If the user exists and does not have a workOSId, update it
+  if (user && !user.workOSId) {
+    /**
+     * Update user on database and for response
+     */
+    await userRepository.update(user.id, {
+      workOSId: workOSUser.id,
+    });
+    user.workOSId = workOSUser.id;
+    return user;
+  }
+
+  // If the user exists, return the existing user
+  if (user) {
+    return user;
+  }
+
+  // If the user does not exist, create a new user
+  const role = await roleRepository.findOneBy({ name: roleSlug as RoleType });
+  user = new User();
+  user.workOSId = workOSUser.id;
+  user.email = workOSUser.email;
+
+  if (role) {
+    user.role = role;
+  }
+
+  user.name = workOSUser.firstName;
+  user.lastName = workOSUser.lastName;
+
+  const newUser = await userRepository.save(user);
+  return newUser;
+};
 
 /**
  * Updates default user daily quota if is below it

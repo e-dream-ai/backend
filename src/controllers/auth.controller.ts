@@ -54,7 +54,11 @@ import { CognitoIPSExceptions } from "constants/aws/erros.constant";
 import { validateAndUseCode } from "utils/invite.util";
 import { isFeatureActive } from "utils/feature.util";
 import { FEATURES } from "constants/feature.constants";
-import { authenticateUser, setUserLastLoginAt } from "utils/user.util";
+import {
+  authenticateUser,
+  setUserLastLoginAt,
+  syncWorkOSUser,
+} from "utils/user.util";
 import { workos, workOSCookieConfig } from "utils/auth.util";
 import env from "shared/env";
 
@@ -681,16 +685,7 @@ export const handleWorkOSCallback = async (
 
     res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
-    return res.status(httpStatus.OK).json(
-      jsonResponse({
-        success: true,
-        message: AUTH_MESSAGES.USER_LOGGED_IN,
-        data: {
-          user,
-          sealedSession,
-        },
-      }),
-    );
+    return res.status(httpStatus.OK).redirect(env.FRONTEND_URL);
   } catch (error) {
     APP_LOGGER.error(error);
     const message: string = (error as Error)?.message;
@@ -717,7 +712,7 @@ export const loginWithPassword = async (
 ) => {
   const { email, password } = req.body;
   try {
-    const { user, sealedSession } =
+    const { user: workOSUser, sealedSession } =
       await workos.userManagement.authenticateWithPassword({
         clientId: env.WORKOS_CLIENT_ID,
         email: email,
@@ -730,12 +725,14 @@ export const loginWithPassword = async (
 
     res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
+    const user = await syncWorkOSUser(workOSUser);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
         message: AUTH_MESSAGES.USER_LOGGED_IN,
         data: {
-          user,
+          ...user,
           sealedSession,
         },
       }),
@@ -840,7 +837,9 @@ export const logout = async (req: RequestType, res: ResponseType) => {
           cookiePassword: env.WORKOS_COOKIE_PASSWORD,
         });
 
-      res.redirect(logoutUrl);
+      console.log({ logoutUrl });
+
+      return res.redirect(logoutUrl);
     } else {
       return res.status(httpStatus.OK).json(
         jsonResponse({

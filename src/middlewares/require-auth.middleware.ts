@@ -9,6 +9,7 @@ import { jsonResponse } from "utils/responses.util";
 import { workos, workOSCookieConfig } from "utils/auth.util";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
+import { syncWorkOSUser } from "utils/user.util";
 
 /**
  * Callback handler for passport authenticate strategies
@@ -76,11 +77,11 @@ const workOSAuth = async (
     });
 
   const {
-    //  reason,
+    // reason,
     authenticated,
   } = authenticationResponse;
 
-  // console.log("workOSAuth middle", authenticated, reason);
+  // console.log("workOSAuth authenticated:", authenticated, reason);
   if (authenticated) {
     const session = await workos.userManagement.getSessionFromCookie({
       sessionData: authToken,
@@ -105,8 +106,12 @@ const workOSAuth = async (
       });
 
     // console.log(`User ${JSON.stringify(user)} is logged in and belongs to groups ${JSON.stringify(organizationMemberships)}`);
-    res.locals.workosUser = session.user;
-    res.locals.userRole = organizationMemberships.data[0]?.role.slug;
+    const workOSUser = session.user;
+    const workOSRole = organizationMemberships.data[0]?.role.slug;
+    const user = await syncWorkOSUser(session.user, workOSRole);
+    res.locals.workosUser = workOSUser;
+    res.locals.userRole = workOSRole;
+    res.locals.user = user;
 
     return next();
   }

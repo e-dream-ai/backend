@@ -7,6 +7,9 @@ import { ApiKey } from "entities";
 import appDataSource from "database/app-data-source";
 import { hashApiKey } from "./crypto.util";
 import { WorkOS } from "@workos-inc/node";
+import { CookieOptions } from "express";
+
+const IS_DEVELOPMENT = env.NODE_ENV === "development";
 
 const apiKeyRepository = appDataSource.getRepository(ApiKey);
 
@@ -14,11 +17,11 @@ export const workos = new WorkOS(env.WORKOS_API_KEY, {
   clientId: env.WORKOS_CLIENT_ID,
 });
 
-export const workOSCookieConfig = {
+export const workOSCookieConfig: CookieOptions = {
   path: "/",
   httpOnly: true,
+  secure: !IS_DEVELOPMENT,
   sameSite: "lax",
-  secure: env.WORKOS_CALLBACK_URL.indexOf("https:") === 0,
 };
 
 /**

@@ -23,6 +23,8 @@ export const socketCookieParserMiddleware = (
   if (cookieString) {
     const cookies = parseCookies(cookieString);
     socket.cookies = cookies;
+  } else {
+    socket.cookies = {};
   }
   next();
 };
@@ -61,6 +63,7 @@ export const socketAuthMiddleware = async (
       const { username: cognitoId } = validatedToken;
       const user = await fetchUserByCognitoId(cognitoId);
       socket.data.user = user;
+
       if (validatedToken) {
         return next();
       } else {
@@ -85,6 +88,7 @@ export const socketWorkOSAuth = async (
 ) => {
   const authHeader =
     socket.handshake.headers?.authorization?.split("Bearer ")[1];
+
   const authToken = authHeader || socket.cookies["wos-session"];
 
   const authenticationResponse =
@@ -98,7 +102,6 @@ export const socketWorkOSAuth = async (
     authenticated,
   } = authenticationResponse;
 
-  // console.log("workOSAuth authenticated:", authenticated, reason);
   if (authenticated) {
     const session = await workos.userManagement.getSessionFromCookie({
       sessionData: authToken,
@@ -120,7 +123,15 @@ export const socketWorkOSAuth = async (
     socket.data.user = user;
 
     return next();
-  } else {
-    return next(authError);
   }
+
+  /**
+   * continue with flow
+   * user can be logged in on cognito for now, need to be changed to
+   *
+   *  return next(authError);
+   *
+   * after deprecating cognito
+   */
+  return next();
 };

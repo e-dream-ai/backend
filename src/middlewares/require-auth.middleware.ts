@@ -149,7 +149,7 @@ const workOSAuth = async (
     APP_LOGGER.error(e);
     // Failed to refresh access token, redirect user to login page
     // after deleting the cookie
-    res.clearCookie("wos-session");
+    res.clearCookie("wos-session", workOSCookieConfig);
     return res.status(httpStatus.UNAUTHORIZED).json(
       jsonResponse({
         success: false,

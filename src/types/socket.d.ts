@@ -3,8 +3,14 @@ import { User } from "entities";
 import { Socket } from "socket.io";
 /* eslint-enable */
 
+/**
+ * Socket data types
+ */
 declare module "socket.io" {
   interface Socket {
-    data?: { user?: User }; // Aquí puedes ser más específico con el tipo si es necesario
+    data?: { user?: User };
+    cookies: {
+      [key: string]: string;
+    };
   }
 }

@@ -61,7 +61,10 @@ import {
 } from "utils/user.util";
 import { workos, workOSCookieConfig } from "utils/auth.util";
 import env from "shared/env";
-import { RefreshAndSealSessionDataFailureReason } from "@workos-inc/node";
+import {
+  RefreshAndSealSessionDataFailureReason,
+  OauthException,
+} from "@workos-inc/node";
 
 /**
  * Repositories
@@ -670,7 +673,7 @@ export const handleWorkOSCallback = async (
   res: ResponseType,
 ) => {
   try {
-    const { user, sealedSession } =
+    const { user: workOSUser, sealedSession } =
       await workos.userManagement.authenticateWithCode({
         code: req.query.code as string,
         clientId: env.WORKOS_CLIENT_ID,
@@ -680,16 +683,27 @@ export const handleWorkOSCallback = async (
         },
       });
 
-    if (!user) {
+    if (!workOSUser) {
       return handleNotFound(req, res);
     }
 
     res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
-    return res.status(httpStatus.OK).redirect(env.FRONTEND_URL);
+    const user = await syncWorkOSUser(workOSUser);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        message: AUTH_MESSAGES.USER_LOGGED_IN,
+        data: {
+          ...user,
+          sealedSession,
+        },
+      }),
+    );
   } catch (error) {
     APP_LOGGER.error(error);
-    const message: string = (error as Error)?.message;
+    const message = (error as OauthException)?.errorDescription;
     return res
       .status(httpStatus.BAD_REQUEST)
       .json(jsonResponse({ success: false, message }));
@@ -727,6 +741,10 @@ export const loginWithPassword = async (
         },
       });
 
+    if (!workOSUser) {
+      return handleNotFound(req, res);
+    }
+
     res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
     const user = await syncWorkOSUser(workOSUser);
@@ -743,7 +761,7 @@ export const loginWithPassword = async (
     );
   } catch (error) {
     APP_LOGGER.error(error);
-    const message: string = (error as Error)?.message;
+    const message = (error as OauthException)?.errorDescription;
 
     return res
       .status(httpStatus.BAD_REQUEST)
@@ -774,7 +792,7 @@ export const loginWithMagicAuth = async (
   try {
     if (code) {
       // Authenticate using the code
-      const { user, sealedSession } =
+      const { user: workOSUser, sealedSession } =
         await workos.userManagement.authenticateWithMagicAuth({
           clientId: env.WORKOS_CLIENT_ID,
           code: code,
@@ -785,7 +803,13 @@ export const loginWithMagicAuth = async (
           },
         });
 
+      if (!workOSUser) {
+        return handleNotFound(req, res);
+      }
+
       res.cookie("wos-session", sealedSession, workOSCookieConfig);
+
+      const user = await syncWorkOSUser(workOSUser);
 
       return res.status(httpStatus.OK).json(
         jsonResponse({
@@ -812,7 +836,7 @@ export const loginWithMagicAuth = async (
     }
   } catch (error) {
     APP_LOGGER.error(error);
-    const message: string = (error as Error)?.message;
+    const message = (error as OauthException)?.errorDescription;
 
     return res
       .status(httpStatus.BAD_REQUEST)
@@ -855,7 +879,7 @@ export const logout = async (req: RequestType, res: ResponseType) => {
     }
   } catch (error) {
     APP_LOGGER.error(error);
-    const message: string = (error as Error)?.message;
+    const message = (error as OauthException)?.errorDescription;
 
     return res
       .status(httpStatus.BAD_REQUEST)
@@ -928,7 +952,7 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
     );
   } catch (error) {
     APP_LOGGER.error(error);
-    const message: string = (error as Error).message;
+    const message = (error as OauthException)?.errorDescription;
 
     return res
       .status(httpStatus.BAD_REQUEST)

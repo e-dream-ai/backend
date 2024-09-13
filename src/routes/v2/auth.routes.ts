@@ -1,7 +1,55 @@
+import { ROLES } from "constants/role.constants";
 import * as authController from "controllers/auth.controller";
+import * as userController from "controllers/user.controller";
 import { Router } from "express";
+import { requireAuth } from "middlewares/require-auth.middleware";
+import { checkRoleMiddleware } from "middlewares/role.middleware";
 
 const authRouter = Router();
+
+/**
+ * @swagger
+ * /user/authenticate:
+ *  get:
+ *    tags:
+ *      - user
+ *    summary: Gets authenticated user
+ *    description: Gets authenticated user
+ *    responses:
+ *      '200':
+ *        description: Gets authenticated user
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        user:
+ *                          $ref: '#/components/schemas/Users'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+authRouter.get(
+  "/authenticate",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  userController.handleGetCurrentUser,
+);
 
 /**
  * @swagger

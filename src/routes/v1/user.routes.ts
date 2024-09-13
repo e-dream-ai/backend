@@ -63,11 +63,11 @@ userRouter.get(
  *  get:
  *    tags:
  *      - user
- *    summary: Gets current user dream
- *    description: Gets current user dream
+ *    summary: Gets current user
+ *    description: Gets current user
  *    responses:
  *      '200':
- *        description: Gets current user dream
+ *        description: Gets current user
  *        content:
  *          application/json:
  *            schema:
@@ -78,8 +78,8 @@ userRouter.get(
  *                    data:
  *                      type: object
  *                      properties:
- *                        dream:
- *                          $ref: '#/components/schemas/Dream'
+ *                        user:
+ *                          $ref: '#/components/schemas/Users'
  *      '400':
  *        description: Bad request
  *        content:

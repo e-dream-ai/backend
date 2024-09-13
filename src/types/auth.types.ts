@@ -64,3 +64,17 @@ export type ConfirmUserLoginWithCodeCredentials = {
   code: string;
   session: string;
 };
+
+export type UserCallbackV2 = {
+  code: string;
+};
+
+export type UserLoginCredentialsV2 = {
+  email: string;
+  password: string;
+};
+
+export type UserMagicLoginCredentialsV2 = {
+  email: string;
+  code: string;
+};

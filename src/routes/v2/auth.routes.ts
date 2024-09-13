@@ -3,7 +3,13 @@ import * as authController from "controllers/auth.controller";
 import * as userController from "controllers/user.controller";
 import { Router } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
+import validatorMiddleware from "middlewares/validator.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
+import {
+  callbackSchemaV2,
+  loginSchemaV2,
+  magicSchemaV2,
+} from "schemas/auth.schema";
 
 const authRouter = Router();
 
@@ -81,7 +87,11 @@ authRouter.get(
  *            schema:
  *              $ref: '#/components/schemas/BadApiResponse'
  */
-authRouter.get("/callback", authController.handleWorkOSCallback);
+authRouter.get(
+  "/callback",
+  validatorMiddleware(callbackSchemaV2),
+  authController.handleWorkOSCallback,
+);
 
 /**
  * /auth/magic:
@@ -126,7 +136,11 @@ authRouter.get("/callback", authController.handleWorkOSCallback);
  *            schema:
  *              $ref: '#/components/schemas/BadApiResponse'
  */
-authRouter.post("/login", authController.loginWithPassword);
+authRouter.post(
+  "/login",
+  validatorMiddleware(loginSchemaV2),
+  authController.loginWithPassword,
+);
 
 /**
  * /auth/magic:
@@ -171,7 +185,11 @@ authRouter.post("/login", authController.loginWithPassword);
  *            schema:
  *              $ref: '#/components/schemas/BadApiResponse'
  */
-authRouter.post("/magic", authController.loginWithMagicAuth);
+authRouter.post(
+  "/magic",
+  validatorMiddleware(magicSchemaV2),
+  authController.loginWithMagicAuth,
+);
 
 /**
  * @swagger

@@ -15,11 +15,14 @@ import {
   MiddlewareUser,
   RefreshTokenCredentials,
   RevokeTokenCredentials,
+  UserCallbackV2,
   UserChangePasswordCredentials,
   UserConfirmForgotPasswordCredentials,
   UserForgotPasswordCredentials,
   UserLoginCredentials,
+  UserLoginCredentialsV2,
   UserLoginWithCodeCredentials,
+  UserMagicLoginCredentialsV2,
   UserSignUpCredentials,
   UserVerifyCredentials,
 } from "types/auth.types";
@@ -669,13 +672,14 @@ export const handleConfirmForgotPassword = async (
  *
  */
 export const handleWorkOSCallback = async (
-  req: RequestType,
+  req: RequestType<unknown, UserCallbackV2>,
   res: ResponseType,
 ) => {
+  const code = req.query.code!;
   try {
     const { user: workOSUser, sealedSession } =
       await workos.userManagement.authenticateWithCode({
-        code: req.query.code as string,
+        code: code,
         clientId: env.WORKOS_CLIENT_ID,
         session: {
           sealSession: true,
@@ -684,7 +688,7 @@ export const handleWorkOSCallback = async (
       });
 
     if (!workOSUser) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     res.cookie("wos-session", sealedSession, workOSCookieConfig);
@@ -722,13 +726,11 @@ export const handleWorkOSCallback = async (
  *
  */
 export const loginWithPassword = async (
-  req: RequestType,
+  req: RequestType<UserLoginCredentialsV2>,
   res: ResponseType,
 ) => {
-  // next to be validated by middleware
-  // const { email, password } = req.body;
-  const email: string = String(req.body.email);
-  const password: string = String(req.body.password);
+  const email = req.body.email!;
+  const password = req.body.password!;
   try {
     const { user: workOSUser, sealedSession } =
       await workos.userManagement.authenticateWithPassword({
@@ -782,13 +784,11 @@ export const loginWithPassword = async (
  *
  */
 export const loginWithMagicAuth = async (
-  req: RequestType,
+  req: RequestType<UserMagicLoginCredentialsV2>,
   res: ResponseType,
 ) => {
-  // next to be validated by middleware
-  // const { email, code } = req.body;
-  const email: string = String(req.body.email);
-  const code: string = String(req.body.email);
+  const email = req.body.email!;
+  const code = req.body.code;
   try {
     if (code) {
       // Authenticate using the code

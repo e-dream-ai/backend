@@ -3,8 +3,11 @@ import Joi from "joi";
 import type { NextFunction, Request, Response } from "express";
 import type {
   ConfirmUserLoginWithCodeCredentials,
+  UserCallbackV2,
   UserLoginCredentials,
+  UserLoginCredentialsV2,
   UserLoginWithCodeCredentials,
+  UserMagicLoginCredentialsV2,
   UserSignUpCredentials,
   UserVerifyCredentials,
 } from "types/auth.types";
@@ -78,4 +81,24 @@ export const validateSignupSchema = async (
   }
 
   next();
+};
+
+export const callbackSchemaV2 = {
+  query: Joi.object<UserCallbackV2>().keys({
+    code: Joi.string().required(),
+  }),
+};
+
+export const loginSchemaV2 = {
+  body: Joi.object<UserLoginCredentialsV2>().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required().min(6),
+  }),
+};
+
+export const magicSchemaV2 = {
+  body: Joi.object<UserMagicLoginCredentialsV2>().keys({
+    email: Joi.string().required().email(),
+    code: Joi.string(),
+  }),
 };

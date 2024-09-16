@@ -28,8 +28,8 @@ export class User {
   @Column({ nullable: true, type: "varchar", length: 64 })
   workOSId: string | null;
 
-  @Column({ type: "varchar" })
-  cognitoId: string;
+  @Column({ nullable: true, type: "varchar" })
+  cognitoId: string | null;
 
   @Column({ type: "varchar" })
   email: string;

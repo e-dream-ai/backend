@@ -67,6 +67,7 @@ import env from "shared/env";
 import {
   RefreshAndSealSessionDataFailureReason,
   OauthException,
+  GenericServerException,
 } from "@workos-inc/node";
 
 /**
@@ -707,7 +708,9 @@ export const handleWorkOSCallback = async (
     );
   } catch (error) {
     APP_LOGGER.error(error);
-    const message = (error as OauthException)?.errorDescription;
+    const message =
+      (error as OauthException)?.errorDescription ??
+      (error as GenericServerException)?.message;
     return res
       .status(httpStatus.BAD_REQUEST)
       .json(jsonResponse({ success: false, message }));
@@ -763,7 +766,9 @@ export const loginWithPassword = async (
     );
   } catch (error) {
     APP_LOGGER.error(error);
-    const message = (error as OauthException)?.errorDescription;
+    const message =
+      (error as OauthException)?.errorDescription ??
+      (error as GenericServerException)?.message;
 
     return res
       .status(httpStatus.BAD_REQUEST)
@@ -836,7 +841,9 @@ export const loginWithMagicAuth = async (
     }
   } catch (error) {
     APP_LOGGER.error(error);
-    const message = (error as OauthException)?.errorDescription;
+    const message =
+      (error as OauthException)?.errorDescription ??
+      (error as GenericServerException)?.message;
 
     return res
       .status(httpStatus.BAD_REQUEST)
@@ -879,7 +886,9 @@ export const logout = async (req: RequestType, res: ResponseType) => {
     }
   } catch (error) {
     APP_LOGGER.error(error);
-    const message = (error as OauthException)?.errorDescription;
+    const message =
+      (error as OauthException)?.errorDescription ??
+      (error as GenericServerException)?.message;
 
     return res
       .status(httpStatus.BAD_REQUEST)
@@ -952,7 +961,9 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
     );
   } catch (error) {
     APP_LOGGER.error(error);
-    const message = (error as OauthException)?.errorDescription;
+    const message =
+      (error as OauthException)?.errorDescription ??
+      (error as GenericServerException)?.message;
 
     return res
       .status(httpStatus.BAD_REQUEST)

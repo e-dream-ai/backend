@@ -160,7 +160,7 @@ authRouter.post(
  *                format: email
  *                required: true
  *              code:
- *                type: number
+ *                type: string
  *                required: false
  *    responses:
  *      '200':

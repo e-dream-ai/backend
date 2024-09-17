@@ -1,5 +1,4 @@
 import { ResponseType } from "types/express.types";
-const IS_DEVELOPMENT = env.NODE_ENV === "development";
 import { WorkOS } from "@workos-inc/node";
 import env from "shared/env";
 import { CookieOptions } from "express";
@@ -8,6 +7,8 @@ import { jsonResponse } from "./responses.util";
 import httpStatus from "http-status";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import type { User as WorkOSUser } from "@workos-inc/node";
+
+const IS_DEVELOPMENT = env.NODE_ENV === "development";
 
 /**
  * WorkOS client

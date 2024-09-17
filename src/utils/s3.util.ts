@@ -149,38 +149,39 @@ export const generatePresignedPost = async (objectKey: string) => {
 };
 
 export const generateThumbnailPath = ({
-  userUUID,
+  userIdentifier,
   dreamUUID,
   extension,
 }: {
-  userUUID: string;
+  userIdentifier: string;
   dreamUUID: string;
   extension: string;
-}) => `${userUUID}/${dreamUUID}/thumbnails/${dreamUUID}.${extension}`;
+}) => `${userIdentifier}/${dreamUUID}/thumbnails/${dreamUUID}.${extension}`;
 
 export const generateFilmstripPath = ({
-  userUUID,
+  userIdentifier,
   dreamUUID,
   extension,
   frameNumber,
 }: {
-  userUUID: string;
+  userIdentifier: string;
   dreamUUID: string;
   extension: string;
   frameNumber: number;
-}) => `${userUUID}/${dreamUUID}/filmstrip/frame-${frameNumber}.${extension}`;
+}) =>
+  `${userIdentifier}/${dreamUUID}/filmstrip/frame-${frameNumber}.${extension}`;
 
 export const generateDreamPath = ({
-  userUUID,
+  userIdentifier,
   dreamUUID,
   extension,
   processed,
 }: {
-  userUUID: string;
+  userIdentifier: string;
   dreamUUID: string;
   extension: string;
   processed?: boolean;
 }) =>
-  `${userUUID}/${dreamUUID}/${dreamUUID}${
+  `${userIdentifier}/${dreamUUID}/${dreamUUID}${
     processed ? `_${PROCESSED_VIDEO_SUFFIX}` : ""
   }.${extension}`;

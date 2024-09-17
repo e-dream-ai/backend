@@ -38,7 +38,7 @@ import {
   jsonResponse,
   handleInternalServerError,
 } from "utils/responses.util";
-import { isAdmin } from "utils/user.util";
+import { getUserIdentifier, isAdmin } from "utils/user.util";
 
 const playlistRepository = appDataSource.getRepository(Playlist);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
@@ -332,7 +332,9 @@ export const handleUpdateThumbnailPlaylist = async (
     const fileExtension =
       MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
     const fileName = `${THUMBNAIL}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${PLAYLIST_PREFIX}-${playlist.id}/${fileName}`;
+    const filePath = `${getUserIdentifier(user)}/${PLAYLIST_PREFIX}-${
+      playlist.id
+    }/${fileName}`;
 
     if (thumbnailBuffer) {
       const command = new PutObjectCommand({

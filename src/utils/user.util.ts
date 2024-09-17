@@ -101,6 +101,16 @@ export const getUserFindOptionsRelations = (): FindOptionsRelations<User> => {
 };
 
 /**
+ * Retrieves user identifier for s3 resources handling purposes
+ * @param user - database user
+ * @returns user identifier
+ */
+export const getUserIdentifier = (user: User) => {
+  const USER_IDENTIFIER_PREFIX = "USER_";
+  return user.cognitoId ?? `${USER_IDENTIFIER_PREFIX}${user.id}`;
+};
+
+/**
  * Checks if the given user is an admin.
  * @param user The user object to check.
  * @returns True if the user is an admin, false otherwise.

@@ -63,7 +63,7 @@ import {
   getUploadPartSignedUrl,
 } from "utils/s3.util";
 import { truncateString } from "utils/string.util";
-import { isAdmin } from "utils/user.util";
+import { getUserIdentifier, isAdmin } from "utils/user.util";
 
 /**
  * Repositories
@@ -133,7 +133,7 @@ export const handleCreateMultipartUpload = async (
   res: ResponseType,
 ) => {
   // setting vars
-  const user = res.locals.user;
+  const user = res.locals.user!;
   let dream: Dream;
 
   try {
@@ -167,7 +167,7 @@ export const handleCreateMultipartUpload = async (
     const uuid = dream.uuid;
     const fileExtension = extension;
     const fileName = `${uuid}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${uuid}/${fileName}`;
+    const filePath = `${getUserIdentifier(user)}/${uuid}/${fileName}`;
     const uploadId = await createMultipartUpload(filePath);
     const arrayUrls = Array.from({ length: parts });
     const urls = await Promise.all(
@@ -242,27 +242,27 @@ export const handleCreateMultipartUploadDreamFile = async (
     /**
      * dream owner uuid to generate s3 file path
      */
-    const dreamOwnerUserUUID = dream.user.cognitoId;
+    const userIdentifier = getUserIdentifier(dream.user);
 
     /**
      * filePath s3 generation
      */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
     } else if (type === DreamFileType.DREAM) {
       filePath = generateDreamPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         processed,
@@ -344,27 +344,27 @@ export const handleRefreshMultipartUploadUrl = async (
     /**
      * dream owner uuid to generate s3 file path
      */
-    const dreamOwnerUserUUID = dream.user.cognitoId;
+    const userIdentifier = getUserIdentifier(dream.user);
 
     /**
      * filePath s3 generation
      */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
     } else if (type === DreamFileType.DREAM) {
       filePath = generateDreamPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         processed,
@@ -445,14 +445,14 @@ export const handleCompleteMultipartUpload = async (
     /**
      * dream owner uuid to generate s3 file path
      */
-    const dreamOwnerUserUUID = dream.user.cognitoId;
+    const userIdentifier = getUserIdentifier(dream.user);
 
     /**
      * filePath s3 generation, updates database values if needed
      */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
       });
@@ -465,14 +465,14 @@ export const handleCompleteMultipartUpload = async (
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
     } else if (type === DreamFileType.DREAM && !processed) {
       filePath = generateDreamPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         processed,
@@ -488,7 +488,7 @@ export const handleCompleteMultipartUpload = async (
       });
     } else if (type === DreamFileType.DREAM && processed) {
       filePath = generateDreamPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         processed,
@@ -560,7 +560,7 @@ export const handleAbortMultipartUpload = async (
   >,
   res: ResponseType,
 ) => {
-  const user = res.locals.user;
+  const user = res.locals.user!;
   const dreamUUID: string = req.params.uuid!;
   let dream: Dream | undefined;
   try {
@@ -592,7 +592,7 @@ export const handleAbortMultipartUpload = async (
     const uploadId = req.body.uploadId;
     const fileExtension = extension;
     const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+    const filePath = `${getUserIdentifier(user)}/${dreamUUID}/${fileName}`;
 
     await abortMultipartUpload(filePath, uploadId!);
 
@@ -907,7 +907,9 @@ export const handleSetDreamStatusProcessed = async (
         ({
           frameNumber: Number(frame),
           url: generateBucketObjectURL(
-            `${user?.cognitoId}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
+            `${getUserIdentifier(user)}/${dreamUUID}/filmstrip/frame-${frame}.${
+              FILE_EXTENSIONS.JPG
+            }`,
           ),
         }) as Frame,
     );
@@ -1105,7 +1107,7 @@ export const handleUpdateThumbnailDream = async (
   req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const user = res.locals.user;
+  const user = res.locals.user!;
   const dreamUUID: string = req.params.uuid!;
 
   try {
@@ -1135,7 +1137,7 @@ export const handleUpdateThumbnailDream = async (
     const fileMymeType = req.file?.mimetype;
     const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
     const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+    const filePath = `${getUserIdentifier(user)}/${dreamUUID}/${fileName}`;
 
     if (thumbnailBuffer) {
       const command = new PutObjectCommand({

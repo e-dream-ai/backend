@@ -34,6 +34,7 @@ import {
 import {
   getRoleSelectedColumns,
   getUserFindOptionsRelations,
+  getUserIdentifier,
   getUserSelectedColumns,
   isAdmin,
 } from "utils/user.util";
@@ -385,7 +386,7 @@ export const handleUpdateUserAvatar = async (
     const fileExtension =
       MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
     const fileName = `${AVATAR}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${fileName}`;
+    const filePath = `${getUserIdentifier(user)}/${fileName}`;
 
     if (avatarBuffer) {
       const command = new PutObjectCommand({

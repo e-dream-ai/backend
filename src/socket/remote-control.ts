@@ -29,7 +29,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   /**
    * Joins a room to avoid send all messages to all users
    */
-  const roomId = "REMOTE_CONTROL:" + user.cognitoId;
+  const roomId = "USER:" + user.id;
   socket.join(roomId);
 
   socket.on(

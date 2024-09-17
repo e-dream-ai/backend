@@ -65,7 +65,9 @@ export const processDreamSQS = async (dream: Dream) => {
 export const processDreamRequest = async (dream: Dream) => {
   const extension = getFileExtension(dream.original_video || "");
   const data = {
-    user_uuid: dream.user.cognitoId,
+    /**
+     * user identifier is not needed anymore
+     */
     dream_uuid: dream.uuid,
     extension,
   };

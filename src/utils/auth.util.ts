@@ -22,7 +22,7 @@ export const workOSCookieConfig: CookieOptions = {
   path: "/",
   httpOnly: true,
   secure: !IS_DEVELOPMENT,
-  sameSite: IS_DEVELOPMENT ? "lax" : "none",
+  sameSite: "lax",
 };
 
 /**

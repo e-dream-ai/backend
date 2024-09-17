@@ -70,6 +70,12 @@ export const socketAuthMiddleware = async (
         return next(authError);
       }
     }
+
+    /**
+     * continue with flow
+     * user can be logged in with workos, and will be validated on `socketWorkOSAuth`
+     * delete this middleware after deprecating cognito
+     */
     return next();
   } catch (error) {
     APP_LOGGER.error(
@@ -126,12 +132,11 @@ export const socketWorkOSAuth = async (
   }
 
   /**
-   * continue with flow
-   * user can be logged in on cognito for now, need to be changed to
-   *
-   *  return next(authError);
-   *
-   * after deprecating cognito
+   * continue if user exists
    */
-  return next();
+  if (socket.data.user) {
+    return next();
+  } else {
+    return next(authError);
+  }
 };

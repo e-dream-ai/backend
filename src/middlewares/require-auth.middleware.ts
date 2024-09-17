@@ -6,10 +6,15 @@ import httpStatus from "http-status";
 import passport from "passport";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
-import { workos, workOSCookieConfig } from "utils/auth.util";
+import {
+  authenticateAndGetWorkOSSession,
+  handleWorkOSAuthFailure,
+  refreshWorkOSSession,
+  setWorkOSUserContext,
+  updateWorkOSCookie,
+} from "utils/workos.util";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
-import { syncWorkOSUser } from "utils/user.util";
 
 /**
  * Callback handler for passport authenticate strategies
@@ -67,117 +72,35 @@ const workOSAuth = async (
   res: ResponseType,
   next: NextFunction,
 ) => {
-  const authHeader = req.headers.authorization?.split("Bearer ")[1];
-  const authToken = authHeader || req.cookies["wos-session"];
-
-  const authenticationResponse =
-    await workos.userManagement.authenticateWithSessionCookie({
-      sessionData: authToken,
-      cookiePassword: env.WORKOS_COOKIE_PASSWORD,
-    });
-
-  const {
-    // reason,
-    authenticated,
-  } = authenticationResponse;
-
-  // console.log("workOSAuth authenticated:", authenticated, reason);
-  if (authenticated) {
-    const session = await workos.userManagement.getSessionFromCookie({
-      sessionData: authToken,
-      cookiePassword: env.WORKOS_COOKIE_PASSWORD,
-    });
-
-    if (!session) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
-          data: {
-            authorizationUrl: env.WORKOS_AUTH_URL,
-          },
-        }),
-      );
-    }
-
-    const organizationMemberships =
-      await workos.userManagement.listOrganizationMemberships({
-        userId: session.user.id,
-      });
-
-    // console.log(`User ${JSON.stringify(user)} is logged in and belongs to groups ${JSON.stringify(organizationMemberships)}`);
-    const workOSUser = session.user;
-    const workOSRole = organizationMemberships.data[0]?.role.slug;
-    const user = await syncWorkOSUser(session.user, workOSRole);
-    res.locals.workosUser = workOSUser;
-    res.locals.userRole = workOSRole;
-    res.locals.user = user;
-
-    return next();
-  }
+  const authToken =
+    req.headers.authorization?.split("Bearer ")[1] ||
+    req.cookies["wos-session"];
 
   try {
-    // If the session is invalid (i.e. the access token has expired)
-    // attempt to re-authenticate with the refresh token
-    const refreshResponse =
-      await workos.userManagement.refreshAndSealSessionData({
-        sessionData: authToken,
-        cookiePassword: env.WORKOS_COOKIE_PASSWORD,
-      });
+    let session = await authenticateAndGetWorkOSSession(authToken);
 
-    if (!refreshResponse.authenticated) {
-      return res.status(httpStatus.UNAUTHORIZED).json(
-        jsonResponse({
-          success: false,
-          message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
-          data: {
-            authorizationUrl: env.WORKOS_AUTH_URL,
-          },
-        }),
+    /**
+     * If there's no session, try to refresh it
+     */
+    if (!session) {
+      const refreshResult = await refreshWorkOSSession(authToken);
+      if (!refreshResult.authenticated || !refreshResult.sealedSession) {
+        // Handle failure
+        return handleWorkOSAuthFailure(res);
+      }
+      // Update cookie
+      updateWorkOSCookie(res, refreshResult.sealedSession);
+      session = await authenticateAndGetWorkOSSession(
+        refreshResult.sealedSession,
       );
     }
 
-    // Update the cookie
-    res.cookie(
-      "wos-session",
-      refreshResponse.sealedSession,
-      workOSCookieConfig,
-    );
-
+    await setWorkOSUserContext(res, session!.user);
     return next();
   } catch (e) {
     APP_LOGGER.error(e);
-    // Failed to refresh access token, redirect user to login page
-    // after deleting the cookie
-    res.clearCookie("wos-session", workOSCookieConfig);
-    return res.status(httpStatus.UNAUTHORIZED).json(
-      jsonResponse({
-        success: false,
-        message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
-        data: {
-          authorizationUrl: env.WORKOS_AUTH_URL,
-        },
-      }),
-    );
+    return handleWorkOSAuthFailure(res);
   }
-
-  // This code is inaccesible
-  // If no session, redirect the user to the login page
-  // if (
-  //   !authenticated &&
-  //   reason ===
-  //     AuthenticateWithSessionCookieFailureReason.NO_SESSION_COOKIE_PROVIDED
-  // ) {
-  //   return res.status(httpStatus.UNAUTHORIZED).json(
-  //     jsonResponse({
-  //       success: false,
-  //       message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
-  //       data: {
-  //         authorizationUrl: env.WORKOS_AUTH_URL,
-  //       },
-  //     }),
-  //   );
-  // }
 };
 
 const requireAuth = (

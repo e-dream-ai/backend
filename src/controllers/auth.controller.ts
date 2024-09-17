@@ -62,7 +62,7 @@ import {
   setUserLastLoginAt,
   syncWorkOSUser,
 } from "utils/user.util";
-import { workos, workOSCookieConfig } from "utils/auth.util";
+import { workos, workOSCookieConfig } from "utils/workos.util";
 import env from "shared/env";
 import {
   RefreshAndSealSessionDataFailureReason,

@@ -9,6 +9,7 @@ import {
   callbackSchemaV2,
   loginSchemaV2,
   magicSchemaV2,
+  signupSchemaV2,
 } from "schemas/auth.schema";
 
 const authRouter = Router();
@@ -91,6 +92,12 @@ authRouter.get(
   "/callback",
   validatorMiddleware(callbackSchemaV2),
   authController.handleWorkOSCallback,
+);
+
+authRouter.post(
+  "/signup",
+  validatorMiddleware(signupSchemaV2),
+  authController.signup,
 );
 
 /**

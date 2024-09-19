@@ -24,6 +24,7 @@ import {
   UserLoginWithCodeCredentials,
   UserMagicLoginCredentialsV2,
   UserSignUpCredentials,
+  UserSignupV2,
   UserVerifyCredentials,
 } from "types/auth.types";
 import {
@@ -711,6 +712,37 @@ export const handleWorkOSCallback = async (
     const message =
       (error as OauthException)?.errorDescription ??
       (error as GenericServerException)?.message;
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};
+
+export const signup = async (
+  req: RequestType<UserSignupV2>,
+  res: ResponseType,
+) => {
+  const email = req.body.email!;
+  const firstName = req.body.firstName!;
+  const lastName = req.body.lastName!;
+  const password = req.body.password!;
+  try {
+    const createUserResponse = await workos.userManagement.createUser({
+      email,
+      firstName,
+      lastName,
+      password,
+    });
+
+    await syncWorkOSUser(createUserResponse);
+
+    return res.status(httpStatus.CREATED).json(jsonResponse({ success: true }));
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const message =
+      (error as OauthException)?.errorDescription ??
+      (error as GenericServerException)?.message;
+
     return res
       .status(httpStatus.BAD_REQUEST)
       .json(jsonResponse({ success: false, message }));

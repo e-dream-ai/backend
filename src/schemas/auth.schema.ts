@@ -9,6 +9,7 @@ import type {
   UserLoginWithCodeCredentials,
   UserMagicLoginCredentialsV2,
   UserSignUpCredentials,
+  UserSignupV2,
   UserVerifyCredentials,
 } from "types/auth.types";
 import { isFeatureActive } from "utils/feature.util";
@@ -86,6 +87,15 @@ export const validateSignupSchema = async (
 export const callbackSchemaV2 = {
   query: Joi.object<UserCallbackV2>().keys({
     code: Joi.string().required(),
+  }),
+};
+
+export const signupSchemaV2 = {
+  body: Joi.object<UserSignupV2>().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required().min(6),
+    firstName: Joi.string().required().max(50),
+    lastName: Joi.string().required().max(50),
   }),
 };
 

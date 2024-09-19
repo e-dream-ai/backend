@@ -157,6 +157,8 @@ export const syncWorkOSUser = async (
   user = new User();
   user.workOSId = workOSUser.id;
   user.email = workOSUser.email;
+  user.name = workOSUser.firstName;
+  user.lastName = workOSUser.lastName;
 
   if (role) {
     user.role = role;

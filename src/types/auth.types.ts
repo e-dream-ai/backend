@@ -69,6 +69,13 @@ export type UserCallbackV2 = {
   code: string;
 };
 
+export type UserSignupV2 = {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+};
+
 export type UserLoginCredentialsV2 = {
   email: string;
   password: string;

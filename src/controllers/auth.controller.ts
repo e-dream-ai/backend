@@ -24,6 +24,7 @@ import {
   UserLoginWithCodeCredentials,
   UserMagicLoginCredentialsV2,
   UserSignUpCredentials,
+  UserSignUpCredentialsV2,
   UserVerifyCredentials,
 } from "types/auth.types";
 import {
@@ -982,10 +983,15 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
  * BAD_REQUEST 400 - error creating user
  *
  */
-export const handleSignUpV2 = async (req: RequestType, res: ResponseType) => {
+export const handleSignUpV2 = async (
+  req: RequestType<UserSignUpCredentialsV2>,
+  res: ResponseType,
+) => {
   try {
     const { email, password, firstname, lastname, code } = req.body;
     const invite = await validateAndUseCode(code!);
+
+    const isSignupCodeActive = await isFeatureActive(FEATURES.SIGNUP_WITH_CODE);
 
     if (isSignupCodeActive && !invite) {
       return res.status(httpStatus.BAD_REQUEST).json(
@@ -1000,7 +1006,7 @@ export const handleSignUpV2 = async (req: RequestType, res: ResponseType) => {
       email,
     });
 
-    if (users.length > 0) {
+    if (users.data.length > 0) {
       // Handle user already exists
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({
@@ -1012,10 +1018,10 @@ export const handleSignUpV2 = async (req: RequestType, res: ResponseType) => {
 
     // create workos user
     const workOSUser = await workos.userManagement.createUser({
-      email: email,
-      password: password,
-      firstName: firstname,
-      lastName: lastname,
+      email: email!,
+      password: password!,
+      firstName: firstname!,
+      lastName: lastname!,
     });
 
     /**
@@ -1027,14 +1033,13 @@ export const handleSignUpV2 = async (req: RequestType, res: ResponseType) => {
 
     // send invitation email to bind user to org with a role
     await workos.userManagement.sendInvitation({
-      email,
+      email: email!,
       organizationId: env.WORKOS_ORGANIZATION_ID,
       roleSlug: userRole.name,
     });
 
     const user = new User();
-    // TODO: reuse this field for workOS? Maybe name to something more generic?
-    user.cognitoId = workOSUser.id;
+    user.workOSId = workOSUser.id;
     user.email = email!;
     user.signupInvite = invite;
     user.role = userRole;

@@ -78,3 +78,11 @@ export type UserMagicLoginCredentialsV2 = {
   email: string;
   code: string;
 };
+
+export type UserSignUpCredentialsV2 = {
+  email: string;
+  firstname: string;
+  lastname: string;
+  password: string;
+  code: string;
+};

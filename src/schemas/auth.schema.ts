@@ -9,6 +9,7 @@ import type {
   UserLoginWithCodeCredentials,
   UserMagicLoginCredentialsV2,
   UserSignUpCredentials,
+  UserSignUpCredentialsV2,
   UserVerifyCredentials,
 } from "types/auth.types";
 import { isFeatureActive } from "utils/feature.util";
@@ -104,7 +105,7 @@ export const magicSchemaV2 = {
 };
 
 export const signupSchemaV2 = {
-  body: Joi.object<UserSignUpCredentials>({
+  body: Joi.object<UserSignUpCredentialsV2>({
     email: Joi.string().required().email(),
     firstname: Joi.string().required(),
     lastname: Joi.string().required(),

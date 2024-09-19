@@ -9,6 +9,7 @@ import {
   callbackSchemaV2,
   loginSchemaV2,
   magicSchemaV2,
+  signupSchemaV2,
 } from "schemas/auth.schema";
 
 const authRouter = Router();
@@ -241,5 +242,52 @@ authRouter.get("/logout", authController.logout);
  *              $ref: '#/components/schemas/BadApiResponse'
  */
 authRouter.post("/refresh", authController.refreshWorkOS);
+
+/**
+ * @swagger
+ * /auth/signup:
+ *   post:
+ *     tags:
+ *       - auth
+ *     summary: Signup user
+ *     description: Handles the signup
+ *     requestBody:
+ *       description: Signup object
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstname:
+ *                 type: string
+ *               lastname:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *               code:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       '400':
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadApiResponse'
+ */
+authRouter.post(
+  "/signup",
+  validatorMiddleware(signupSchemaV2),
+  authController.handleSignUpV2,
+);
 
 export default authRouter;

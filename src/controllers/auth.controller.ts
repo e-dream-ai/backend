@@ -970,3 +970,90 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
       .json(jsonResponse({ success: false, message }));
   }
 };
+
+/**
+ * Handles the signup
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - user created
+ * BAD_REQUEST 400 - error creating user
+ *
+ */
+export const handleSignUpV2 = async (req: RequestType, res: ResponseType) => {
+  try {
+    const { email, password, firstname, lastname, code } = req.body;
+    const invite = await validateAndUseCode(code!);
+
+    if (isSignupCodeActive && !invite) {
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message: AUTH_MESSAGES.INVALID_INVITE,
+        }),
+      );
+    }
+
+    const users = await workos.userManagement.listUsers({
+      email,
+    });
+
+    if (users.length > 0) {
+      // Handle user already exists
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message: AUTH_MESSAGES.USER_ALREADY_EXISTS,
+        }),
+      );
+    }
+
+    // create workos user
+    const workOSUser = await workos.userManagement.createUser({
+      email: email,
+      password: password,
+      firstName: firstname,
+      lastName: lastname,
+    });
+
+    /**
+     * get user group role
+     */
+    const role = await roleRepository.findOneBy({ name: ROLES.USER_GROUP });
+
+    const userRole = invite?.signupRole || role!;
+
+    // send invitation email to bind user to org with a role
+    await workos.userManagement.sendInvitation({
+      email,
+      organizationId: env.WORKOS_ORGANIZATION_ID,
+      roleSlug: userRole.name,
+    });
+
+    const user = new User();
+    // TODO: reuse this field for workOS? Maybe name to something more generic?
+    user.cognitoId = workOSUser.id;
+    user.email = email!;
+    user.signupInvite = invite;
+    user.role = userRole;
+    await userRepository.save(user);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        message: AUTH_MESSAGES.USER_CREATED,
+      }),
+    );
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const message =
+      (error as OauthException)?.errorDescription ??
+      (error as GenericServerException)?.message;
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};

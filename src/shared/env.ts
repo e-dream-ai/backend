@@ -123,6 +123,11 @@ export const env = cleanEnv(process.env, {
   WORKOS_AUTH_URL: str(),
 
   /**
+   * WORKOS_AUTH_URL
+   */
+  WORKOS_ORGANIZATION_ID: str(),
+
+  /**
    * BACKEND_DOMAIN
    */
   BACKEND_DOMAIN: str(),

@@ -107,8 +107,8 @@ export const magicSchemaV2 = {
 export const signupSchemaV2 = {
   body: Joi.object<UserSignUpCredentialsV2>({
     email: Joi.string().required().email(),
-    firstname: Joi.string().required(),
-    lastname: Joi.string().required(),
+    firstname: Joi.string().required().max(50),
+    lastname: Joi.string().required().max(50),
     password: Joi.string().required().min(6),
     code: Joi.string().when("$isSignupCodeActive", {
       is: true,

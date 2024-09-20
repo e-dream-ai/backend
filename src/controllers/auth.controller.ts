@@ -1050,6 +1050,8 @@ export const handleSignUpV2 = async (
     user.email = email!;
     user.signupInvite = invite;
     user.role = userRole;
+    user.name = firstname;
+    user.lastName = lastname;
     await userRepository.save(user);
 
     return res.status(httpStatus.OK).json(

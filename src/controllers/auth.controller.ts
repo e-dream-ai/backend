@@ -12,6 +12,7 @@ import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import httpStatus from "http-status";
 import {
   ConfirmUserLoginWithCodeCredentials,
+  CreatePasswordResetV2,
   MiddlewareUser,
   RefreshTokenCredentials,
   RevokeTokenCredentials,
@@ -1059,6 +1060,46 @@ export const handleSignUpV2 = async (
       jsonResponse({
         success: true,
         message: AUTH_MESSAGES.USER_CREATED,
+      }),
+    );
+  } catch (error) {
+    APP_LOGGER.error(error);
+    const message =
+      (error as OauthException)?.errorDescription ??
+      (error as GenericServerException)?.message;
+
+    return res
+      .status(httpStatus.BAD_REQUEST)
+      .json(jsonResponse({ success: false, message }));
+  }
+};
+
+/**
+ * Handles create password reset
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - created password reset
+ * BAD_REQUEST 400 - error creating password reset
+ *
+ */
+export const handleCreatePasswordReset = async (
+  req: RequestType<CreatePasswordResetV2>,
+  res: ResponseType,
+) => {
+  try {
+    const email = req.body.email!;
+
+    await workos.userManagement.createPasswordReset({
+      email,
+    });
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        message: AUTH_MESSAGES.PASSWORD_RESET_CREATED,
       }),
     );
   } catch (error) {

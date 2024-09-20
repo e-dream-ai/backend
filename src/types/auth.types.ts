@@ -86,3 +86,7 @@ export type UserSignUpCredentialsV2 = {
   password: string;
   code: string;
 };
+
+export type CreatePasswordResetV2 = {
+  email: string;
+};

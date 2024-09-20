@@ -1039,9 +1039,14 @@ export const handleSignUpV2 = async (
 
     const userRole = invite?.signupRole || role!;
 
-    // send invitation email to bind user to org with a role
-    await workos.userManagement.sendInvitation({
-      email: email!,
+    // send verification email
+    await workos.userManagement.sendVerificationEmail({
+      userId: workOSUser.id,
+    });
+
+    // create organization membership to bind user to org with a role
+    await workos.userManagement.createOrganizationMembership({
+      userId: workOSUser.id,
       organizationId: env.WORKOS_ORGANIZATION_ID,
       roleSlug: userRole.name,
     });

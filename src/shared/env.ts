@@ -131,6 +131,12 @@ export const env = cleanEnv(process.env, {
    * BACKEND_DOMAIN
    */
   BACKEND_DOMAIN: str(),
+
+  /**
+   * Google Analytics
+   */
+  GA_MEASUREMENT_ID: str(),
+  GA_API_SECRET: str(),
 });
 
 export default env;

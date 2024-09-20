@@ -3,6 +3,7 @@ import Joi from "joi";
 import type { NextFunction, Request, Response } from "express";
 import type {
   ConfirmUserLoginWithCodeCredentials,
+  CreatePasswordResetV2,
   UserCallbackV2,
   UserLoginCredentials,
   UserLoginCredentialsV2,
@@ -115,5 +116,11 @@ export const signupSchemaV2 = {
       then: Joi.required(),
       otherwise: Joi.optional(),
     }),
+  }),
+};
+
+export const createPasswordResetV2 = {
+  body: Joi.object<CreatePasswordResetV2>({
+    email: Joi.string().required().email(),
   }),
 };

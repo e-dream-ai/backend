@@ -7,6 +7,7 @@ import validatorMiddleware from "middlewares/validator.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import {
   callbackSchemaV2,
+  createPasswordResetV2,
   loginSchemaV2,
   magicSchemaV2,
   signupSchemaV2,
@@ -288,6 +289,44 @@ authRouter.post(
   "/signup",
   validatorMiddleware(signupSchemaV2),
   authController.handleSignUpV2,
+);
+
+/**
+ * @swagger
+ * /auth/create-password-reset:
+ *   post:
+ *     tags:
+ *       - auth
+ *     summary: Create password reset
+ *     description: Create password reset
+ *     requestBody:
+ *       description: Password reset obj
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       '200':
+ *         description: Password reset created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       '400':
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadApiResponse'
+ */
+authRouter.post(
+  "/create-password-reset",
+  validatorMiddleware(createPasswordResetV2),
+  authController.handleCreatePasswordReset,
 );
 
 export default authRouter;

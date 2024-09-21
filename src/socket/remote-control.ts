@@ -1,3 +1,4 @@
+import { tracker } from "clients/google-analytics";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { User } from "entities";
 import { remoteControlSchema } from "schemas/socket.schema";
@@ -88,6 +89,8 @@ export const handleNewControlEvent = ({
         return;
       }
 
+      tracker.sendEvent("DREAM_PLAYED", { value: dream.id });
+
       data = { ...data, name: dream?.name };
     }
 
@@ -102,6 +105,8 @@ export const handleNewControlEvent = ({
         });
         return;
       }
+
+      tracker.sendEvent("DREAM_PLAYED", { value: playlist.id });
 
       data = { ...data, name: playlist?.name };
     }

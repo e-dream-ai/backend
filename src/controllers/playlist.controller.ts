@@ -1,4 +1,5 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { tracker } from "clients/google-analytics";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
@@ -180,6 +181,8 @@ export const handleCreatePlaylist = async (
     feedItem.updated_at = createdPlaylist.updated_at;
 
     await feedRepository.save(feedItem);
+
+    tracker.sendEvent("PLAYLIST_CREATED", { value: playlist.id });
 
     return res
       .status(httpStatus.CREATED)
@@ -597,6 +600,8 @@ export const handleAddPlaylistItem = async (
     if (shouldUpdatePlaylistTimestamp) {
       refreshPlaylistUpdatedAtTimestamp(playlist.id);
     }
+
+    tracker.sendEvent("PLAYLIST_ITEM_ADDED", { value: playlist.id });
 
     return res.status(httpStatus.CREATED).json(
       jsonResponse({

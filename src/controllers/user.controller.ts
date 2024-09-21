@@ -20,7 +20,6 @@ import {
 } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { decrypt } from "utils/crypto.util";
-import { trackUserAction } from "utils/ga.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
   getPlaylistFindOptionsRelations,
@@ -206,10 +205,6 @@ export const handleGetCurrentUser = async (
 ) => {
   try {
     const user = res.locals.user!;
-
-    trackUserAction(String(user.id), "AUTHENTICATE", {
-      workosUser: !!user?.workOSId,
-    });
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

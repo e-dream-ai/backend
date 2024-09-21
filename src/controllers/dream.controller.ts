@@ -1,4 +1,5 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { tracker } from "clients/google-analytics";
 import { s3Client } from "clients/s3.client";
 import { BUCKET_ACL } from "constants/aws/s3.constants";
 import {
@@ -528,6 +529,9 @@ export const handleCompleteMultipartUpload = async (
       await processDreamRequest(updatedDream);
     }
 
+    tracker.sendEvent("USER_NEW_UPLOAD", { value: user.id });
+    tracker.sendEvent("DREAM_CREATED", { value: dream.uuid });
+
     return res
       .status(httpStatus.CREATED)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
@@ -946,6 +950,8 @@ export const handleSetDreamStatusProcessed = async (
     if (!jobs.length) {
       await updateVideoServiceWorker(TURN_OFF_QUANTITY);
     }
+
+    tracker.sendEvent("DREAM_UPLOADED_SIZE", { value: processedVideoSize });
 
     return res
       .status(httpStatus.OK)

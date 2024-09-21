@@ -70,6 +70,7 @@ import {
   OauthException,
   GenericServerException,
 } from "@workos-inc/node";
+import { tracker } from "clients/google-analytics";
 
 /**
  * Repositories
@@ -1051,6 +1052,8 @@ export const handleSignUpV2 = async (
     user.signupInvite = invite;
     user.role = userRole;
     await userRepository.save(user);
+
+    tracker.sendEvent("USER_NEW_SIGNUP", { value: user.id });
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

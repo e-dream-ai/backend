@@ -1029,6 +1029,7 @@ export const handleSignUpV2 = async (
       password: password!,
       firstName: firstname!,
       lastName: lastname!,
+      emailVerified: true,
     });
 
     /**

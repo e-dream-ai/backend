@@ -112,14 +112,7 @@ const requireAuth = (
   /**
    * Applies different strategies: for Api-Key and Bearer authorization headers
    */
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    // return workOSAuth(req, res, next);
-    return passport.authenticate(
-      ["bearer"],
-      { session: false },
-      handleAuthCallback(req, res, next),
-    )(req, res, next);
-  } else if (authHeader && authHeader.startsWith("Api-Key ")) {
+  if (authHeader && authHeader.startsWith("Api-Key ")) {
     return passport.authenticate(
       ["headerapikey"],
       { session: false },
@@ -127,7 +120,7 @@ const requireAuth = (
     )(req, res, next);
   } else if (req.cookies && req.cookies["wos-session"]) {
     return workOSAuth(req, res, next);
-  } else if (authHeader && authHeader.startsWith("Wos-Api-Key")) {
+  } else if (authHeader && authHeader.startsWith("Bearer ")) {
     // for now
     return workOSAuth(req, res, next);
   } else {

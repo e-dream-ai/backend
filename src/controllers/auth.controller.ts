@@ -864,7 +864,7 @@ export const loginWithMagicAuth = async (
  *
  */
 export const logout = async (req: RequestType, res: ResponseType) => {
-  const authHeader = req.headers.authorization?.split("Wos-Api-Key ")[1];
+  const authHeader = req.headers.authorization?.split("Bearer ")[1];
   const authToken = authHeader || req.cookies["wos-session"];
   res.clearCookie("wos-session", workOSCookieConfig);
 
@@ -916,7 +916,7 @@ export const logout = async (req: RequestType, res: ResponseType) => {
  *
  */
 export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
-  const authHeader = req.headers.authorization?.split("Wos-Api-Key ")[1];
+  const authHeader = req.headers.authorization?.split("Bearer ")[1];
   const authToken = authHeader || req.cookies["wos-session"];
 
   try {

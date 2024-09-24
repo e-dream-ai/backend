@@ -921,16 +921,17 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
   const authToken = authHeader || req.cookies["wos-session"];
 
   try {
-    const refreshAndSealResponse =
-      await workos.userManagement.refreshAndSealSessionData({
-        sessionData: authToken,
-        cookiePassword: env.WORKOS_COOKIE_PASSWORD,
-      });
+    const session = await workos.userManagement.loadSealedSession({
+      sessionData: authToken,
+      cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+    });
 
-    const authenticated = refreshAndSealResponse.authenticated;
+    const refreshResponse = await session.refresh();
 
-    if (authenticated && refreshAndSealResponse?.sealedSession) {
-      const { sealedSession } = refreshAndSealResponse;
+    const authenticated = refreshResponse.authenticated;
+
+    if (authenticated && refreshResponse?.sealedSession) {
+      const { sealedSession } = refreshResponse;
 
       // Set the sealed session in a cookie
       res.cookie("wos-session", sealedSession, workOSCookieConfig);
@@ -944,8 +945,8 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
           },
         }),
       );
-    } else if (!authenticated && refreshAndSealResponse?.reason) {
-      const reason = refreshAndSealResponse?.reason ?? "";
+    } else if (!authenticated && refreshResponse?.reason) {
+      const reason = refreshResponse?.reason ?? "";
 
       let message = AUTH_MESSAGES.EXPIRED_TOKEN;
       if (

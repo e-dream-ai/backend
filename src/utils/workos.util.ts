@@ -52,12 +52,12 @@ export const authenticateAndGetWorkOSSession = async (authToken: string) => {
  * @returns Refresh response containing a new sealed session if successful
  */
 export const refreshWorkOSSession = async (authToken: string) => {
-  const refreshResponse = await workos.userManagement.refreshAndSealSessionData(
-    {
-      sessionData: authToken,
-      cookiePassword: env.WORKOS_COOKIE_PASSWORD,
-    },
-  );
+  const session = await workos.userManagement.loadSealedSession({
+    sessionData: authToken,
+    cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+  });
+  const refreshResponse = await session.refresh();
+
   return refreshResponse;
 };
 

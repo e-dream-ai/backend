@@ -39,6 +39,8 @@ import {
   isAdmin,
 } from "utils/user.util";
 
+const IS_DEVELOPMENT = env.NODE_ENV === "development";
+
 const userRepository = appDataSource.getRepository(User);
 const roleRepository = appDataSource.getRepository(Role);
 const playlistRepository = appDataSource.getRepository(Playlist);
@@ -205,6 +207,16 @@ export const handleGetCurrentUser = async (
 ) => {
   try {
     const user = res.locals.user;
+    /**
+     * Added temporarily to remove old cookie options with a set domain a path
+     */
+    res.clearCookie("wos-session", {
+      domain: IS_DEVELOPMENT ? "localhost" : env.BACKEND_DOMAIN,
+      path: "/",
+      httpOnly: true,
+      secure: !IS_DEVELOPMENT,
+      sameSite: "lax",
+    });
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

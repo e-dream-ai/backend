@@ -21,8 +21,6 @@ export const workos = new WorkOS(env.WORKOS_API_KEY, {
  * Configuration for the WorkOS session cookie
  */
 export const workOSCookieConfig: CookieOptions = {
-  domain: IS_DEVELOPMENT ? "localhost" : env.BACKEND_DOMAIN,
-  path: "/",
   httpOnly: true,
   secure: !IS_DEVELOPMENT,
   sameSite: "lax",

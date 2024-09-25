@@ -210,13 +210,15 @@ export const handleGetCurrentUser = async (
     /**
      * Added temporarily to remove old cookie options with a set domain a path
      */
-    res.clearCookie("wos-session", {
-      domain: IS_DEVELOPMENT ? "localhost" : env.BACKEND_DOMAIN,
-      path: "/",
-      httpOnly: true,
-      secure: !IS_DEVELOPMENT,
-      sameSite: "lax",
-    });
+    if (!IS_DEVELOPMENT) {
+      res.clearCookie("wos-session", {
+        domain: env.BACKEND_DOMAIN,
+        path: "/",
+        httpOnly: true,
+        secure: !IS_DEVELOPMENT,
+        sameSite: "lax",
+      });
+    }
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

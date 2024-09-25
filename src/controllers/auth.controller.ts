@@ -1031,6 +1031,14 @@ export const handleSignUpV2 = async (
       password: password!,
       firstName: firstname!,
       lastName: lastname!,
+      emailVerified: false,
+    });
+
+    /**
+     * Sending invite
+     */
+    await workos.userManagement.sendVerificationEmail({
+      userId: workOSUser.id,
     });
 
     /**

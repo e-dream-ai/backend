@@ -17,6 +17,7 @@ import {
   formatClientPlaylist,
   populateDefautPlaylist,
 } from "utils/client.util";
+import { computeDefaultPlaylistFromUserId } from "utils/default-playlist.util";
 import { getDreamSelectedColumns } from "utils/dream.util";
 import {
   findOnePlaylist,
@@ -95,10 +96,10 @@ export const handleGetDefaultPlaylist = async (
   req: RequestType,
   res: ResponseType,
 ) => {
-  const user = res.locals?.user;
+  const user = res.locals.user!;
 
   try {
-    const defaultPlaylist = await defaultPlaylistRepository.findOne({
+    let defaultPlaylist = await defaultPlaylistRepository.findOne({
       where: {
         user: {
           id: user!.id,
@@ -107,7 +108,7 @@ export const handleGetDefaultPlaylist = async (
     });
 
     if (!defaultPlaylist) {
-      return handleNotFound(req, res);
+      defaultPlaylist = await computeDefaultPlaylistFromUserId(user?.id);
     }
 
     const playlist = await populateDefautPlaylist(defaultPlaylist.data);

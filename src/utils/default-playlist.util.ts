@@ -11,9 +11,29 @@ const userRepository = appDataSource.getRepository(User);
 const defaultPlaylistRepository = appDataSource.getRepository(DefaultPlaylist);
 
 /**
+ *@param {userId} userId
+ * @returns void
+ */
+export const computeDefaultPlaylistFromUserId = async (userId: number) => {
+  const topDreams = await getTopDreams();
+  const user = await userRepository.findOne({
+    where: {
+      id: userId,
+    },
+    relations: {
+      votes: {
+        dream: true,
+      },
+    },
+  });
+
+  return computeUserDefaultPlaylist(user!, topDreams);
+};
+
+/**
  *@param {User} user
  *@param {string[]} topDreams
- * @returns void
+ * @returns Promise<DefaultPlaylist>
  */
 export const computeUserDefaultPlaylist = async (
   user: User,
@@ -54,7 +74,7 @@ export const computeUserDefaultPlaylist = async (
     });
   }
 
-  await defaultPlaylistRepository.save(playlist);
+  return await defaultPlaylistRepository.save(playlist);
 };
 
 /**

@@ -23,6 +23,7 @@ import {
   UserLoginCredentials,
   UserLoginCredentialsV2,
   UserLoginWithCodeCredentials,
+  UserLoginWithEmailVerificationV2,
   UserMagicLoginCredentialsV2,
   UserSignUpCredentials,
   UserSignUpCredentialsV2,
@@ -31,6 +32,8 @@ import {
 import {
   handleInternalServerError,
   handleNotFound,
+  handleWorkosAuthenticatedResponse,
+  handleWorkosError,
   jsonResponse,
 } from "utils/responses.util";
 import {
@@ -67,9 +70,8 @@ import {
 import { workos, workOSCookieConfig } from "utils/workos.util";
 import env from "shared/env";
 import {
+  // GenericServerException,
   RefreshAndSealSessionDataFailureReason,
-  OauthException,
-  GenericServerException,
 } from "@workos-inc/node";
 import { tracker } from "clients/google-analytics";
 
@@ -699,24 +701,12 @@ export const handleWorkOSCallback = async (
 
     const user = await syncWorkOSUser(workOSUser);
 
-    return res.status(httpStatus.OK).json(
-      jsonResponse({
-        success: true,
-        message: AUTH_MESSAGES.USER_LOGGED_IN,
-        data: {
-          ...user,
-          sealedSession,
-        },
-      }),
-    );
+    return handleWorkosAuthenticatedResponse(req as RequestType, res, {
+      sealedSession,
+      user,
+    });
   } catch (error) {
-    APP_LOGGER.error(error);
-    const message =
-      (error as OauthException)?.errorDescription ??
-      (error as GenericServerException)?.message;
-    return res
-      .status(httpStatus.BAD_REQUEST)
-      .json(jsonResponse({ success: false, message }));
+    return handleWorkosError(error, req as RequestType, res);
   }
 };
 
@@ -737,6 +727,7 @@ export const loginWithPassword = async (
 ) => {
   const email = req.body.email!;
   const password = req.body.password!;
+
   try {
     const { user: workOSUser, sealedSession } =
       await workos.userManagement.authenticateWithPassword({
@@ -757,25 +748,12 @@ export const loginWithPassword = async (
 
     const user = await syncWorkOSUser(workOSUser);
 
-    return res.status(httpStatus.OK).json(
-      jsonResponse({
-        success: true,
-        message: AUTH_MESSAGES.USER_LOGGED_IN,
-        data: {
-          ...user,
-          sealedSession,
-        },
-      }),
-    );
+    return handleWorkosAuthenticatedResponse(req as RequestType, res, {
+      sealedSession,
+      user,
+    });
   } catch (error) {
-    APP_LOGGER.error(error);
-    const message =
-      (error as OauthException)?.errorDescription ??
-      (error as GenericServerException)?.message;
-
-    return res
-      .status(httpStatus.BAD_REQUEST)
-      .json(jsonResponse({ success: false, message }));
+    return handleWorkosError(error, req as RequestType, res);
   }
 };
 
@@ -819,16 +797,10 @@ export const loginWithMagicAuth = async (
 
       const user = await syncWorkOSUser(workOSUser);
 
-      return res.status(httpStatus.OK).json(
-        jsonResponse({
-          success: true,
-          message: AUTH_MESSAGES.USER_LOGGED_IN,
-          data: {
-            user,
-            sealedSession,
-          },
-        }),
-      );
+      return handleWorkosAuthenticatedResponse(req as RequestType, res, {
+        sealedSession,
+        user,
+      });
     } else {
       // request a code to be sent to the email
       await workos.userManagement.createMagicAuth({
@@ -843,14 +815,7 @@ export const loginWithMagicAuth = async (
       );
     }
   } catch (error) {
-    APP_LOGGER.error(error);
-    const message =
-      (error as OauthException)?.errorDescription ??
-      (error as GenericServerException)?.message;
-
-    return res
-      .status(httpStatus.BAD_REQUEST)
-      .json(jsonResponse({ success: false, message }));
+    return handleWorkosError(error, req as RequestType, res);
   }
 };
 
@@ -872,11 +837,12 @@ export const logout = async (req: RequestType, res: ResponseType) => {
 
   try {
     if (authToken) {
-      const logoutUrl =
-        await workos.userManagement.getLogoutUrlFromSessionCookie({
-          sessionData: authToken,
-          cookiePassword: env.WORKOS_COOKIE_PASSWORD,
-        });
+      const session = await workos.userManagement.loadSealedSession({
+        sessionData: authToken,
+        cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+      });
+
+      const logoutUrl = await session.getLogoutUrl();
 
       await fetch(logoutUrl);
 
@@ -895,14 +861,7 @@ export const logout = async (req: RequestType, res: ResponseType) => {
       );
     }
   } catch (error) {
-    APP_LOGGER.error(error);
-    const message =
-      (error as OauthException)?.errorDescription ??
-      (error as GenericServerException)?.message;
-
-    return res
-      .status(httpStatus.BAD_REQUEST)
-      .json(jsonResponse({ success: false, message }));
+    return handleWorkosError(error, req as RequestType, res);
   }
 };
 
@@ -932,20 +891,17 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
     const authenticated = refreshResponse.authenticated;
 
     if (authenticated && refreshResponse?.sealedSession) {
-      const { sealedSession } = refreshResponse;
+      const { sealedSession, session: refreshedSession } = refreshResponse;
+
+      const user = await syncWorkOSUser(refreshedSession!.user!);
 
       // Set the sealed session in a cookie
       res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
-      return res.status(httpStatus.OK).json(
-        jsonResponse({
-          success: true,
-          message: AUTH_MESSAGES.USER_LOGGED_IN,
-          data: {
-            sealedSession,
-          },
-        }),
-      );
+      return handleWorkosAuthenticatedResponse(req as RequestType, res, {
+        sealedSession,
+        user,
+      });
     } else if (!authenticated && refreshResponse?.reason) {
       const reason = refreshResponse?.reason ?? "";
 
@@ -971,14 +927,7 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
       }),
     );
   } catch (error) {
-    APP_LOGGER.error(error);
-    const message =
-      (error as OauthException)?.errorDescription ??
-      (error as GenericServerException)?.message;
-
-    return res
-      .status(httpStatus.BAD_REQUEST)
-      .json(jsonResponse({ success: false, message }));
+    return handleWorkosError(error, req as RequestType, res);
   }
 };
 
@@ -998,7 +947,8 @@ export const handleSignUpV2 = async (
   res: ResponseType,
 ) => {
   try {
-    const { email, password, firstname, lastname, code } = req.body;
+    // const password = req.body.password!;
+    const { email, firstname, lastname, code } = req.body;
     const invite = await validateAndUseCode(code!);
 
     const isSignupCodeActive = await isFeatureActive(FEATURES.SIGNUP_WITH_CODE);
@@ -1026,10 +976,12 @@ export const handleSignUpV2 = async (
       );
     }
 
-    // create workos user
+    /**
+     * create workos user
+     */
     const workOSUser = await workos.userManagement.createUser({
       email: email!,
-      password: password!,
+      // password: password!,
       firstName: firstname!,
       lastName: lastname!,
       emailVerified: false,
@@ -1067,21 +1019,42 @@ export const handleSignUpV2 = async (
 
     tracker.sendEvent("USER_NEW_SIGNUP", { value: user.id });
 
+    let pendingAuthenticationToken: string | undefined;
+
+    /**
+     * Force to send invite to get pendingAuthenticationToken to use it on loginWithEmailVerification
+     * https://workos.com/docs/reference/user-management/authentication/email-verification
+     */
+    // try {
+    //   await workos.userManagement.authenticateWithPassword({
+    //     clientId: env.WORKOS_CLIENT_ID,
+    //     email: email!,
+    //     password: password!,
+    //     session: {
+    //       sealSession: true,
+    //       cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+    //     },
+    //   });
+    // } catch (error) {
+    //   if (error instanceof GenericServerException) {
+    //     const rawData = error.rawData as Record<string, unknown>;
+    //     pendingAuthenticationToken =
+    //       "pending_authentication_token" in rawData &&
+    //       typeof rawData.pending_authentication_token === "string"
+    //         ? rawData.pending_authentication_token
+    //         : undefined;
+    //   }
+    // }
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
         message: AUTH_MESSAGES.USER_CREATED,
+        data: { pendingAuthenticationToken },
       }),
     );
   } catch (error) {
-    APP_LOGGER.error(error);
-    const message =
-      (error as OauthException)?.errorDescription ??
-      (error as GenericServerException)?.message;
-
-    return res
-      .status(httpStatus.BAD_REQUEST)
-      .json(jsonResponse({ success: false, message }));
+    return handleWorkosError(error, req as RequestType, res);
   }
 };
 
@@ -1114,13 +1087,43 @@ export const handleCreatePasswordReset = async (
       }),
     );
   } catch (error) {
-    APP_LOGGER.error(error);
-    const message =
-      (error as OauthException)?.errorDescription ??
-      (error as GenericServerException)?.message;
+    return handleWorkosError(error, req, res);
+  }
+};
 
-    return res
-      .status(httpStatus.BAD_REQUEST)
-      .json(jsonResponse({ success: false, message }));
+/**
+ * Handles login with email verification
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - user logged in
+ * BAD_REQUEST 400 - error on email verification
+ *
+ */
+export const loginWithEmailVerification = async (
+  req: RequestType<UserLoginWithEmailVerificationV2>,
+  res: ResponseType,
+) => {
+  try {
+    const code = req.body.code!;
+    const pendingAuthenticationToken = req.body.pendingAuthenticationToken!;
+
+    const { sealedSession, user: workOSUser } =
+      await workos.userManagement.authenticateWithEmailVerification({
+        clientId: env.WORKOS_CLIENT_ID,
+        code,
+        pendingAuthenticationToken,
+      });
+
+    const user = await syncWorkOSUser(workOSUser);
+
+    return handleWorkosAuthenticatedResponse(req, res, {
+      sealedSession,
+      user,
+    });
+  } catch (error) {
+    return handleWorkosError(error, req, res);
   }
 };

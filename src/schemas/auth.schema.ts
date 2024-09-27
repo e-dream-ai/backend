@@ -110,7 +110,7 @@ export const signupSchemaV2 = {
     email: Joi.string().required().email(),
     firstname: Joi.string().required().max(50),
     lastname: Joi.string().required().max(50),
-    password: Joi.string().required().min(6),
+    // password: Joi.string().required().min(10),
     code: Joi.string().when("$isSignupCodeActive", {
       is: true,
       then: Joi.required(),

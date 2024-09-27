@@ -83,10 +83,15 @@ export type UserSignUpCredentialsV2 = {
   email: string;
   firstname: string;
   lastname: string;
-  password: string;
+  // password: string;
   code: string;
 };
 
 export type CreatePasswordResetV2 = {
   email: string;
+};
+
+export type UserLoginWithEmailVerificationV2 = {
+  code: string;
+  pendingAuthenticationToken: string;
 };

@@ -106,7 +106,7 @@ export const handleNewControlEvent = ({
         return;
       }
 
-      tracker.sendEvent("DREAM_PLAYED", { value: playlist.id });
+      tracker.sendEvent("PLAYLIST_PLAYED", { value: playlist.uuid });
 
       data = { ...data, name: playlist?.name };
     }

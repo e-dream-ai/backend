@@ -19,18 +19,13 @@ class GA4EventTracker {
           {
             name: `${eventConfig.category}_${eventConfig.action}`,
             params: {
-              ...(eventConfig.label
-                ? {
-                  [eventConfig.label]:
-                      eventParams[eventConfig.label as string],
-                }
+              ...(eventConfig.label && eventParams.label
+                ? { label: eventParams.label }
+                : { label: eventConfig.label }),
+              ...(eventConfig.value && eventParams.value
+                ? { value: eventParams[eventConfig.value] }
                 : {}),
-              ...(eventConfig.value
-                ? {
-                  [eventConfig.value]:
-                      eventParams[eventConfig.value as string],
-                }
-                : {}),
+              ...eventParams, // Include all other parameters
             },
           },
         ],

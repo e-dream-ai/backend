@@ -76,7 +76,7 @@ export const setWorkOSUserContext = async (
       userId: workOSUser.id,
     });
   const workOSRole = organizationMemberships.data[0]?.role.slug;
-  const user = await syncWorkOSUser(workOSUser, workOSRole);
+  const user = await syncWorkOSUser(workOSUser);
 
   res.locals.workosUser = workOSUser;
   res.locals.userRole = workOSRole;

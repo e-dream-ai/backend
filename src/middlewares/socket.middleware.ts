@@ -119,14 +119,8 @@ export const socketWorkOSAuth = async (
       return next(authError);
     }
 
-    const organizationMemberships =
-      await workos.userManagement.listOrganizationMemberships({
-        userId: session.user.id,
-      });
-
     const workOSUser = session.user;
-    const workOSRole = organizationMemberships.data[0]?.role.slug;
-    const user = await syncWorkOSUser(workOSUser, workOSRole);
+    const user = await syncWorkOSUser(workOSUser);
     socket.data.user = user;
 
     return next();

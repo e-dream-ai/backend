@@ -1008,14 +1008,10 @@ export const handleSignUpV2 = async (
       roleSlug: userRole.name,
     });
 
-    const user = new User();
-    user.workOSId = workOSUser.id;
-    user.email = email!;
-    user.signupInvite = invite;
-    user.role = userRole;
-    user.name = firstname;
-    user.lastName = lastname;
-    await userRepository.save(user);
+    /**
+     * Sync workos user
+     */
+    const user = await syncWorkOSUser(workOSUser, { invite: invite });
 
     tracker.sendEvent("USER_NEW_SIGNUP", { value: user.id });
 

@@ -3,6 +3,7 @@ import { GAEventKeys } from "constants/google-analytics.constants";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 import { GAEventKey } from "types/google-analytics.types";
+import crypto from "crypto";
 
 class GA4EventTracker {
   private baseUrl: string;
@@ -11,10 +12,26 @@ class GA4EventTracker {
     this.baseUrl = `https://www.google-analytics.com/mp/collect?measurement_id=${measurementId}&api_secret=${apiSecret}`;
   }
 
-  async sendEvent(eventKey: GAEventKey, eventParams: Record<string, unknown>) {
+  async sendEvent(
+    userId: string,
+    eventKey: GAEventKey,
+    eventParams: Record<string, unknown>,
+  ) {
     try {
+      const hash = crypto.createHash("sha256");
+
+      // Update the hash object with the user ID string
+      // (Node.js automatically encodes the string to UTF-8)
+      hash.update(userId);
+
+      // Generate and return the hexadecimal representation of the hash
+      const hashedUserId = hash.digest("hex");
+
       const eventConfig = GAEventKeys[eventKey];
+
       const payload = {
+        client_id: hashedUserId,
+        user_id: userId,
         events: [
           {
             name: `${eventConfig.category}_${eventConfig.action}`,

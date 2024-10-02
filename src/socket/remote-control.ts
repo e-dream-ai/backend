@@ -89,7 +89,10 @@ export const handleNewControlEvent = ({
         return;
       }
 
-      tracker.sendEvent("DREAM_PLAYED", { value: dream.id });
+      tracker.sendEvent(String(user.id), "DREAM_PLAYED", {
+        dream_uuid: dream.uuid,
+        user_id: user.id,
+      });
 
       data = { ...data, name: dream?.name };
     }
@@ -106,7 +109,10 @@ export const handleNewControlEvent = ({
         return;
       }
 
-      tracker.sendEvent("PLAYLIST_PLAYED", { value: playlist.uuid });
+      tracker.sendEvent(String(user.id), "PLAYLIST_PLAYED", {
+        playlist_uuid: playlist.uuid,
+        user_id: user.id,
+      });
 
       data = { ...data, name: playlist?.name };
     }

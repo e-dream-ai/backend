@@ -158,7 +158,7 @@ export const handleCreatePlaylist = async (
   res: ResponseType,
 ) => {
   const { name, nsfw } = req.body;
-  const user = res.locals.user;
+  const user = res.locals.user!;
 
   try {
     // create playlist
@@ -182,7 +182,9 @@ export const handleCreatePlaylist = async (
 
     await feedRepository.save(feedItem);
 
-    tracker.sendEvent("PLAYLIST_CREATED", { value: playlist.id });
+    tracker.sendEvent(String(user.id), "PLAYLIST_CREATED", {
+      playlist_uuid: playlist.uuid,
+    });
 
     return res
       .status(httpStatus.CREATED)
@@ -601,7 +603,9 @@ export const handleAddPlaylistItem = async (
       refreshPlaylistUpdatedAtTimestamp(playlist.id);
     }
 
-    tracker.sendEvent("PLAYLIST_ITEM_ADDED", { value: playlist.id });
+    tracker.sendEvent(String(user.id), "PLAYLIST_ITEM_ADDED", {
+      playlist_uuid: playlist.uuid,
+    });
 
     return res.status(httpStatus.CREATED).json(
       jsonResponse({

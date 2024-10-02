@@ -1013,7 +1013,7 @@ export const handleSignUpV2 = async (
      */
     const user = await syncWorkOSUser(workOSUser, { invite: invite });
 
-    tracker.sendEvent("USER_NEW_SIGNUP", { value: user.id });
+    tracker.sendEvent(String(user.id), "USER_NEW_SIGNUP", { user_id: user.id });
 
     let pendingAuthenticationToken: string | undefined;
 

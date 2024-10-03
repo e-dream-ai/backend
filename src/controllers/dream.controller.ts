@@ -65,6 +65,7 @@ import {
 } from "utils/s3.util";
 import { truncateString } from "utils/string.util";
 import { getUserIdentifier, isAdmin } from "utils/user.util";
+import { framesToSeconds } from "utils/video.utils";
 
 /**
  * Repositories
@@ -530,9 +531,6 @@ export const handleCompleteMultipartUpload = async (
     }
 
     tracker.sendEvent(String(user.id), "USER_NEW_UPLOAD", { user_id: user.id });
-    tracker.sendEvent(String(user.id), "DREAM_CREATED", {
-      dream_uuid: dream.uuid,
-    });
 
     return res
       .status(httpStatus.CREATED)
@@ -885,9 +883,9 @@ export const handleSetDreamStatusProcessed = async (
 ) => {
   const dreamUUID: string = req.params.uuid!;
   const processedVideoSize = req.body.processedVideoSize;
-  const processedVideoFrames = req.body.processedVideoFrames;
+  const processedVideoFrames = req.body.processedVideoFrames!;
   const processedVideoFPS = req.body.processedVideoFPS;
-  const activityLevel = req.body.activityLevel;
+  const activityLevel = req.body.activityLevel!;
   const filmstrip = req.body.filmstrip
     ? (req.body.filmstrip as number[])
     : undefined;
@@ -953,8 +951,9 @@ export const handleSetDreamStatusProcessed = async (
       await updateVideoServiceWorker(TURN_OFF_QUANTITY);
     }
 
-    tracker.sendEvent(String(user.id), "DREAM_UPLOADED_SIZE", {
+    tracker.sendEvent(String(user.id), "DREAM_UPLOADED", {
       dream_size: processedVideoSize,
+      dream_seconds: framesToSeconds(processedVideoFrames, activityLevel),
     });
 
     return res

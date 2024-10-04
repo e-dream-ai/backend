@@ -23,8 +23,6 @@ export const GAEventKeys = {
   PLAYLIST_CREATED: {
     category: "playlist",
     action: "created",
-    label: "playlist_uuid",
-    value: "playlist_uuid",
   },
   PLAYLIST_ITEM_ADDED: {
     category: "playlist",

@@ -4,6 +4,13 @@ export enum PlaylistItemType {
   DREAM = "dream",
 }
 
+export type GetPlaylistQuery = {
+  take?: number;
+  skip?: number;
+  search?: string;
+  userUUID?: string;
+};
+
 export type PlaylistParamsRequest = {
   uuid: string;
 };

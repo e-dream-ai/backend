@@ -2,6 +2,7 @@ import Joi from "joi";
 import {
   AddPlaylistItemRequest,
   CreatePlaylistRequest,
+  GetPlaylistQuery,
   OrderPlaylist,
   OrderPlaylistRequest,
   PlaylistItemType,
@@ -12,6 +13,12 @@ import {
 import { RequestValidationSchema } from "types/validator.types";
 
 export const requestPlaylistSchema: RequestValidationSchema = {
+  query: Joi.object<GetPlaylistQuery>().keys({
+    take: Joi.number(),
+    skip: Joi.number(),
+    search: Joi.string(),
+    userUUID: Joi.string().uuid(),
+  }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
   }),

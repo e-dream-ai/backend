@@ -7,6 +7,7 @@ import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import {
   getUsersSchema,
+  requestUserSchema,
   updateUserRoleSchema,
   validateUserSchema,
 } from "schemas/user.schema";
@@ -166,20 +167,19 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/{id}:
+ * /user/{uuid}:
  *  get:
  *    tags:
  *      - user
  *    summary: Gets user
  *    description: Gets user
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: path
- *        description: User id
+ *        description: User uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Gets user
@@ -206,13 +206,14 @@ userRouter.get(
  *      - apiKeyAuth: []
  */
 userRouter.get(
-  "/:id",
+  "/:uuid",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestUserSchema),
   userController.handleGetUser,
 );
 
@@ -265,7 +266,7 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/{id}:
+ * /user/{uuid}:
  *  put:
  *    tags:
  *      - user
@@ -278,13 +279,12 @@ userRouter.get(
  *          schema:
  *            $ref: '#/components/schemas/User'
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: User id
+ *        description: User uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Saves user avatar
@@ -311,33 +311,33 @@ userRouter.get(
  *      - apiKeyAuth: []
  */
 userRouter.put(
-  "/:id",
+  "/:uuid",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestUserSchema),
   validateUserSchema,
   userController.handleUpdateUser,
 );
 
 /**
  * @swagger
- * /user/{id}/avatar:
+ * /user/{uuid}/avatar:
  *  put:
  *    tags:
  *      - user
  *    summary: Updates user avatar
  *    description: Updates user avatar
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: User id
+ *        description: User uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    requestBody:
  *      required: true
  *      content:
@@ -375,7 +375,7 @@ userRouter.put(
  *      - apiKeyAuth: []
  */
 userRouter.put(
-  "/:id/avatar",
+  "/:uuid/avatar",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
@@ -383,12 +383,13 @@ userRouter.put(
     ROLES.ADMIN_GROUP,
   ]),
   multerSingleFileMiddleware,
+  validatorMiddleware(requestUserSchema),
   userController.handleUpdateUserAvatar,
 );
 
 /**
  * @swagger
- * /user/{id}/role:
+ * /user/{uuid}/role:
  *  put:
  *    tags:
  *      - user
@@ -404,13 +405,12 @@ userRouter.put(
  *              role:
  *                type: number
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: User id
+ *        description: User uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Saves user role
@@ -437,7 +437,7 @@ userRouter.put(
  *      - apiKeyAuth: []
  */
 userRouter.put(
-  "/:id/role",
+  "/:uuid/role",
   requireAuth,
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
   validatorMiddleware(updateUserRoleSchema),
@@ -446,7 +446,7 @@ userRouter.put(
 
 /**
  * @swagger
- * /user/{id}/apikey:
+ * /user/{uuid}/apikey:
  *  get:
  *    tags:
  *      - user
@@ -489,32 +489,32 @@ userRouter.put(
  *      - apiKeyAuth: []
  */
 userRouter.get(
-  "/:id/apikey",
+  "/:uuid/apikey",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestUserSchema),
   userController.handleGetApiKey,
 );
 
 /**
  * @swagger
- * /user/{id}/apikey:
+ * /user/{uuid}/apikey:
  *  put:
  *    tags:
  *      - user
  *    summary: Generates user api key
  *    description: Generates user api key
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: User id
+ *        description: User uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Generates user api key
@@ -535,32 +535,32 @@ userRouter.get(
  *      - apiKeyAuth: []
  */
 userRouter.put(
-  "/:id/apikey",
+  "/:uuid/apikey",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(requestUserSchema),
   userController.handleGenerateApiKey,
 );
 
 /**
  * @swagger
- * /user/{id}/apikey:
+ * /user/{uuid}/apikey:
  *  delete:
  *    tags:
  *      - user
  *    summary: Revokes user api key
  *    description: Revokes user api key
  *    parameters:
- *      - name: id
+ *      - name: uuid
  *        in: query
- *        description: User id
+ *        description: User uuid
  *        required: true
  *        schema:
- *          type: integer
- *          example: 1
+ *          type: string
  *    responses:
  *      '200':
  *        description: Revokes user api key
@@ -581,9 +581,10 @@ userRouter.put(
  *      - apiKeyAuth: []
  */
 userRouter.delete(
-  "/:id/apikey",
+  "/:uuid/apikey",
   requireAuth,
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  validatorMiddleware(requestUserSchema),
   userController.handleRevokeApiKey,
 );
 

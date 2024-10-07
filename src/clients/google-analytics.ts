@@ -13,7 +13,7 @@ class GA4EventTracker {
   }
 
   async sendEvent(
-    userId: string,
+    userUUID: string,
     eventKey: GAEventKey,
     eventParams: Record<string, unknown>,
   ) {
@@ -22,16 +22,16 @@ class GA4EventTracker {
 
       // Update the hash object with the user ID string
       // (Node.js automatically encodes the string to UTF-8)
-      hash.update(userId);
+      hash.update(userUUID);
 
       // Generate and return the hexadecimal representation of the hash
-      const hashedUserId = hash.digest("hex");
+      const hashedUserUUID = hash.digest("hex");
 
       const eventConfig = GAEventKeys[eventKey];
 
       const payload = {
-        client_id: hashedUserId,
-        user_id: userId,
+        client_id: hashedUserUUID,
+        user_id: userUUID,
         events: [
           {
             name: `${eventConfig.category}_${eventConfig.action}`,

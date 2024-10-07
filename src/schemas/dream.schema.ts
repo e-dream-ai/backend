@@ -30,7 +30,7 @@ export const getDreamsSchema: RequestValidationSchema = {
     status: Joi.string().valid(...Object.values(DreamStatusType)),
     skip: Joi.number(),
     take: Joi.number(),
-    userId: Joi.number(),
+    userUUID: Joi.string(),
   }),
 };
 

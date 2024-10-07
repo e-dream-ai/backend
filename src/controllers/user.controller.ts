@@ -17,6 +17,7 @@ import {
   GetUsersQuery,
   UpdateUserRequest,
   UpdateUserRoleRequest,
+  UserParamsRequest,
 } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { decrypt } from "utils/crypto.util";
@@ -147,18 +148,21 @@ export const handleGetUsers = async (
  * BAD_REQUEST 400 - error getting user
  *
  */
-export const handleGetUser = async (req: RequestType, res: ResponseType) => {
+export const handleGetUser = async (
+  req: RequestType<unknown, unknown, UserParamsRequest>,
+  res: ResponseType,
+) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const user = res.locals.user;
     const foundUser = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns({ userEmail: true }),
       relations: getUserFindOptionsRelations(),
     });
 
     if (!foundUser) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowedView = canExecuteAction({
@@ -184,7 +188,7 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
     );
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -276,19 +280,19 @@ export const handleGetCurrentPlaylist = async (
  *
  */
 export const handleUpdateUser = async (
-  req: RequestType<UpdateUserRequest>,
+  req: RequestType<UpdateUserRequest, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestUser = res.locals.user;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isOwner = user.id === requestUser?.id;
@@ -299,7 +303,7 @@ export const handleUpdateUser = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     const updateData: Partial<User> = {
@@ -337,7 +341,7 @@ export const handleUpdateUser = async (
       .json(jsonResponse({ success: true, data: { user: responseUser } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -353,20 +357,20 @@ export const handleUpdateUser = async (
  *
  */
 export const handleUpdateUserAvatar = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
-  const id: number = Number(req.params.id) || 0;
+  const uuid = req.params.uuid!;
   const requestUser = res.locals.user;
 
   try {
     const user = await userRepository.findOne({
-      where: { id: id! },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -376,7 +380,7 @@ export const handleUpdateUserAvatar = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     // update playlist
@@ -410,7 +414,7 @@ export const handleUpdateUserAvatar = async (
       .json(jsonResponse({ success: true, data: { user: updatedUser } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -426,20 +430,20 @@ export const handleUpdateUserAvatar = async (
  *
  */
 export const handleUpdateRole = async (
-  req: RequestType<UpdateUserRoleRequest>,
+  req: RequestType<UpdateUserRoleRequest, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestRole = req.body.role;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
       relations: getUserFindOptionsRelations(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const role = await roleRepository.findOneBy({ name: requestRole });
@@ -452,7 +456,7 @@ export const handleUpdateRole = async (
       .json(jsonResponse({ success: true, data: { user: updatedUser } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -467,17 +471,20 @@ export const handleUpdateRole = async (
  * BAD_REQUEST 400 - error getting apikey
  *
  */
-export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
+export const handleGetApiKey = async (
+  req: RequestType<unknown, unknown, UserParamsRequest>,
+  res: ResponseType,
+) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestUser = res.locals.user;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isOwner = user.id === requestUser?.id;
@@ -488,7 +495,7 @@ export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
     const apikey = await apiKeyRepository.findOne({
       where: {
@@ -499,7 +506,7 @@ export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
     });
 
     if (!apikey) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     /**
@@ -522,7 +529,7 @@ export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
     );
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -538,19 +545,19 @@ export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
  *
  */
 export const handleGenerateApiKey = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestUser = res.locals.user;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isOwner = user.id === requestUser?.id;
@@ -561,7 +568,7 @@ export const handleGenerateApiKey = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
     const foundApikey = await apiKeyRepository.findOne({
       where: {
@@ -582,7 +589,7 @@ export const handleGenerateApiKey = async (
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -598,19 +605,19 @@ export const handleGenerateApiKey = async (
  *
  */
 export const handleRevokeApiKey = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestUser = res.locals.user;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isOwner = user.id === requestUser?.id;
@@ -621,7 +628,7 @@ export const handleRevokeApiKey = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
     const foundApikey = await apiKeyRepository.findOne({
       where: {
@@ -632,7 +639,7 @@ export const handleRevokeApiKey = async (
     });
 
     if (!foundApikey) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     await apiKeyRepository.softRemove(foundApikey);
@@ -640,6 +647,6 @@ export const handleRevokeApiKey = async (
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };

@@ -93,18 +93,18 @@ export const handleGetFeed = async (
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const search = req.query.search ? String(req.query.search) : undefined;
-  const userId = Number(req.query.userId) || undefined;
+  const userUUID = req.query.userUUID;
   const type = req.query.type;
   const user = res.locals.user;
   const showNSFW = user?.nsfw;
 
   try {
     const dreamItemSearch: FindOptionsWhere<FeedItem> = {
-      user: userId ? { id: userId } : undefined,
+      user: userUUID ? { uuid: userUUID } : undefined,
       type: type,
     };
     const playlistItemSearch: FindOptionsWhere<FeedItem> = {
-      user: userId ? { id: userId } : undefined,
+      user: userUUID ? { uuid: userUUID } : undefined,
       type: type,
     };
 
@@ -151,7 +151,7 @@ export const handleGetMyDreams = async (
     PAGINATION.MAX_TAKE,
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
-  const user = res.locals.user;
+  const user = res.locals.user!;
   const showNSFW = user?.nsfw;
 
   try {

@@ -75,6 +75,19 @@ playlistRouter.get(
  *      - playlist
  *    summary: Gets playlists
  *    description: Gets playlists
+ *    parameters:
+ *       - schema:
+ *           type: number
+ *         name: take
+ *         in: query
+ *       - schema:
+ *           type: number
+ *         name: skip
+ *         in: query
+ *       - schema:
+ *           type: string
+ *         name: userUUID
+ *         in: query
  *    responses:
  *      '200':
  *        description: Gets playlists

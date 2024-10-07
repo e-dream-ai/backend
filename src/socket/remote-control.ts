@@ -89,7 +89,7 @@ export const handleNewControlEvent = ({
         return;
       }
 
-      tracker.sendEvent(String(user.id), "DREAM_PLAYED", {
+      tracker.sendEvent(user.uuid, "DREAM_PLAYED", {
         dream_uuid: dream.uuid,
         user_id: user.id,
       });
@@ -109,7 +109,7 @@ export const handleNewControlEvent = ({
         return;
       }
 
-      tracker.sendEvent(String(user.id), "PLAYLIST_PLAYED", {
+      tracker.sendEvent(user.uuid, "PLAYLIST_PLAYED", {
         playlist_uuid: playlist.uuid,
         user_id: user.id,
       });

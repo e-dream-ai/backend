@@ -4,12 +4,20 @@ import {
   GetUsersQuery,
   UpdateUserRequest,
   UpdateUserRoleRequest,
+  UserParamsRequest,
 } from "types/user.types";
 import { NextFunction } from "express";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
 import { mapValidatorErrors } from "middlewares/validator.middleware";
+import { RequestValidationSchema } from "types/validator.types";
+
+export const requestUserSchema: RequestValidationSchema = {
+  params: Joi.object<UserParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
 
 export const getUsersSchema = {
   query: Joi.object<GetUsersQuery>().keys({

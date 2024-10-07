@@ -75,6 +75,7 @@ export const getUserSelectedColumns = ({
 } = {}): FindOptionsSelect<User> => {
   return {
     id: true,
+    uuid: true,
     cognitoId: true,
     workOSId: true,
     name: true,
@@ -106,8 +107,7 @@ export const getUserFindOptionsRelations = (): FindOptionsRelations<User> => {
  * @returns user identifier
  */
 export const getUserIdentifier = (user: User) => {
-  const USER_IDENTIFIER_PREFIX = "USER_";
-  return user.cognitoId ?? `${USER_IDENTIFIER_PREFIX}${user.id}`;
+  return user.uuid;
 };
 
 /**

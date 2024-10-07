@@ -12,7 +12,7 @@ export type GetDreamsQuery = {
   status: DreamStatusType;
   take: number;
   skip: number;
-  userId: number;
+  userUUID: string;
 };
 
 export type UpdateDreamRequest = {

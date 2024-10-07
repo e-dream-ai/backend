@@ -19,6 +19,7 @@ import { FeedItemType } from "types/feed-item.types";
 import {
   AddPlaylistItemRequest,
   CreatePlaylistRequest,
+  GetPlaylistQuery,
   OrderPlaylistRequest,
   PlaylistItemType,
   PlaylistParamsRequest,
@@ -104,7 +105,7 @@ export const handleGetPlaylist = async (
  *
  */
 export const handleGetPlaylists = async (
-  req: RequestType,
+  req: RequestType<unknown, GetPlaylistQuery>,
   res: ResponseType,
 ) => {
   const take = Math.min(
@@ -112,7 +113,7 @@ export const handleGetPlaylists = async (
     PAGINATION.MAX_TAKE,
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
-  const userId = Number(req.query.userId) || undefined;
+  const userUUID: string = req.query.userUUID!;
 
   const search = req.query?.search
     ? { name: ILike(`%${req.query.search}%`) }
@@ -120,7 +121,7 @@ export const handleGetPlaylists = async (
 
   try {
     const [playlists, count] = await playlistRepository.findAndCount({
-      where: { user: { id: userId }, ...search },
+      where: { user: { uuid: userUUID }, ...search },
       select: getPlaylistSelectedColumns(),
       order: { updated_at: "DESC" },
       relations: {
@@ -138,7 +139,7 @@ export const handleGetPlaylists = async (
       .json(jsonResponse({ success: true, data: { playlists, count } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -182,7 +183,7 @@ export const handleCreatePlaylist = async (
 
     await feedRepository.save(feedItem);
 
-    tracker.sendEvent(String(user.id), "PLAYLIST_CREATED", {
+    tracker.sendEvent(user.uuid, "PLAYLIST_CREATED", {
       playlist_uuid: playlist.uuid,
     });
 
@@ -603,7 +604,7 @@ export const handleAddPlaylistItem = async (
       refreshPlaylistUpdatedAtTimestamp(playlist.id);
     }
 
-    tracker.sendEvent(String(user.id), "PLAYLIST_ITEM_ADDED", {
+    tracker.sendEvent(user.uuid, "PLAYLIST_ITEM_ADDED", {
       playlist_uuid: playlist.uuid,
     });
 

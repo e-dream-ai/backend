@@ -99,10 +99,10 @@ export const handleGetDreams = async (
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
     const status =
       (req.query.status as DreamStatusType) || DreamStatusType.PROCESSED;
-    const userId = Number(req.query.userId) || undefined;
+    const userUUID = req.query.userUUID;
 
     const [dreams, count] = await dreamRepository.findAndCount({
-      where: { user: { id: userId }, status },
+      where: { user: { uuid: userUUID }, status },
       relations: { user: true, displayedOwner: true },
       select: getDreamSelectedColumns({ originalVideo: isBrowser }),
       order: { created_at: "DESC" },
@@ -530,7 +530,7 @@ export const handleCompleteMultipartUpload = async (
       await processDreamRequest(updatedDream);
     }
 
-    tracker.sendEvent(String(user.id), "USER_NEW_UPLOAD", { user_id: user.id });
+    tracker.sendEvent(user.uuid, "USER_NEW_UPLOAD", { user_id: user.id });
 
     return res
       .status(httpStatus.CREATED)
@@ -951,7 +951,7 @@ export const handleSetDreamStatusProcessed = async (
       await updateVideoServiceWorker(TURN_OFF_QUANTITY);
     }
 
-    tracker.sendEvent(String(user.id), "DREAM_UPLOADED", {
+    tracker.sendEvent(user.uuid, "DREAM_UPLOADED", {
       dream_size: processedVideoSize,
       dream_seconds: framesToSeconds(processedVideoFrames, activityLevel),
     });

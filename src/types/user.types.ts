@@ -1,5 +1,9 @@
 import { RoleType } from "./role.types";
 
+export type UserParamsRequest = {
+  uuid: string;
+};
+
 export type GetUsersQuery = {
   take: number;
   skip: number;

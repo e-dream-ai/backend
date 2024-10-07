@@ -4,6 +4,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Generated,
   Index,
   JoinColumn,
   ManyToOne,
@@ -23,6 +24,11 @@ import { ApiKey } from "./ApiKey.entity";
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({ type: "string" })
+  @Generated("uuid")
+  @Index()
+  uuid: string;
 
   @Index()
   @Column({ nullable: true, type: "varchar", length: 64 })

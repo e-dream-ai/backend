@@ -40,6 +40,10 @@ dreamRouter.use("/job", jobRouter);
  *           type: number
  *         name: skip
  *         in: query
+ *       - schema:
+ *           type: string
+ *         name: userUUID
+ *         in: query
  *     responses:
  *       '200':
  *         description: Get dreams

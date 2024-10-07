@@ -4,6 +4,6 @@ export type GetFeedRequest = {
   take?: number;
   skip?: number;
   search?: string;
-  userId?: number;
+  userUUID?: string;
   type?: FeedItemType;
 };

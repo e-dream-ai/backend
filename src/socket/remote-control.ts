@@ -136,6 +136,8 @@ export const handleNewControlEvent = ({
         return;
       }
 
+      data = { ...data, name: dream?.name };
+
       await handleVoteDream({ dream: dream!, user, voteType: VoteType.UPVOTE });
     }
 
@@ -151,6 +153,8 @@ export const handleNewControlEvent = ({
         });
         return;
       }
+
+      data = { ...data, name: dream?.name };
 
       await handleVoteDream({
         dream: dream!,
@@ -178,6 +182,8 @@ export const handleNewControlEvent = ({
         return;
       }
 
+      data = { ...data, name: dream?.name };
+
       await handleVoteDream({ dream: dream!, user, voteType: VoteType.UPVOTE });
     }
 
@@ -199,6 +205,8 @@ export const handleNewControlEvent = ({
         });
         return;
       }
+
+      data = { ...data, name: dream?.name };
 
       await handleVoteDream({
         dream: dream!,

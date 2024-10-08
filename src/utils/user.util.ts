@@ -107,7 +107,7 @@ export const getUserFindOptionsRelations = (): FindOptionsRelations<User> => {
  * @returns user identifier
  */
 export const getUserIdentifier = (user: User) => {
-  return user.uuid;
+  return user.cognitoId ?? user.uuid;
 };
 
 /**

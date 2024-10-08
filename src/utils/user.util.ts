@@ -76,6 +76,7 @@ export const getUserSelectedColumns = ({
   return {
     id: true,
     cognitoId: true,
+    workOSId: true,
     name: true,
     description: true,
     avatar: true,

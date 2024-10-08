@@ -38,6 +38,7 @@ import {
   getUserSelectedColumns,
   isAdmin,
 } from "utils/user.util";
+import { workos } from "utils/workos.util";
 
 const userRepository = appDataSource.getRepository(User);
 const roleRepository = appDataSource.getRepository(Role);
@@ -313,6 +314,22 @@ export const handleUpdateUser = async (
 
       if (role) {
         updateData.role = role;
+      }
+
+      if (role && user.workOSId) {
+        const list = await workos.userManagement.listOrganizationMemberships({
+          organizationId: env.WORKOS_ORGANIZATION_ID,
+          userId: user.workOSId,
+        });
+
+        const organizationMembership = list?.data[0]?.id;
+
+        await workos.userManagement.updateOrganizationMembership(
+          organizationMembership,
+          {
+            roleSlug: role.name,
+          },
+        );
       }
     }
 

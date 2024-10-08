@@ -701,6 +701,8 @@ export const handleWorkOSCallback = async (
 
     const user = await syncWorkOSUser(workOSUser);
 
+    await setUserLastLoginAt(user);
+
     return handleWorkosAuthenticatedResponse(req as RequestType, res, {
       sealedSession,
       user,
@@ -747,6 +749,8 @@ export const loginWithPassword = async (
     res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
     const user = await syncWorkOSUser(workOSUser);
+
+    await setUserLastLoginAt(user);
 
     return handleWorkosAuthenticatedResponse(req as RequestType, res, {
       sealedSession,
@@ -796,6 +800,8 @@ export const loginWithMagicAuth = async (
       res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
       const user = await syncWorkOSUser(workOSUser);
+
+      await setUserLastLoginAt(user);
 
       return handleWorkosAuthenticatedResponse(req as RequestType, res, {
         sealedSession,

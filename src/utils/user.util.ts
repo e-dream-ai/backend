@@ -217,5 +217,8 @@ export const resetUserLastClientPingAt = async (user: User) => {
 };
 
 export const setUserLastLoginAt = async (user: User) => {
-  await userRepository.update(user.id, { last_login_at: new Date() });
+  await userRepository.update(user.id, {
+    last_login_at: new Date(),
+    verified: true,
+  });
 };

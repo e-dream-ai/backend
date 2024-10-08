@@ -11,7 +11,7 @@ import { ApiKey } from "entities/ApiKey.entity";
 import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
-import { FindOptionsWhere, ILike, IsNull, Not } from "typeorm";
+import { FindOptionsWhere, ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import {
   GetUsersQuery,
@@ -114,7 +114,7 @@ export const handleGetUsers = async (
      */
     const whereSentence = {
       name: search ? ILike(`%${search}%`) : undefined,
-      last_login_at: Not(IsNull()),
+      verified: true,
       role: role
         ? {
           name: role,

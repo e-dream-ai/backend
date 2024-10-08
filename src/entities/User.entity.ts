@@ -119,6 +119,15 @@ export class User {
   quota?: number;
 
   /**
+   * verified
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  verified: boolean;
+
+  /**
    * last_login_at saves the last login user date
    * users with null last_login_at are considered unverified (have never logged in)
    */

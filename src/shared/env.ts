@@ -129,6 +129,11 @@ export const env = cleanEnv(process.env, {
   WORKOS_ORGANIZATION_ID: str(),
 
   /**
+   * WORKOS_WEBHOOK_SECRET
+   */
+  WORKOS_WEBHOOK_SECRET: str(),
+
+  /**
    * BACKEND_DOMAIN
    */
   BACKEND_DOMAIN: str(),

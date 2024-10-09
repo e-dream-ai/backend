@@ -93,6 +93,7 @@ export const getPlaylistItemSelectedColumns =
       },
       playlistItem: {
         id: true,
+        uuid: true,
         name: true,
         thumbnail: true,
         nsfw: true,
@@ -141,7 +142,9 @@ export const findOnePlaylist = async ({
    */
   if (filter?.onlyProcessedDreams) {
     playlist.items = playlist.items.filter(
-      (item) => item?.dreamItem?.status === DreamStatusType.PROCESSED,
+      (item) =>
+        item?.dreamItem?.status === DreamStatusType.PROCESSED ||
+        Boolean(item?.playlistItem),
     );
   }
   return playlist;

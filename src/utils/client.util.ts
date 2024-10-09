@@ -1,5 +1,5 @@
 import appDataSource from "database/app-data-source";
-import { Dream, Playlist } from "entities";
+import { Dream, Playlist, PlaylistItem } from "entities";
 import { In } from "typeorm";
 import {
   ClientDream,
@@ -35,6 +35,30 @@ export const formatClientDream = (dream: Dream): ClientDream => ({
 });
 
 /**
+ * Flattens a nested structure of playlist items into a single array of dream items.
+ * @param {PlaylistItem[]} playlistItems
+ * @returns {Array<{uuid: string, timestamp: number}>} An array of flattened dream items
+ */
+const flattenPlaylistItems = (
+  items: PlaylistItem[],
+): Array<{ uuid: string; timestamp: number }> => {
+  return items.flatMap((item) => {
+    if (item.dreamItem) {
+      return [
+        {
+          uuid: item.dreamItem.uuid,
+          timestamp: item.dreamItem.updated_at.getTime(),
+        },
+      ];
+    } else if (item.playlistItem) {
+      // Recursively flatten nested playlist items
+      return flattenPlaylistItems(item.playlistItem.items ?? []);
+    }
+    return [];
+  });
+};
+
+/**
  *@param {Playlist} dream
  * @returns {ClientPlaylist} clientDream
  */
@@ -44,12 +68,7 @@ export const formatClientPlaylist = (playlist: Playlist): ClientPlaylist => ({
   artist: playlist?.displayedOwner?.name ?? playlist?.user?.name ?? null,
   thumbnail: playlist?.thumbnail ?? null,
   nsfw: playlist.nsfw,
-  contents: playlist?.items
-    ?.filter((item) => Boolean(item?.dreamItem))
-    .map((item) => ({
-      uuid: item.dreamItem.uuid,
-      timestamp: item.dreamItem.updated_at.getTime(),
-    })),
+  contents: flattenPlaylistItems(playlist?.items ?? []),
   timestamp: playlist.updated_at.getTime(),
 });
 

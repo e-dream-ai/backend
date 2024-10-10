@@ -5,6 +5,7 @@ export const env = cleanEnv(process.env, {
   npm_package_version: str(),
   NODE_ENV: str(),
   PORT: port(),
+  LOGGING: bool(),
 
   /**
    * AWS

@@ -3,6 +3,7 @@ import httpStatus from "http-status";
 import Joi from "joi";
 import { RequestValidationSchema } from "types/validator.types";
 import { jsonResponse } from "utils/responses.util";
+import { APP_LOGGER } from "shared/logger";
 
 export const mapValidatorErrors = (error: Joi.ValidationError | undefined) =>
   error?.details?.map((err) => ({
@@ -34,17 +35,16 @@ const validatorMiddleware = (schema: RequestValidationSchema) => {
       next();
     } else {
       // mapping erros to response
+      APP_LOGGER.error(error);
       const errors = mapValidatorErrors(error);
 
-      res
-        .status(httpStatus.BAD_REQUEST)
-        .json(
-          jsonResponse({
-            success: false,
-            data: errors,
-            message: error.message,
-          }),
-        );
+      res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          data: errors,
+          message: error.message,
+        }),
+      );
     }
   };
 };

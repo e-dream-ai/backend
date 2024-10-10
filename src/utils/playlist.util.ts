@@ -71,6 +71,9 @@ export const getPlaylistFindOptionsRelations =
         },
         dreamItem: { user: true, displayedOwner: true },
       },
+      playlistItems: {
+        playlist: true,
+      },
     };
   };
 

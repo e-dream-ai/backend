@@ -24,6 +24,8 @@ export const workOSCookieConfig: CookieOptions = {
   httpOnly: true,
   secure: !IS_DEVELOPMENT,
   sameSite: "lax",
+  // 365 days in ms (same config as in workos configuration for authentication panel)
+  maxAge: 365 * 24 * 60 * 60 * 1000,
 };
 
 /**

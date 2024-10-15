@@ -96,7 +96,7 @@ authRouter.get(
 );
 
 /**
- * /auth/magic:
+ * /auth/login:
  *  post:
  *    tags:
  *      - auth

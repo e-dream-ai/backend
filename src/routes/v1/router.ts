@@ -14,6 +14,7 @@ import inviteRouter from "routes/v1/invite.routes";
 import authRouterV2 from "routes/v2/auth.routes";
 import webhooksRouterV2 from "routes/v2/webhooks.routes";
 import { jsonResponse } from "utils/responses.util";
+import rateLimit from "express-rate-limit";
 
 export const registerRoutes = (app: express.Application) => {
   const version = env.npm_package_version;
@@ -367,6 +368,17 @@ export const registerRoutes = (app: express.Application) => {
     res.status(httpStatus.OK).send({
       message: `e-dream.ai is running api at version ${version}`,
     });
+  });
+
+  const pingLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: 1000, // limit each IP to 1000 requests per windowMs
+  });
+
+  app.head("/api/v1/ping", pingLimiter, (req, res) => {
+    // Cache for 1 minute
+    res.set("Cache-Control", "public, max-age=60");
+    res.sendStatus(200);
   });
 
   // register feature router

@@ -135,8 +135,7 @@ export const findOnePlaylist = async ({
    */
   if (!filter?.nsfw) {
     playlist.items = playlist.items.filter(
-      (item) =>
-        item?.dreamItem?.nsfw === false || item?.playlist?.nsfw === false,
+      (item) => !(item?.dreamItem?.nsfw ?? item?.playlistItem?.nsfw),
     );
   }
 

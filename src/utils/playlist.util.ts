@@ -132,6 +132,7 @@ export const findOnePlaylist = async ({
 
   /**
    * Filter for NSFW
+   * If user nsfw flag is not active, remove all content that has nsfw flag active (playlist and dreams)
    */
   if (!filter?.nsfw) {
     playlist.items = playlist.items.filter(

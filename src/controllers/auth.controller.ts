@@ -808,7 +808,26 @@ export const loginWithMagicAuth = async (
         user,
       });
     } else {
-      // request a code to be sent to the email
+      /**
+       * Verify if user exists
+       */
+      const users = await workos.userManagement.listUsers({
+        email,
+      });
+
+      if (users.data.length === 0) {
+        // Handle user already exists
+        return res.status(httpStatus.BAD_REQUEST).json(
+          jsonResponse({
+            success: false,
+            message: AUTH_MESSAGES.USER_NOT_FOUND,
+          }),
+        );
+      }
+
+      /**
+       * Request a code to be sent by email
+       */
       await workos.userManagement.createMagicAuth({
         email,
       });

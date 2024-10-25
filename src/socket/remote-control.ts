@@ -10,6 +10,7 @@ import {
   getDreamSelectedColumns,
   handleVoteDream,
 } from "utils/dream.util";
+import { SessionTracker } from "utils/socket-session-tracker";
 import {
   removeUserCurrentPlaylist,
   setUserCurrentDream,
@@ -24,8 +25,15 @@ const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
 const PING_EVENT = "ping";
 const GOOD_BYE_EVENT = "goodbye";
 
+const sessionTracker = new SessionTracker();
+
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
+
+  /**
+   * Create session
+   */
+  sessionTracker.createSession(socket.id, user.uuid);
 
   /**
    * Joins a room to avoid send all messages to all users
@@ -41,7 +49,10 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   /**
    * Register ping handler
    */
-  socket.on(PING_EVENT, handlePingEvent({ socket, user, roomId }));
+  socket.on(
+    PING_EVENT,
+    handlePingEvent({ socket, user, roomId, sessionTracker }),
+  );
 
   /**
    * Register goodbye handler
@@ -91,7 +102,6 @@ export const handleNewControlEvent = ({
 
       tracker.sendEvent(user.uuid, "DREAM_PLAYED", {
         dream_uuid: dream.uuid,
-        user_id: user.id,
       });
 
       data = { ...data, name: dream?.name };
@@ -111,7 +121,6 @@ export const handleNewControlEvent = ({
 
       tracker.sendEvent(user.uuid, "PLAYLIST_PLAYED", {
         playlist_uuid: playlist.uuid,
-        user_id: user.id,
       });
 
       data = { ...data, name: playlist?.name };
@@ -216,6 +225,13 @@ export const handleNewControlEvent = ({
     }
 
     /**
+     * Send event to GA
+     */
+    tracker.sendEvent(user.uuid, "REMOTE_CONTROL", {
+      control: event,
+    });
+
+    /**
      * Emit boradcast {NEW_REMOTE_CONTROL_EVENT} event
      */
     socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
@@ -235,16 +251,24 @@ export const handlePingEvent = ({
   user,
   socket,
   roomId,
+  sessionTracker,
 }: {
   user: User;
   socket: Socket;
   roomId: string;
+  sessionTracker: SessionTracker;
 }) => {
   return async () => {
     /**
      * Save last client ping time
      */
     await setUserLastClientPingAt(user);
+
+    /**
+     * Send event to GA
+     */
+    // tracker.sendEvent(user.uuid, "CLIENT_PING", {});
+    sessionTracker.handlePing(socket.id);
 
     /**
      * Emit boradcast {PING_EVENT} event

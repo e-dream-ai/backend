@@ -36,6 +36,7 @@ class GA4EventTracker {
           {
             name: `${eventConfig.category}_${eventConfig.action}`,
             params: {
+              user_id: userUUID,
               ...eventParams, // Include all other parameters
             },
           },

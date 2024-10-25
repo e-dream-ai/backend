@@ -1,3 +1,4 @@
+import { tracker } from "clients/google-analytics";
 import appDataSource from "database/app-data-source";
 import { Dream, Vote } from "entities";
 import { DefaultPlaylist } from "entities/DefaultPlaylist.entity";
@@ -63,6 +64,11 @@ export const handleHello = async (req: RequestType, res: ResponseType) => {
    *  if there's no playlist, will return empty string ""
    */
   const currentPlaylistUUID = user?.currentPlaylist?.uuid ?? "";
+
+  /**
+   * Send event to GA
+   */
+  tracker.sendEvent(user.uuid, "CLIENT_HELLO", {});
 
   try {
     return res.status(httpStatus.OK).json(

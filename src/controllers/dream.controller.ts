@@ -952,8 +952,8 @@ export const handleSetDreamStatusProcessed = async (
     }
 
     tracker.sendEvent(user.uuid, "DREAM_UPLOADED", {
-      dream_size: processedVideoSize,
-      size_bytes: framesToSeconds(processedVideoFrames, activityLevel),
+      size_bytes: processedVideoSize,
+      duration_seconds: framesToSeconds(processedVideoFrames, activityLevel),
     });
 
     return res

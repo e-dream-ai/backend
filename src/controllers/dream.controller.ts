@@ -530,7 +530,7 @@ export const handleCompleteMultipartUpload = async (
       await processDreamRequest(updatedDream);
     }
 
-    tracker.sendEvent(user.uuid, "USER_NEW_UPLOAD", { user_id: user.id });
+    tracker.sendEvent(user.uuid, "USER_NEW_UPLOAD", {});
 
     return res
       .status(httpStatus.CREATED)
@@ -953,7 +953,7 @@ export const handleSetDreamStatusProcessed = async (
 
     tracker.sendEvent(user.uuid, "DREAM_UPLOADED", {
       dream_size: processedVideoSize,
-      dream_seconds: framesToSeconds(processedVideoFrames, activityLevel),
+      size_bytes: framesToSeconds(processedVideoFrames, activityLevel),
     });
 
     return res

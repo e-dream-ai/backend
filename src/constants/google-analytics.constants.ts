@@ -32,4 +32,24 @@ export const GAEventKeys = {
     category: "playlist",
     action: "played",
   },
+  REMOTE_CONTROL: {
+    category: "remote_control",
+    action: "emitted",
+  },
+  CLIENT_START: {
+    category: "client",
+    action: "start",
+  },
+  CLIENT_END: {
+    category: "client",
+    action: "end",
+  },
+  CLIENT_HELLO: {
+    category: "client",
+    action: "hello",
+  },
+  CLIENT_PING: {
+    category: "client",
+    action: "ping",
+  },
 };

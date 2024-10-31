@@ -14,6 +14,8 @@ type SessionData = {
   id: string;
   socketId: string;
   userUUID: string;
+  clientType?: string;
+  clientVersion?: string;
   startTime: number;
   lastPing: number;
   totalTimeInSeconds: number;
@@ -66,11 +68,23 @@ export class SessionTracker extends EventEmitter {
     );
   }
 
-  createSession(socketId: string, userUUID: string): SessionData {
+  createSession({
+    socketId,
+    userUUID,
+    clientType,
+    clientVersion,
+  }: {
+    socketId: string;
+    userUUID: string;
+    clientType?: string;
+    clientVersion?: string;
+  }): SessionData {
     const session: SessionData = {
       id: uuidv4(),
       socketId,
       userUUID,
+      clientType,
+      clientVersion,
       startTime: Date.now(),
       lastPing: Date.now(),
       totalTimeInSeconds: 0,
@@ -83,6 +97,8 @@ export class SessionTracker extends EventEmitter {
     tracker.sendEvent(session.userUUID, "CLIENT_START", {
       socket_session_id: session.id,
       start_time: session.startTime,
+      app_type: session.clientType,
+      app_version: session.clientVersion,
     });
     return session;
   }
@@ -107,6 +123,8 @@ export class SessionTracker extends EventEmitter {
     tracker.sendEvent(session.userUUID, "CLIENT_PING", {
       socket_session_id: session.id,
       duration_seconds: Math.round(timeSinceLastPing / 1000),
+      app_type: session.clientType,
+      app_version: session.clientVersion,
     });
 
     return session;
@@ -140,6 +158,8 @@ export class SessionTracker extends EventEmitter {
       start_time: sessionMetrics.startTime,
       end_time: endTime,
       duration_seconds: sessionMetrics.totalTimeInSeconds,
+      app_type: session.clientType,
+      app_version: session.clientVersion,
     });
     return sessionMetrics;
   }

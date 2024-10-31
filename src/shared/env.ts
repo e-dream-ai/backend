@@ -143,6 +143,11 @@ export const env = cleanEnv(process.env, {
    */
   GA_MEASUREMENT_ID: str(),
   GA_API_SECRET: str(),
+
+  /**
+   * Designed Playlist UUID
+   */
+  DESIGNED_PLAYLIST_UUID: str(),
 });
 
 export default env;

@@ -280,13 +280,14 @@ export const handleDownvoteDream = async ({
  * @returns {string[]} dreams uuids
  */
 export const getTopDreams = async (take: number = 50) => {
-  const dreams = await dreamRepository.find({
-    take,
-    where: {
-      status: DreamStatusType.PROCESSED,
-    },
-    order: { upvotes: "DESC" },
-  });
+  const dreams = await dreamRepository
+    .createQueryBuilder()
+    .where("Dream.deleted_at IS NULL")
+    .andWhere("Dream.status = :status", { status: DreamStatusType.PROCESSED })
+    .orderBy("Dream.upvotes", "DESC")
+    .addOrderBy("RANDOM()")
+    .take(take)
+    .getMany();
 
   return dreams.map((dream) => dream.uuid);
 };

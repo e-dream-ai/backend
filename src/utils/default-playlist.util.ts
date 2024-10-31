@@ -1,13 +1,17 @@
-import { User } from "entities";
+import { Playlist, User } from "entities";
 import appDataSource from "database/app-data-source";
 import { DefaultPlaylist } from "entities/DefaultPlaylist.entity";
 import { getTopDreams } from "./dream.util";
 import { VoteType } from "types/vote.types";
+// import { DEFAULT_PLAYLIST_SIZE } from "constants/playlist.constants";
+import { PlaylistItemType } from "types/playlist.types";
+import env from "shared/env";
 
 /**
  * Repositories
  */
 const userRepository = appDataSource.getRepository(User);
+const playlistRepository = appDataSource.getRepository(Playlist);
 const defaultPlaylistRepository = appDataSource.getRepository(DefaultPlaylist);
 
 /**
@@ -39,25 +43,52 @@ export const computeUserDefaultPlaylist = async (
   user: User,
   topDreams: string[],
 ) => {
-  const DEFAULT_PLAYLIST_SIZE = 20;
+  const designedPlaylist = await playlistRepository.findOne({
+    where: {
+      uuid: env.DESIGNED_PLAYLIST_UUID,
+    },
+    relations: {
+      items: {
+        playlistItem: true,
+        dreamItem: true,
+      },
+    },
+  });
+
   /**
-   * filter user downvotes
+   * dreams from designed playlist uuids
    */
-  const userDownvotes = user.votes
+  const designedPlaylistUUIDS =
+    designedPlaylist?.items
+      ?.filter((item) => item.type === PlaylistItemType.DREAM)
+      .map((item) => item?.dreamItem.uuid) ?? [];
+
+  /**
+   * dreams user downvotes uuids
+   */
+  const userDownvotesUUIDS = user.votes
     .filter((vote) => vote.vote === VoteType.DOWNVOTE)
     .map((vote) => vote?.dream?.uuid ?? "");
 
+  let defaultPlaylist = [...designedPlaylistUUIDS, ...topDreams];
+
   /**
-   * remove downvotes from
+   * remove downvotes from defaultPlaylist
    */
-  const filteredTopDreams = topDreams.filter(
-    (item) => !userDownvotes.includes(item),
+  defaultPlaylist = defaultPlaylist.filter(
+    (item) => !userDownvotesUUIDS.includes(item),
   );
 
-  const playlistData: string[] = filteredTopDreams.slice(
-    0,
-    DEFAULT_PLAYLIST_SIZE,
+  /**
+   * remove duplicates from defaultPlaylist
+   */
+  defaultPlaylist = defaultPlaylist.filter(
+    (item, index) => defaultPlaylist.indexOf(item) === index,
   );
+  /**
+   * take only DEFAULT_PLAYLIST_SIZE number of items
+   */
+  // .slice(0, DEFAULT_PLAYLIST_SIZE);
 
   let playlist = await defaultPlaylistRepository.findOne({
     where: { user: { id: user.id } },
@@ -65,12 +96,12 @@ export const computeUserDefaultPlaylist = async (
 
   if (playlist) {
     // Update existing default playlist
-    playlist.data = playlistData;
+    playlist.data = defaultPlaylist;
   } else {
     // Create new default playlist
     playlist = defaultPlaylistRepository.create({
       user: user,
-      data: playlistData,
+      data: defaultPlaylist,
     });
   }
 
@@ -104,7 +135,7 @@ export const computeAllUsersDefaultPlaylist = async () => {
     }
 
     for (const user of users) {
-      await computeUserDefaultPlaylist(user, topDreams);
+      await computeUserDefaultPlaylist(user, [...topDreams]);
     }
 
     offset += users.length;

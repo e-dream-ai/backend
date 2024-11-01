@@ -4,6 +4,8 @@ import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 import { GAEventKey } from "types/google-analytics.types";
 import crypto from "crypto";
+import { ResponseType } from "types/express.types";
+import { Socket } from "socket.io";
 
 class GA4EventTracker {
   private baseUrl: string;
@@ -48,6 +50,36 @@ class GA4EventTracker {
     } catch (error) {
       APP_LOGGER.error(error);
     }
+  }
+
+  async sendEventWithRequestContext(
+    res: ResponseType,
+    userUUID: string,
+    eventKey: GAEventKey,
+    eventParams: Record<string, unknown>,
+  ) {
+    const params = {
+      ...eventParams,
+      app_type: res.locals.requestContext?.type,
+      app_version: res.locals.requestContext?.version,
+    };
+    this.sendEvent(userUUID, eventKey, params);
+  }
+
+  async sendEventWithSocketRequestContext(
+    socket: Socket,
+    userUUID: string,
+    eventKey: GAEventKey,
+    eventParams: Record<string, unknown>,
+  ) {
+    const params = {
+      ...eventParams,
+      app_type: socket.data.requestContext?.type,
+      app_version: socket.data.requestContext?.version,
+    };
+    this.sendEvent(userUUID, eventKey, params);
+
+    console.log({ params });
   }
 }
 

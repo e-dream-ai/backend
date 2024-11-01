@@ -1,6 +1,7 @@
 /* eslint-disable */
 import { User } from "entities";
 import { Socket } from "socket.io";
+import { RequestContext } from "./express.types";
 /* eslint-enable */
 
 /**
@@ -8,7 +9,7 @@ import { Socket } from "socket.io";
  */
 declare module "socket.io" {
   interface Socket {
-    data?: { user?: User };
+    data?: { user?: User; requestContext?: RequestContext };
     cookies: {
       [key: string]: string;
     };

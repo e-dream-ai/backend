@@ -68,7 +68,7 @@ export const handleHello = async (req: RequestType, res: ResponseType) => {
   /**
    * Send event to GA
    */
-  tracker.sendEvent(user.uuid, "CLIENT_HELLO", {});
+  tracker.sendEventWithRequestContext(res, user.uuid, "CLIENT_HELLO", {});
 
   try {
     return res.status(httpStatus.OK).json(

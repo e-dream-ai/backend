@@ -16,11 +16,18 @@ export type RequestType<
 
 // export interface ResponseType extends Response { Locals: LocalsType }
 
+export type RequestContext = {
+  type?: string;
+  version?: string;
+  userAgent?: string;
+};
+
 export type LocalsType = {
   user?: User;
   userRole?: string;
   workosUser?: WorkOSUser;
   accessToken?: string;
+  requestContext?: RequestContext;
 } & Record<string, unknown>;
 
 export type ResponseType = Response<Record<string, unknown>, LocalsType>;

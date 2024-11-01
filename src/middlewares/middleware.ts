@@ -18,6 +18,10 @@ import configurePassport from "clients/passport.client";
 import cookieParser from "cookie-parser";
 import { handleCustomOrigin } from "utils/api.util";
 import { ALLOWED_HEADERS, ALLOWED_METHODS } from "constants/api.constants";
+import {
+  requestContextMiddleware,
+  socketRequestContextMiddleware,
+} from "./request-context-middleware";
 
 const swaggerPath = "/api/v1/api-docs";
 
@@ -88,6 +92,8 @@ export const registerMiddlewares = (app: express.Application) => {
     }),
   );
 
+  app.use(requestContextMiddleware);
+
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -98,6 +104,7 @@ export const registerMiddlewares = (app: express.Application) => {
 export const socketRegisterMiddlewares = (namespace: Namespace) => {
   // auth middleware
   namespace.use(socketCookieParserMiddleware);
+  namespace.use(socketRequestContextMiddleware);
   namespace.use(socketAuthMiddleware);
   namespace.use(socketWorkOSAuth);
 };

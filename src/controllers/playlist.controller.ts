@@ -183,7 +183,7 @@ export const handleCreatePlaylist = async (
 
     await feedRepository.save(feedItem);
 
-    tracker.sendEvent(user.uuid, "PLAYLIST_CREATED", {
+    tracker.sendEventWithRequestContext(res, user.uuid, "PLAYLIST_CREATED", {
       playlist_uuid: playlist.uuid,
     });
 
@@ -604,7 +604,7 @@ export const handleAddPlaylistItem = async (
       refreshPlaylistUpdatedAtTimestamp(playlist.id);
     }
 
-    tracker.sendEvent(user.uuid, "PLAYLIST_ITEM_ADDED", {
+    tracker.sendEventWithRequestContext(res, user.uuid, "PLAYLIST_ITEM_ADDED", {
       playlist_uuid: playlist.uuid,
     });
 

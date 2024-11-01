@@ -5,7 +5,7 @@ import { remoteControlSchema } from "schemas/socket.schema";
 import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import { VoteType } from "types/vote.types";
-import { getClientInfo } from "utils/api.util";
+import { getRequestContext } from "utils/api.util";
 import {
   findOneDream,
   getDreamSelectedColumns,
@@ -35,7 +35,7 @@ const sessionTracker = new SessionTracker({
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
 
-  const clientInfo = getClientInfo(socket.request.headers);
+  const clientInfo = getRequestContext(socket.request.headers);
 
   /**
    * Create session
@@ -112,9 +112,14 @@ export const handleNewControlEvent = ({
         return;
       }
 
-      tracker.sendEvent(user.uuid, "DREAM_PLAYED", {
-        dream_uuid: dream.uuid,
-      });
+      tracker.sendEventWithSocketRequestContext(
+        socket,
+        user.uuid,
+        "DREAM_PLAYED",
+        {
+          dream_uuid: dream.uuid,
+        },
+      );
 
       data = { ...data, name: dream?.name };
     }
@@ -131,9 +136,14 @@ export const handleNewControlEvent = ({
         return;
       }
 
-      tracker.sendEvent(user.uuid, "PLAYLIST_PLAYED", {
-        playlist_uuid: playlist.uuid,
-      });
+      tracker.sendEventWithSocketRequestContext(
+        socket,
+        user.uuid,
+        "PLAYLIST_PLAYED",
+        {
+          playlist_uuid: playlist.uuid,
+        },
+      );
 
       data = { ...data, name: playlist?.name };
     }
@@ -239,9 +249,14 @@ export const handleNewControlEvent = ({
     /**
      * Send event to GA
      */
-    tracker.sendEvent(user.uuid, "REMOTE_CONTROL", {
-      control: event,
-    });
+    tracker.sendEventWithSocketRequestContext(
+      socket,
+      user.uuid,
+      "REMOTE_CONTROL",
+      {
+        control: event,
+      },
+    );
 
     /**
      * Emit boradcast {NEW_REMOTE_CONTROL_EVENT} event
@@ -279,7 +294,7 @@ export const handlePingEvent = ({
     /**
      * Send event to GA
      */
-    // tracker.sendEvent(user.uuid, "CLIENT_PING", {});
+    // tracker.sendEventWithSocketRequestContext(socket, user.uuid, "CLIENT_PING", {});
     sessionTracker.handlePing(socket.id);
 
     /**

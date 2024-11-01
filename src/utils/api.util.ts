@@ -29,15 +29,18 @@ export function handleCustomOrigin(
   }
 }
 
-export function getClientInfo(headers: IncomingHttpHeaders) {
+export function getRequestContext(headers: IncomingHttpHeaders) {
   const userAgent: string | undefined = headers["user-agent"];
-  // Check for both
-  const clientVersion: string | undefined = (headers["edream-client-version"] ||
-    headers["e-dream-client-version"]) as string;
 
-  const clientType: string = (
-    (headers["edream-client-type"] || headers["e-dream-client-type"]) as string
-  )?.toLowerCase();
+  const version: string | undefined =
+    ((headers["edream-client-version"] ||
+      headers["e-dream-client-version"]) as string) ?? "unknown";
+
+  const type: string =
+    (
+      (headers["edream-client-type"] ||
+        headers["e-dream-client-type"]) as string
+    )?.toLowerCase() ?? "web";
 
   // if (!clientVersion || !clientType) {
   //   throw new Error("Missing client version or type.");
@@ -52,8 +55,8 @@ export function getClientInfo(headers: IncomingHttpHeaders) {
   // }
 
   return {
-    type: clientType,
-    version: clientVersion,
+    type,
+    version,
     userAgent,
   };
 }

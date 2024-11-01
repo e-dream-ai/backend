@@ -1038,7 +1038,7 @@ export const handleSignUpV2 = async (
      */
     const user = await syncWorkOSUser(workOSUser, { invite: invite });
 
-    tracker.sendEvent(user.uuid, "USER_NEW_SIGNUP", {});
+    tracker.sendEventWithRequestContext(res, user.uuid, "USER_NEW_SIGNUP", {});
 
     let pendingAuthenticationToken: string | undefined;
 

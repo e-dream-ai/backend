@@ -53,6 +53,11 @@ export const computeUserDefaultPlaylist = async (
         dreamItem: true,
       },
     },
+    order: {
+      items: {
+        order: "ASC",
+      },
+    },
   });
 
   /**

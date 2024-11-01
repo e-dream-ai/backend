@@ -5,6 +5,7 @@ import { remoteControlSchema } from "schemas/socket.schema";
 import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import { VoteType } from "types/vote.types";
+import { getClientInfo } from "utils/api.util";
 import {
   findOneDream,
   getDreamSelectedColumns,
@@ -34,10 +35,17 @@ const sessionTracker = new SessionTracker({
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
 
+  const clientInfo = getClientInfo(socket.request.headers);
+
   /**
    * Create session
    */
-  sessionTracker.createSession(socket.id, user.uuid);
+  sessionTracker.createSession({
+    socketId: socket.id,
+    userUUID: user.uuid,
+    clientType: clientInfo.type,
+    clientVersion: clientInfo.version,
+  });
 
   /**
    * Joins a room to avoid send all messages to all users

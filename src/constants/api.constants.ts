@@ -41,6 +41,10 @@ export const ALLOWED_HEADERS = [
   "Authorization",
   "Access-Control-Allow-Origin",
   "Access-Control-Allow-Credentials",
+  "E-Dream-Client-Type",
+  "Edream-Client-Type",
+  "E-Dream-Client-Version",
+  "Edream-Client-Version",
 ];
 
 /**
@@ -55,3 +59,9 @@ export const ORIGINS = [
   env.FRONTEND_URL,
   // Add any other specific origins here
 ];
+
+export const CLIENT_TYPES = {
+  WEB: "web",
+  DESKTOP: "desktop",
+  REACT: "react",
+};

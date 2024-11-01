@@ -5,4 +5,8 @@ export const ALLOWED_HEADERS = [
   "Authorization",
   "Access-Control-Allow-Origin",
   "Access-Control-Allow-Credentials",
+  "E-Dream-Client-Type",
+  "Edream-Client-Type",
+  "E-Dream-Client-Version",
+  "Edream-Client-Version",
 ];

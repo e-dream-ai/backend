@@ -90,7 +90,11 @@ export const populateDefautPlaylist = async (
     select: ["uuid", "updated_at"],
   });
 
-  const clientDreams: PartialClientDream[] = dreams.map((dream) => ({
+  const orderedDreams = uuids.map(
+    (uuid) => dreams.find((d) => uuid == d.uuid)!,
+  );
+
+  const clientDreams: PartialClientDream[] = orderedDreams.map((dream) => ({
     uuid: dream.uuid,
     timestamp: dream?.updated_at?.getTime(),
   }));

@@ -2,8 +2,14 @@ export const REMOTE_CONTROLS = {
   PLAYING: "playing",
   PLAY_DREAM: "play_dream",
   PLAY_PLAYLIST: "play_playlist",
+  /**
+   * `LIKE_DREAM` and `DISLIKE_DREAM` needs a dream uuid to upvote or downvote it
+   */
   LIKE_DREAM: "like",
   DISLIKE_DREAM: "dislike",
+  /**
+   * `LIKE_CURRENT_DREAM` and `DISLIKE_CURRENT_DREAM` upvotes or downvotes current user dream
+   */
   LIKE_CURRENT_DREAM: "like_current_dream",
   DISLIKE_CURRENT_DREAM: "dislike_current_dream",
   GO_PREVIOUS_DREAM: "previous",

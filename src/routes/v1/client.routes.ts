@@ -4,7 +4,10 @@ import { Router } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
-import { clientDreamsSchema } from "schemas/client.schema";
+import {
+  clientDreamsRequestSchema,
+  clientDreamsSchema,
+} from "schemas/client.schema";
 import { requestDreamSchema } from "schemas/dream.schema";
 import { requestPlaylistSchema } from "schemas/playlist.schema";
 
@@ -260,6 +263,64 @@ clientRouter.get(
   ]),
   validatorMiddleware(clientDreamsSchema),
   clientController.handleGetDreams,
+);
+
+/**
+ * @swagger
+ * /client/dream:
+ *  post:
+ *    tags:
+ *      - client
+ *    summary: Gets dreams
+ *    description: Gets dreams
+ *    requestBody:
+ *      required: true
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            properties:
+ *              uuids:
+ *                type: array
+ *                items:
+ *                  type: string
+ *    responses:
+ *      '200':
+ *        description: Gets dreams
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dreams:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/ClientDream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+clientRouter.post(
+  "/dream",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(clientDreamsRequestSchema),
+  clientController.handleDreamsRequest,
 );
 
 /**

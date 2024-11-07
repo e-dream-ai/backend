@@ -8,6 +8,7 @@ import {
   ClientDream,
   ClientPlaylist,
   GetDreamsQuery,
+  GetDreamsRequestQuery,
 } from "types/client.types";
 import { DreamParamsRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
@@ -237,6 +238,51 @@ export const handleGetDreams = async (
   res: ResponseType,
 ) => {
   const uuids: string[] = req.query.uuids ? req.query.uuids?.split(",") : [];
+
+  try {
+    const dreams = await dreamRepository.find({
+      where: { uuid: In(uuids) },
+      relations: { user: true, displayedOwner: true, playlistItems: true },
+      select: getDreamSelectedColumns({
+        originalVideo: true,
+        featureRank: true,
+      }),
+    });
+
+    const clientDreams: ClientDream[] = dreams?.map((dream) =>
+      formatClientDream(dream),
+    );
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          dreams: clientDreams,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles get dreams with a post request
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dreams
+ * BAD_REQUEST 400 - error getting dreams
+ *
+ */
+export const handleDreamsRequest = async (
+  req: RequestType<GetDreamsRequestQuery>,
+  res: ResponseType,
+) => {
+  const uuids: string[] = (req.body.uuids as string[]) ?? [];
 
   try {
     const dreams = await dreamRepository.find({

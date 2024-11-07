@@ -22,6 +22,10 @@ export type UpdateDreamRequest = {
   activityLevel?: number;
   featureRank?: number;
   displayedOwner?: number;
+  nsfw?: boolean;
+  description?: string;
+  sourceUrl?: string;
+  ccaLicense?: boolean;
 };
 
 export type UpdateDreamProcessedRequest = {
@@ -38,6 +42,9 @@ export type CreateMultipartUploadDreamRequest = {
   extension: string;
   parts: number;
   nsfw?: boolean;
+  description?: string;
+  sourceUrl?: string;
+  ccaLicense?: boolean;
 };
 
 export type CreateMultipartUploadFileRequest = {

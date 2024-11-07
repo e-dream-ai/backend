@@ -40,6 +40,10 @@ export const updateDreamSchema: RequestValidationSchema = {
     activityLevel: Joi.number(),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0),
+    description: Joi.string().max(500),
+    sourceUrl: Joi.string().max(500),
+    nsfw: Joi.boolean(),
+    ccaLicense: Joi.boolean(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -70,6 +74,10 @@ export const createMultipartUploadDreamSchema: RequestValidationSchema = {
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
     parts: Joi.number().greater(0).integer().required(),
+    description: Joi.string().max(500),
+    sourceUrl: Joi.string().max(500),
+    nsfw: Joi.boolean(),
+    ccaLicense: Joi.boolean(),
   }),
 };
 

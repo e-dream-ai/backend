@@ -142,16 +142,22 @@ export const handleCreateMultipartUpload = async (
     const dreamUUID = req.body.uuid;
     // truncate string to 1000 characters
     const name = truncateString(req.body.name, 1000, false);
+    const description = req.body.description;
+    const sourceUrl = req.body.sourceUrl;
     const extension = req.body.extension;
     const parts = req.body.parts ?? 1;
     const nsfw = req.body.nsfw;
+    const ccaLicense = req.body.ccaLicense;
 
     if (!dreamUUID) {
       // create dream
       dream = new Dream();
       dream.name = name;
+      dream.description = description;
+      dream.sourceUrl = sourceUrl;
       dream.user = user!;
       dream.nsfw = nsfw ?? false;
+      dream.ccaLicense = ccaLicense ?? false;
       await dreamRepository.save(dream);
     } else {
       // find dream

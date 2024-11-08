@@ -134,12 +134,27 @@ export class Dream {
   })
   nsfw: boolean;
 
+  /**
+   * nsfw flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  ccbyLicense: boolean;
+
   // filmstrip
   @Column({ type: "json", nullable: true })
   filmstrip: string[] | Frame[];
 
   // computed frontend url field
   frontendUrl: string;
+
+  @Column({ nullable: true, type: "varchar" })
+  description?: string | null;
+
+  @Column({ nullable: true, type: "varchar" })
+  sourceUrl?: string | null;
 
   // last processed at date
   @Column({ nullable: true, type: "timestamp" })

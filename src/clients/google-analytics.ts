@@ -78,8 +78,6 @@ class GA4EventTracker {
       app_version: socket.data.requestContext?.version,
     };
     this.sendEvent(userUUID, eventKey, params);
-
-    console.log({ params });
   }
 }
 

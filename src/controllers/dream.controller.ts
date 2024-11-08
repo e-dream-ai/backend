@@ -147,7 +147,7 @@ export const handleCreateMultipartUpload = async (
     const extension = req.body.extension;
     const parts = req.body.parts ?? 1;
     const nsfw = req.body.nsfw;
-    const ccaLicense = req.body.ccaLicense;
+    const ccbyLicense = req.body.ccbyLicense;
 
     if (!dreamUUID) {
       // create dream
@@ -157,7 +157,7 @@ export const handleCreateMultipartUpload = async (
       dream.sourceUrl = sourceUrl;
       dream.user = user!;
       dream.nsfw = nsfw ?? false;
-      dream.ccaLicense = ccaLicense ?? false;
+      dream.ccbyLicense = ccbyLicense ?? false;
       await dreamRepository.save(dream);
     } else {
       // find dream

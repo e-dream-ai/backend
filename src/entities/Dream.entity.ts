@@ -141,7 +141,7 @@ export class Dream {
     type: "boolean",
     default: false,
   })
-  ccaLicense: boolean;
+  ccbyLicense: boolean;
 
   // filmstrip
   @Column({ type: "json", nullable: true })

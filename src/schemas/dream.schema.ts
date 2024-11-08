@@ -43,7 +43,7 @@ export const updateDreamSchema: RequestValidationSchema = {
     description: Joi.string().max(500),
     sourceUrl: Joi.string().max(500),
     nsfw: Joi.boolean(),
-    ccaLicense: Joi.boolean(),
+    ccbyLicense: Joi.boolean(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -77,7 +77,7 @@ export const createMultipartUploadDreamSchema: RequestValidationSchema = {
     description: Joi.string().max(500),
     sourceUrl: Joi.string().max(500),
     nsfw: Joi.boolean(),
-    ccaLicense: Joi.boolean(),
+    ccbyLicense: Joi.boolean(),
   }),
 };
 

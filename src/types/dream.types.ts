@@ -25,7 +25,7 @@ export type UpdateDreamRequest = {
   nsfw?: boolean;
   description?: string;
   sourceUrl?: string;
-  ccaLicense?: boolean;
+  ccbyLicense?: boolean;
 };
 
 export type UpdateDreamProcessedRequest = {
@@ -44,7 +44,7 @@ export type CreateMultipartUploadDreamRequest = {
   nsfw?: boolean;
   description?: string;
   sourceUrl?: string;
-  ccaLicense?: boolean;
+  ccbyLicense?: boolean;
 };
 
 export type CreateMultipartUploadFileRequest = {

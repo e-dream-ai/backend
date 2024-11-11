@@ -666,6 +666,8 @@ dreamRouter.post(
  *                 type: number
  *               activityLevel:
  *                 type: number
+ *               md5:
+ *                 type: string
  *    responses:
  *      '200':
  *        description: Set dream status to processed

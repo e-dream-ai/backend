@@ -895,6 +895,7 @@ export const handleSetDreamStatusProcessed = async (
   const filmstrip = req.body.filmstrip
     ? (req.body.filmstrip as number[])
     : undefined;
+  const md5 = req.body.md5;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -932,6 +933,7 @@ export const handleSetDreamStatusProcessed = async (
       processedVideoFPS,
       activityLevel,
       filmstrip: formatedFilmstrip,
+      md5,
     });
 
     const [updatedDream] = await dreamRepository.find({

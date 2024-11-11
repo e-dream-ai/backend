@@ -34,6 +34,7 @@ export type UpdateDreamProcessedRequest = {
   processedVideoFPS?: number;
   activityLevel?: number;
   filmstrip?: number[];
+  md5?: string;
 };
 
 export type CreateMultipartUploadDreamRequest = {

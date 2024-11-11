@@ -156,6 +156,9 @@ export class Dream {
   @Column({ nullable: true, type: "varchar" })
   sourceUrl?: string | null;
 
+  @Column({ nullable: true, type: "varchar", length: 32 })
+  md5?: string | null;
+
   // last processed at date
   @Column({ nullable: true, type: "timestamp" })
   processed_at?: Date | null;

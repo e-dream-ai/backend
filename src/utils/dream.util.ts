@@ -113,6 +113,7 @@ export const getDreamSelectedColumns = ({
     description: true,
     sourceUrl: true,
     ccbyLicense: true,
+    md5: true,
     processed_at: true,
     created_at: true,
     updated_at: true,

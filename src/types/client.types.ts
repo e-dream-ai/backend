@@ -27,6 +27,7 @@ export type ClientDream = {
   nsfw: boolean;
   frontendUrl: string;
   activityLevel?: number | null;
+  md5?: string | null;
   timestamp: number;
   video_timestamp?: number | null;
 };

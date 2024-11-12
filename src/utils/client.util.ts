@@ -30,6 +30,7 @@ export const formatClientDream = (dream: Dream): ClientDream => ({
   nsfw: dream.nsfw,
   frontendUrl: dream.frontendUrl,
   activityLevel: dream?.activityLevel ?? null,
+  md5: dream?.md5,
   video_timestamp: dream?.processed_at ? dream?.processed_at.getTime() : null,
   timestamp: dream.updated_at.getTime(),
 });

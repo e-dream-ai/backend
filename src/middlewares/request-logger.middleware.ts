@@ -36,7 +36,7 @@ export const requestLogger = (
     (LOG_ROUTES !== "none" &&
       LOG_ROUTES.split(",").some((route) => {
         // check if it's a regex pattern (starts and ends with '/')
-        if (route.startsWith("/") && route.lastIndexOf("/") > 0) {
+        if (route.startsWith("/") && route.endsWith("/")) {
           const pattern = route.slice(1, route.lastIndexOf("/"));
           return new RegExp(pattern).test(req.path);
         }

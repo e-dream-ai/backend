@@ -35,7 +35,15 @@ export const requestLogger = (
   const shouldLog =
     LOG_ROUTES.includes("all") ||
     (LOG_ROUTES !== "none" &&
-      LOG_ROUTES.split(",").some((route) => req.path.startsWith(route.trim())));
+      LOG_ROUTES.split(",").some((route) => {
+        // check if it's a regex pattern (starts and ends with '/')
+        if (route.startsWith("/") && route.lastIndexOf("/") > 0) {
+          const pattern = route.slice(1, route.lastIndexOf("/"));
+          return new RegExp(pattern).test(req.path);
+        }
+        // otherwise, treat as normal path prefix
+        return req.path.startsWith(route);
+      }));
 
   if (!shouldLog) {
     return next();

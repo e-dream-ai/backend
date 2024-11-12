@@ -782,16 +782,44 @@ export const loginWithMagicAuth = async (
   try {
     if (code) {
       // Authenticate using the code
-      const { user: workOSUser, sealedSession } =
-        await workos.userManagement.authenticateWithMagicAuth({
-          clientId: env.WORKOS_CLIENT_ID,
-          code: code,
-          email: email,
-          session: {
-            sealSession: true,
-            cookiePassword: env.WORKOS_COOKIE_PASSWORD,
-          },
-        });
+
+      console.log({
+        msg: "Workos request",
+        clientId: env.WORKOS_CLIENT_ID,
+        code: code,
+        email: email,
+        session: {
+          sealSession: true,
+          cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+        },
+      });
+
+      const {
+        user: workOSUser,
+        sealedSession,
+        authenticationMethod,
+        accessToken,
+        organizationId,
+        impersonator,
+      } = await workos.userManagement.authenticateWithMagicAuth({
+        clientId: env.WORKOS_CLIENT_ID,
+        code: code,
+        email: email,
+        session: {
+          sealSession: true,
+          cookiePassword: env.WORKOS_COOKIE_PASSWORD,
+        },
+      });
+
+      console.log({
+        msg: "Workos response",
+        workOSUser,
+        sealedSession,
+        authenticationMethod,
+        accessToken,
+        organizationId,
+        impersonator,
+      });
 
       if (!workOSUser) {
         return handleNotFound(req, res);

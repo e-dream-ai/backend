@@ -1,4 +1,3 @@
-import { APP_LOGGER } from "shared/logger";
 import { NextFunction } from "express";
 import { RequestType, ResponseType } from "types/express.types";
 import env from "shared/env";
@@ -50,7 +49,7 @@ export const requestLogger = (
   }
 
   // Log request
-  APP_LOGGER.info({
+  console.log({
     msg: "Incoming request",
     req: {
       method: req.method,
@@ -66,7 +65,7 @@ export const requestLogger = (
   const originalJson = res.json;
   res.json = function (body) {
     // Log response before sending
-    APP_LOGGER.info({
+    console.log({
       msg: "Outgoing response",
       res: {
         statusCode: res.statusCode,

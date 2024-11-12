@@ -785,6 +785,7 @@ export const loginWithMagicAuth = async (
 
       console.log({
         msg: "Workos request",
+        description: "Sign in with code",
         clientId: env.WORKOS_CLIENT_ID,
         code: code,
         email: email,
@@ -813,6 +814,7 @@ export const loginWithMagicAuth = async (
 
       console.log({
         msg: "Workos response",
+        description: "Sign in with code",
         workOSUser,
         sealedSession,
         authenticationMethod,
@@ -856,8 +858,20 @@ export const loginWithMagicAuth = async (
       /**
        * Request a code to be sent by email
        */
-      await workos.userManagement.createMagicAuth({
+      console.log({
+        msg: "Workos request",
+        description: "Request code",
+        email: email,
+      });
+
+      const workoseResponse = await workos.userManagement.createMagicAuth({
         email,
+      });
+
+      console.log({
+        msg: "Workos response",
+        description: "Request code",
+        workoseResponse,
       });
 
       return res.status(httpStatus.OK).json(
@@ -868,6 +882,7 @@ export const loginWithMagicAuth = async (
       );
     }
   } catch (error) {
+    console.log(error);
     return handleWorkosError(error, req as RequestType, res);
   }
 };

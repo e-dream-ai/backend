@@ -22,6 +22,7 @@ import {
   requestContextMiddleware,
   socketRequestContextMiddleware,
 } from "./request-context-middleware";
+import { requestLogger } from "./request-logger.middleware";
 
 const swaggerPath = "/api/v1/api-docs";
 
@@ -93,6 +94,8 @@ export const registerMiddlewares = (app: express.Application) => {
   );
 
   app.use(requestContextMiddleware);
+
+  app.use(requestLogger);
 
   app.use(passport.initialize());
   app.use(passport.session());

@@ -212,12 +212,6 @@ export const handleGetDownloadUrl = async (
 
     const url = dream.video;
 
-    console.log({
-      clientResponse: JSON.stringify(
-        jsonResponse({ success: true, data: { url } }),
-      ),
-    });
-
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { url } }));

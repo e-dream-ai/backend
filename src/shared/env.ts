@@ -148,6 +148,11 @@ export const env = cleanEnv(process.env, {
    * Designed Playlist UUID
    */
   DESIGNED_PLAYLIST_UUID: str(),
+
+  /**
+   * Routes to log
+   */
+  LOG_ROUTES: str(),
 });
 
 export default env;

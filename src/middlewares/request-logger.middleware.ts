@@ -57,7 +57,7 @@ export const requestLogger = (
       params: req.params,
       query: req.query,
       headers: req.headers,
-      body: sanitizeBody(req.body),
+      body: JSON.stringify(sanitizeBody(req.body)),
     },
   });
 
@@ -69,7 +69,7 @@ export const requestLogger = (
       msg: "Outgoing response",
       res: {
         statusCode: res.statusCode,
-        body: sanitizeBody(body),
+        body: JSON.stringify(sanitizeBody(body)),
       },
     });
 

@@ -196,7 +196,7 @@ authRouter.post(
 /**
  * @swagger
  * /auth/logout:
- *  post:
+ *  get:
  *    tags:
  *      - auth
  *    summary: Logout user
@@ -215,7 +215,7 @@ authRouter.post(
  *            schema:
  *              $ref: '#/components/schemas/BadApiResponse'
  */
-authRouter.get("/logout", authController.logout);
+authRouter.get("/logout", requireAuth, authController.logout);
 
 /**
  * @swagger

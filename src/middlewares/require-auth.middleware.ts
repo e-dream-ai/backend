@@ -90,6 +90,10 @@ const workOSAuth = async (
       }
       // Update cookie
       updateWorkOSCookie(res, refreshResult.sealedSession);
+
+      // Update cookie on req object to have refreshed sealed session to handle on logout
+      req.cookies["wos-session"] = refreshResult.sealedSession;
+
       session = await authenticateAndGetWorkOSSession(
         refreshResult.sealedSession,
       );

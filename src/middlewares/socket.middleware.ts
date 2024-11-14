@@ -3,9 +3,11 @@ import { ExtendedError } from "socket.io/dist/namespace";
 import { fetchUserByCognitoId } from "controllers/auth.controller";
 import { APP_LOGGER } from "shared/logger";
 import { validateCognitoJWT } from "utils/auth.util";
-import { workos } from "utils/workos.util";
+import {
+  authenticateAndGetWorkOSSession,
+  refreshWorkOSSession,
+} from "utils/workos.util";
 import { SOCKET_AUTH_ERROR_MESSAGES } from "constants/messages/auth.constant";
-import env from "shared/env";
 import { syncWorkOSUser } from "utils/user.util";
 
 /**
@@ -93,45 +95,43 @@ export const socketWorkOSAuth = async (
   socket: Socket,
   next: (err?: ExtendedError | undefined) => void,
 ) => {
-  const authHeader =
-    socket.handshake.headers?.authorization?.split("Bearer ")[1];
+  const authToken =
+    socket.handshake.headers?.authorization?.split("Bearer ")[1] ||
+    socket.cookies["wos-session"];
 
-  const authToken = authHeader || socket.cookies["wos-session"];
-
-  const authenticationResponse =
-    await workos.userManagement.authenticateWithSessionCookie({
-      sessionData: authToken,
-      cookiePassword: env.WORKOS_COOKIE_PASSWORD,
-    });
-
-  const {
-    // reason,
-    authenticated,
-  } = authenticationResponse;
-
-  if (authenticated) {
-    const session = await workos.userManagement.getSessionFromCookie({
-      sessionData: authToken,
-      cookiePassword: env.WORKOS_COOKIE_PASSWORD,
-    });
+  try {
+    let session = await authenticateAndGetWorkOSSession(authToken);
 
     if (!session) {
-      return next(authError);
+      const refreshResult = await refreshWorkOSSession(authToken);
+      if (!refreshResult.authenticated || !refreshResult.sealedSession) {
+        // Handle failure
+        return next(authError);
+      }
+      // Update cookie
+      // updateWorkOSCookie(res, refreshResult.sealedSession);
+
+      // Update cookie on req object to have refreshed sealed session to handle on logout
+      // req.cookies["wos-session"] = refreshResult.sealedSession;
+
+      session = await authenticateAndGetWorkOSSession(
+        refreshResult.sealedSession,
+      );
     }
 
-    const workOSUser = session.user;
+    const workOSUser = session!.user;
     const user = await syncWorkOSUser(workOSUser);
     socket.data.user = user;
 
-    return next();
-  }
-
-  /**
-   * continue if user exists
-   */
-  if (socket.data.user) {
-    return next();
-  } else {
-    return next(authError);
+    /**
+     * continue if user exists
+     */
+    if (socket.data.user) {
+      return next();
+    } else {
+      return next(authError);
+    }
+  } catch (e) {
+    APP_LOGGER.error(e);
   }
 };

@@ -368,4 +368,52 @@ clientRouter.get(
   clientController.handleGetUserDislikes,
 );
 
+/**
+ * @swagger
+ * /client/telemetry:
+ *  post:
+ *    tags:
+ *      - client
+ *    summary: Receives telemetry
+ *    description: Receives telemetry
+ *    requestBody:
+ *      required: true
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            properties:
+ *    responses:
+ *      '200':
+ *        description: Telemetry received
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+clientRouter.post(
+  "/telemetry",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  clientController.handleTelemetry,
+);
+
 export default clientRouter;

@@ -358,3 +358,27 @@ export const handleGetUserDislikes = async (
     return handleInternalServerError(error, req as RequestType, res);
   }
 };
+
+/**
+ * Handles get dreams with a post request
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dreams
+ * BAD_REQUEST 400 - error getting dreams
+ *
+ */
+export const handleTelemetry = async (req: RequestType, res: ResponseType) => {
+  try {
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};

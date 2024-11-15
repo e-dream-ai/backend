@@ -7,14 +7,12 @@ import passport from "passport";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
 import {
-  authenticateAndGetWorkOSSession,
   handleWorkOSAuthFailure,
-  refreshWorkOSSession,
+  authenticateWorkOS,
   setWorkOSUserContext,
   updateWorkOSCookie,
 } from "utils/workos.util";
 import env from "shared/env";
-import { APP_LOGGER } from "shared/logger";
 
 /**
  * Callback handler for passport authenticate strategies
@@ -76,35 +74,21 @@ const workOSAuth = async (
     req.headers.authorization?.split("Bearer ")[1] ||
     req.cookies["wos-session"];
 
-  try {
-    let session = await authenticateAndGetWorkOSSession(authToken);
+  const result = await authenticateWorkOS(authToken);
 
-    /**
-     * If there's no session, try to refresh it
-     */
-    if (!session) {
-      const refreshResult = await refreshWorkOSSession(authToken);
-      if (!refreshResult.authenticated || !refreshResult.sealedSession) {
-        // Handle failure
-        return handleWorkOSAuthFailure(res);
-      }
-      // Update cookie
-      updateWorkOSCookie(res, refreshResult.sealedSession);
-
-      // Update cookie on req object to have refreshed sealed session to handle on logout
-      req.cookies["wos-session"] = refreshResult.sealedSession;
-
-      session = await authenticateAndGetWorkOSSession(
-        refreshResult.sealedSession,
-      );
-    }
-
-    await setWorkOSUserContext(res, session!.user);
-    return next();
-  } catch (e) {
-    APP_LOGGER.error(e);
+  // Handle no result
+  if (!result) {
     return handleWorkOSAuthFailure(res);
   }
+
+  // Update cookie on request and response when session is refreshed
+  if (result.sealedSession) {
+    updateWorkOSCookie(res, result.sealedSession);
+    req.cookies["wos-session"] = result.sealedSession;
+  }
+
+  await setWorkOSUserContext(res, result.session.user);
+  return next();
 };
 
 const requireAuth = (

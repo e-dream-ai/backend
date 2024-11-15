@@ -6,7 +6,8 @@ import { syncWorkOSUser } from "./user.util";
 import { jsonResponse } from "./responses.util";
 import httpStatus from "http-status";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
-import type { User as WorkOSUser } from "@workos-inc/node";
+import type { SessionCookieData, User as WorkOSUser } from "@workos-inc/node";
+import { APP_LOGGER } from "shared/logger";
 
 const IS_DEVELOPMENT = env.NODE_ENV === "development";
 
@@ -46,6 +47,44 @@ export const authenticateAndGetWorkOSSession = async (authToken: string) => {
     sessionData: authToken,
     cookiePassword: env.WORKOS_COOKIE_PASSWORD,
   });
+};
+
+// Common authentication logic
+export const authenticateWorkOS = async (
+  authToken: string | undefined,
+): Promise<{
+  session: SessionCookieData;
+  sealedSession?: string;
+} | null> => {
+  if (!authToken) {
+    return null;
+  }
+
+  try {
+    let session = await authenticateAndGetWorkOSSession(authToken);
+
+    if (!session) {
+      const refreshResult = await refreshWorkOSSession(authToken);
+      if (!refreshResult.authenticated || !refreshResult.sealedSession) {
+        return null;
+      }
+
+      session = await authenticateAndGetWorkOSSession(
+        refreshResult.sealedSession,
+      );
+
+      return session
+        ? { session, sealedSession: refreshResult.sealedSession }
+        : null;
+    }
+
+    return {
+      session,
+    };
+  } catch (e) {
+    APP_LOGGER.error(e);
+    return null;
+  }
 };
 
 /**

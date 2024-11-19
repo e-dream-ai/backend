@@ -75,8 +75,8 @@ export const createMultipartUploadDreamSchema: RequestValidationSchema = {
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
     parts: Joi.number().greater(0).integer().required(),
-    description: Joi.string().max(500),
-    sourceUrl: Joi.string().max(500),
+    description: Joi.string().optional().allow("").max(500),
+    sourceUrl: Joi.string().optional().allow("").max(500),
     nsfw: Joi.boolean(),
     ccbyLicense: Joi.boolean(),
   }),

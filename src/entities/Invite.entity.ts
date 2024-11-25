@@ -53,6 +53,6 @@ export class Invite {
   computeSignupUrl() {
     const searchParams = new URLSearchParams();
     searchParams.append("invite", this.code);
-    this.signupUrl = `${env.FRONTEND_URL}/signup?${searchParams.toString()}`;
+    this.signupUrl = `${env.FRONTEND_URL}/account?${searchParams.toString()}`;
   }
 }

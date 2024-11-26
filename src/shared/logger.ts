@@ -1,4 +1,4 @@
-import pino, { Logger } from "pino";
+import pino, { Level, Logger } from "pino";
 import pretty from "pino-pretty";
 import env from "../shared/env";
 
@@ -6,7 +6,7 @@ import env from "../shared/env";
 let APP_LOGGER: Logger<string>;
 
 if (env.LOGGING) {
-  APP_LOGGER = pino(pretty({ minimumLevel: "trace" }));
+  APP_LOGGER = pino(pretty({ minimumLevel: env.LOGGING_LEVEL as Level }));
 } else {
   APP_LOGGER = pino({ enabled: false });
 }

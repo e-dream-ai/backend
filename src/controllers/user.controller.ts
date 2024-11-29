@@ -219,6 +219,7 @@ export const handleGetCurrentUser = async (
     );
   } catch (err) {
     const error = err as Error;
+    console.error(error);
     return handleInternalServerError(error, req, res);
   }
 };

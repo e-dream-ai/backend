@@ -82,7 +82,9 @@ export const authenticateWorkOS = async (
       session,
     };
   } catch (e) {
-    APP_LOGGER.error(e);
+    const error = e as Error;
+    console.error(error);
+    APP_LOGGER.error(error);
     return null;
   }
 };

@@ -31,7 +31,7 @@ export const getUsersSchema = {
 export const updateUserSchema = {
   body: Joi.object<UpdateUserRequest>().keys({
     name: Joi.string().optional().allow("").max(50),
-    description: Joi.string().optional().allow("").max(300),
+    description: Joi.string().optional().allow("").max(4000),
     role: Joi.number().greater(0).integer(),
     nsfw: Joi.boolean().optional(),
     enableMarketingEmails: Joi.boolean().optional(),

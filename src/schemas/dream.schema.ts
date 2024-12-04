@@ -40,8 +40,19 @@ export const updateDreamSchema: RequestValidationSchema = {
     activityLevel: Joi.number(),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0),
-    description: Joi.string().optional().allow("").max(500),
-    sourceUrl: Joi.string().optional().allow("").max(500),
+    description: Joi.string().optional().allow("").max(4000),
+    sourceUrl: Joi.string()
+      .uri({
+        scheme: ["http", "https"],
+        allowRelative: false,
+      })
+      .optional()
+      .allow("")
+      .max(500)
+      .messages({
+        "string.uri":
+          "Invalid URL format. URL must start with http:// or https://",
+      }),
     nsfw: Joi.boolean(),
     ccbyLicense: Joi.boolean(),
   }),
@@ -75,8 +86,19 @@ export const createMultipartUploadDreamSchema: RequestValidationSchema = {
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
     parts: Joi.number().greater(0).integer().required(),
-    description: Joi.string().optional().allow("").max(500),
-    sourceUrl: Joi.string().optional().allow("").max(500),
+    description: Joi.string().optional().allow("").max(4000),
+    sourceUrl: Joi.string()
+      .uri({
+        scheme: ["http", "https"],
+        allowRelative: false,
+      })
+      .optional()
+      .allow("")
+      .max(500)
+      .messages({
+        "string.uri":
+          "Invalid URL format. URL must start with http:// or https://",
+      }),
     nsfw: Joi.boolean(),
     ccbyLicense: Joi.boolean(),
   }),

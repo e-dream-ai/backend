@@ -50,7 +50,7 @@ export const updateDreamSchema: RequestValidationSchema = {
       .allow("")
       .max(500)
       .messages({
-        "string.uri":
+        "string.uriCustomScheme":
           "Invalid URL format. URL must start with http:// or https://",
       }),
     nsfw: Joi.boolean(),

@@ -913,7 +913,7 @@ export const handleSetDreamStatusProcessed = async (
      */
 
     const user = dream.user;
-    const formatedFilmstrip: Frame[] = (filmstrip ?? [])?.map(
+    const formatedFilmstrip: Frame[] | undefined = filmstrip?.map(
       (frame) =>
         ({
           frameNumber: Number(frame),

@@ -51,6 +51,7 @@ export const ALLOWED_HEADERS = [
  * Allowed origin values
  */
 export const ALLOWED_DOMAIN_PATTERNS = [
+  /^http:\/\/localhost(:\d+)?\/?$/,
   /^https:\/\/.*\.netlify\.app\/?$/,
   /^https:\/\/.*\.e-dream\.ai\/?$/,
 ];

@@ -1,9 +1,9 @@
-import {
-  ALLOWED_DOMAIN_PATTERNS,
-  // CLIENT_TYPES,
-  ORIGINS,
-} from "constants/api.constants";
+import { ALLOWED_DOMAIN_PATTERNS, ORIGINS } from "constants/api.constants";
+import { NextFunction } from "express";
 import { IncomingHttpHeaders } from "http";
+import httpStatus from "http-status";
+import { CORSError } from "types/error.types";
+import { RequestType, ResponseType } from "types/express.types";
 
 export function handleCustomOrigin(
   origin: string | undefined,
@@ -23,9 +23,9 @@ export function handleCustomOrigin(
   );
 
   if (isAllowedDomain) {
-    callback(null, true);
+    return callback(null, true);
   } else {
-    callback(new Error("Not allowed by CORS"));
+    return callback(new CORSError(origin));
   }
 }
 
@@ -60,3 +60,17 @@ export function getRequestContext(headers: IncomingHttpHeaders) {
     userAgent,
   };
 }
+
+export const corsErrorHandler = (
+  err: Error,
+  req: RequestType,
+  res: ResponseType,
+  next: NextFunction,
+) => {
+  if (err instanceof CORSError) {
+    return res.status(httpStatus.FORBIDDEN).json({
+      error: err.message,
+    });
+  }
+  next(err);
+};

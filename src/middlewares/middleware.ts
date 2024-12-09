@@ -16,7 +16,7 @@ import passport from "passport";
 import session from "express-session";
 import configurePassport from "clients/passport.client";
 import cookieParser from "cookie-parser";
-import { handleCustomOrigin } from "utils/api.util";
+import { corsErrorHandler, handleCustomOrigin } from "utils/api.util";
 import { ALLOWED_HEADERS, ALLOWED_METHODS } from "constants/api.constants";
 import {
   requestContextMiddleware,
@@ -69,7 +69,7 @@ export const registerMiddlewares = (app: express.Application) => {
   // cors middleware
   app.use(
     cors({
-      // Cors callback function
+      // cors callback function
       origin: handleCustomOrigin,
       credentials: true,
       methods: ALLOWED_METHODS,
@@ -98,6 +98,9 @@ export const registerMiddlewares = (app: express.Application) => {
   app.use(requestContextMiddleware);
 
   app.use(requestLogger);
+
+  // cors error handler
+  app.use(corsErrorHandler);
 
   app.use(passport.initialize());
   app.use(passport.session());

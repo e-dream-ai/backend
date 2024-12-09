@@ -4,6 +4,8 @@ import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import { processDreamMd5Request } from "utils/dream.util";
 import { DreamStatusType } from "types/dream.types";
+import { updateVideoServiceWorker } from "utils/job.util";
+import { TURN_ON_QUANTITY } from "constants/job.constants";
 
 const main = async () => {
   // Initialize the data source
@@ -13,7 +15,7 @@ const main = async () => {
 
   // date range in format YYYY-MM-DD
   const startDate = new Date("2023-01-01");
-  const endDate = new Date("2023-12-31");
+  const endDate = new Date("2024-12-31");
 
   const dreams = await dreamRepository.find({
     where: {
@@ -25,6 +27,10 @@ const main = async () => {
       user: true,
     },
   });
+
+  if (dreams.length) {
+    await updateVideoServiceWorker(TURN_ON_QUANTITY);
+  }
 
   const promises = dreams.map(async (dream) => {
     return processDreamMd5Request(dream);

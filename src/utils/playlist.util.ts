@@ -93,6 +93,7 @@ export const getPlaylistItemSelectedColumns =
         displayedOwner: getUserSelectedColumns(),
         updated_at: true,
         status: true,
+        video: true,
       },
       playlistItem: {
         id: true,

@@ -134,7 +134,11 @@ export const syncWorkOSUser = async (
     where: {
       email: workOSUser.email,
     },
-    relations: { role: true, currentPlaylist: true, currentDream: true },
+    relations: {
+      role: true,
+      currentPlaylist: true,
+      currentDream: { user: true, displayedOwner: true },
+    },
   });
 
   /**

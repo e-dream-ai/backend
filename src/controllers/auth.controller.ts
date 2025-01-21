@@ -52,7 +52,7 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { User } from "entities";
+import { Playlist, User } from "entities";
 import { Role } from "entities/Role.entity";
 import type { NextFunction, Response } from "express";
 import { APP_LOGGER } from "shared/logger";
@@ -74,6 +74,10 @@ import {
   RefreshAndSealSessionDataFailureReason,
 } from "@workos-inc/node";
 import { tracker } from "clients/google-analytics";
+import {
+  findOnePlaylist,
+  getPlaylistSelectedColumns,
+} from "utils/playlist.util";
 
 /**
  * Repositories
@@ -428,7 +432,11 @@ export const fetchUserByCognitoId = async (cognitoId: string) => {
 export const fetchUserById = async (id: number) => {
   const user = await userRepository.findOne({
     where: { id },
-    relations: { role: true, currentPlaylist: true, currentDream: true },
+    relations: {
+      role: true,
+      currentPlaylist: { user: true, displayedOwner: true },
+      currentDream: { user: true, displayedOwner: true },
+    },
   });
   return user;
 };
@@ -451,6 +459,59 @@ export const handleUser = async (
   return res
     .status(httpStatus.OK)
     .json(jsonResponse({ success: true, data: { user: res.locals.user } }));
+};
+
+/**
+ * Handles current user dream
+ *
+ * @param {RequestType} req - Request object
+ * @param {ResponseType} res - Response object
+ *
+ * @returns {Response} Returns response with dream data
+ * OK 200 - dream fetched
+ * BAD_REQUEST 400 - error fetching dream
+ *
+ */
+export const handleCurrentUserDream = async (
+  req: RequestType<UserLoginCredentials>,
+  res: ResponseType,
+) => {
+  const currentDream = res.locals.user?.currentDream;
+  return res
+    .status(httpStatus.OK)
+    .json(jsonResponse({ success: true, data: { dream: currentDream } }));
+};
+
+/**
+ * Handles current user playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {ResponseType} res - Response object
+ *
+ * @returns {Response} Returns response with playlist data
+ * OK 200 - playlist fetched
+ * BAD_REQUEST 400 - error fetching playlist
+ *
+ */
+export const handleCurrentUserPlaylist = async (
+  req: RequestType<UserLoginCredentials>,
+  res: ResponseType,
+) => {
+  const user = res.locals.user;
+  const currentPlaylist = user?.currentPlaylist;
+  let playlist: Playlist | null = null;
+
+  if (currentPlaylist) {
+    playlist = await findOnePlaylist({
+      where: { uuid: currentPlaylist?.uuid },
+      select: getPlaylistSelectedColumns({ featureRank: true }),
+      filter: { nsfw: user?.nsfw },
+    });
+  }
+
+  return res
+    .status(httpStatus.OK)
+    .json(jsonResponse({ success: true, data: { playlist } }));
 };
 
 /**

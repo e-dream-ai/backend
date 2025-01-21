@@ -329,4 +329,117 @@ authRouter.post(
   authController.handleCreatePasswordReset,
 );
 
+/**
+ * @swagger
+ * /auth/user:
+ *  get:
+ *    tags:
+ *      - auth
+ *    summary: Gets current user
+ *    description: Handles current user
+ *    responses:
+ *      '200':
+ *        description: User logged in successfully
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              $ref: '#/components/schemas/ApiResponse'
+ *              properties:
+ *                data:
+ *                  type: object
+ *                  properties:
+ *                    user:
+ *                      type: object
+ *                      $ref: '#/components/schemas/User'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+authRouter.get("/user", requireAuth, authController.handleUser);
+
+/**
+ * @swagger
+ * /auth/user/dream/current:
+ *  get:
+ *    tags:
+ *      - auth
+ *    summary: Gets current dream
+ *    description: Handles current dream
+ *    responses:
+ *      '200':
+ *        description: Current dream returned successfully
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              $ref: '#/components/schemas/ApiResponse'
+ *              properties:
+ *                data:
+ *                  type: object
+ *                  properties:
+ *                    dream:
+ *                      type: object
+ *                      $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+authRouter.get(
+  "/dream/current",
+  requireAuth,
+  authController.handleCurrentUserDream,
+);
+
+/**
+ * @swagger
+ * /auth/user/playlists/current:
+ *  get:
+ *    tags:
+ *      - auth
+ *    summary: Gets current playlist
+ *    description: Handles current playlist
+ *    responses:
+ *      '200':
+ *        description: Current playlist returned successfully
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              $ref: '#/components/schemas/ApiResponse'
+ *              properties:
+ *                data:
+ *                  type: object
+ *                  properties:
+ *                    playlist:
+ *                      type: object
+ *                      $ref: '#/components/schemas/Playlist'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+authRouter.get(
+  "/playlist/current",
+  requireAuth,
+  authController.handleCurrentUserPlaylist,
+);
+
 export default authRouter;

@@ -8,5 +8,6 @@ export const feedSchema = {
     skip: Joi.number(),
     search: Joi.string(),
     type: Joi.string().valid(FeedItemType.DREAM, FeedItemType.PLAYLIST),
+    userUUID: Joi.string().uuid(),
   }),
 };

@@ -131,6 +131,7 @@ feedRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(feedSchema),
   feedController.handleGetFeed,
 );
 

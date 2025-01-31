@@ -8,6 +8,7 @@ import validatorMiddleware from "middlewares/validator.middleware";
 import {
   getUsersSchema,
   requestUserSchema,
+  requestVotedDreamsSchema,
   updateUserRoleSchema,
   validateUserSchema,
 } from "schemas/user.schema";
@@ -163,6 +164,58 @@ userRouter.get(
     ROLES.ADMIN_GROUP,
   ]),
   userController.handleGetRoles,
+);
+
+/**
+ * @swagger
+ * /user/{uuid}/votes:
+ *  get:
+ *    tags:
+ *      - user
+ *    summary: Gets user dreams voted
+ *    description: Gets user dreams voted
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: User uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Gets user dreams voted
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: array
+ *                      properties:
+ *                        dreams:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+userRouter.get(
+  "/:uuid/votes",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(requestVotedDreamsSchema),
+  userController.handleGetVotedDreams,
 );
 
 /**

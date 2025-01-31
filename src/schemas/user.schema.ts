@@ -2,6 +2,7 @@ import { ROLES } from "constants/role.constants";
 import Joi from "joi";
 import {
   GetUsersQuery,
+  GetVotedDreamsRequest,
   UpdateUserRequest,
   UpdateUserRoleRequest,
   UserParamsRequest,
@@ -12,6 +13,7 @@ import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
 import { mapValidatorErrors } from "middlewares/validator.middleware";
 import { RequestValidationSchema } from "types/validator.types";
+import { VoteType } from "types/vote.types";
 
 export const requestUserSchema: RequestValidationSchema = {
   params: Joi.object<UserParamsRequest>().keys({
@@ -42,6 +44,17 @@ export const updateUserSchema = {
 export const updateUserRoleSchema = {
   body: Joi.object<UpdateUserRoleRequest>().keys({
     role: Joi.string().required().valid(ROLES.ADMIN_GROUP, ROLES.USER_GROUP),
+  }),
+};
+
+export const requestVotedDreamsSchema: RequestValidationSchema = {
+  params: Joi.object<UserParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+  query: Joi.object<GetVotedDreamsRequest>().keys({
+    take: Joi.number(),
+    skip: Joi.number(),
+    type: Joi.string().valid(...Object.values(VoteType)),
   }),
 };
 

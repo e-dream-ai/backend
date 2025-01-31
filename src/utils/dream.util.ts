@@ -315,3 +315,43 @@ export const getTopDreams = async (take: number = 50) => {
 
   return dreams.map((dream) => dream.uuid);
 };
+
+/**
+ * get voted dreams
+ * @param {string} uuid - user uuid
+ * @returns {Dream[]} dreams
+ */
+export const getVotedDreams = async (
+  uuid: string,
+  options: {
+    voteType?: VoteType;
+    take: number;
+    skip: number;
+  },
+) => {
+  const voteType = options.voteType;
+  const [votes, count] = await voteRepository.findAndCount({
+    where: {
+      user: { uuid },
+      ...(voteType && { vote: voteType }),
+    },
+    relations: {
+      dream: {
+        user: true,
+        displayedOwner: true,
+      },
+    },
+    select: {
+      dream: getDreamSelectedColumns(),
+    },
+    take: options.take,
+    skip: options.skip,
+  });
+
+  const dreams = votes.map((vote) => vote.dream);
+
+  return {
+    dreams,
+    count,
+  };
+};

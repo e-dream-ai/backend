@@ -1,4 +1,5 @@
 import { RoleType } from "./role.types";
+import { VoteType } from "./vote.types";
 
 export type UserParamsRequest = {
   uuid: string;
@@ -22,4 +23,10 @@ export type UpdateUserRequest = {
 
 export type UpdateUserRoleRequest = {
   role: RoleType;
+};
+
+export type GetVotedDreamsRequest = {
+  take?: number;
+  skip?: number;
+  type?: VoteType;
 };

@@ -15,12 +15,14 @@ import { FindOptionsWhere, ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import {
   GetUsersQuery,
+  GetVotedDreamsRequest,
   UpdateUserRequest,
   UpdateUserRoleRequest,
   UserParamsRequest,
 } from "types/user.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { decrypt } from "utils/crypto.util";
+import { getVotedDreams } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
   getPlaylistFindOptionsRelations,
@@ -115,11 +117,7 @@ export const handleGetUsers = async (
     const whereSentence = {
       name: search ? ILike(`%${search}%`) : undefined,
       verified: true,
-      role: role
-        ? {
-          name: role,
-        }
-        : undefined,
+      role: role ? { name: role } : undefined,
     } as FindOptionsWhere<User>;
     const [users, count] = await userRepository.findAndCount({
       where: whereSentence,
@@ -185,6 +183,47 @@ export const handleGetUser = async (
       jsonResponse({
         success: true,
         data: { user: responseUser },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles get dreams voted by user
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dreams
+ * BAD_REQUEST 400 - error getting dreams
+ *
+ */
+export const handleGetVotedDreams = async (
+  req: RequestType<unknown, GetVotedDreamsRequest, UserParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid = req.params.uuid!;
+  const take = Math.min(
+    Number(req.query.take) || PAGINATION.TAKE,
+    PAGINATION.MAX_TAKE,
+  );
+  const skip = Number(req.query.skip) || PAGINATION.SKIP;
+  const type = req.query.type;
+
+  try {
+    const { count, dreams } = await getVotedDreams(uuid, {
+      take,
+      skip,
+      voteType: type,
+    });
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { count, dreams },
       }),
     );
   } catch (err) {

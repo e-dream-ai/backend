@@ -104,6 +104,26 @@ export const processDreamMd5Request = async (dream: Dream) => {
     .catch((error) => APP_LOGGER.error(error));
 };
 
+/**
+ * Send dream filmstrip process request to video server
+ */
+export const processDreamFilmstripRequest = async (dream: Dream) => {
+  const data = {
+    dream_uuid: dream.uuid,
+  };
+  return axios
+    .post(`${PROCESS_VIDEO_SERVER_URL}/video/filmstrip`, data, {
+      headers: {
+        Authorization: `Api-Key ${VIDEO_INGESTION_API_KEY}`,
+        ...getRequestHeaders({ contentType: ContentType.json }),
+      },
+    })
+    .then((res) => {
+      return res.data;
+    })
+    .catch((error) => APP_LOGGER.error(error));
+};
+
 export const getDreamSelectedColumns = ({
   originalVideo,
   featureRank,

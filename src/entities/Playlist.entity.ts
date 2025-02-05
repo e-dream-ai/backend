@@ -16,6 +16,7 @@ import {
 import { FeedItem } from "./FeedItem.entity";
 import { PlaylistItem } from "./PlaylistItem.entity";
 import { User } from "./User.entity";
+import { PlaylistKeyframe } from "./PlaylistKeyframe";
 
 @Entity()
 export class Playlist {
@@ -63,6 +64,18 @@ export class Playlist {
     cascade: ["soft-remove", "update"],
   })
   items: PlaylistItem[];
+
+  /**
+   * Keyframes which belong to current playlist
+   */
+  @OneToMany(() => PlaylistKeyframe, (playlistItem) => playlistItem.playlist, {
+    /**
+     * soft-remove - helps to delete keyframes items in cascade when a playlist is deleted
+     * update - helps to update keyframes items in cascade (to update playlist order in case is needed)
+     */
+    cascade: ["soft-remove", "update"],
+  })
+  keyframes: PlaylistKeyframe[];
 
   /**
    * Playlist where is included current playlist

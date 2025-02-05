@@ -184,6 +184,25 @@ export const registerRoutes = (app: express.Application) => {
    *           $ref: '#/components/schemas/User'
    *         displayedOwner:
    *           $ref: '#/components/schemas/User'
+   *     Keyframe:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         uuid:
+   *           type: string
+   *         name:
+   *           type: string
+   *         image:
+   *           type: string
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *         user:
+   *           $ref: '#/components/schemas/User'
    *     PlaylistItem:
    *       type: object
    *       properties:
@@ -199,6 +218,21 @@ export const registerRoutes = (app: express.Application) => {
    *           $ref: '#/components/schemas/Dream'
    *         playlistItem:
    *           $ref: '#/components/schemas/Playlist'
+   *         order:
+   *           type: number
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *     PlaylistKeyframe:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         keyframe:
+   *           $ref: '#/components/schemas/Keyframe'
    *         order:
    *           type: number
    *         created_at:

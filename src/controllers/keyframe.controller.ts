@@ -1,0 +1,271 @@
+import { tracker } from "clients/google-analytics";
+import { PAGINATION } from "constants/pagination.constants";
+import { ROLES } from "constants/role.constants";
+import appDataSource from "database/app-data-source";
+import { Keyframe } from "entities";
+import httpStatus from "http-status";
+import { ILike } from "typeorm";
+import { RequestType, ResponseType } from "types/express.types";
+import {
+  CreateKeyframeRequest,
+  GetKeyframeQuery,
+  KeyframeParamsRequest,
+  UpdateKeyframeRequest,
+} from "types/keyframe.types";
+import { canExecuteAction } from "utils/permissions.util";
+import {
+  findOneKeyframe,
+  getKeyframeSelectedColumns,
+} from "utils/keyframe.util";
+import {
+  handleNotFound,
+  handleForbidden,
+  jsonResponse,
+  handleInternalServerError,
+} from "utils/responses.util";
+import { isAdmin } from "utils/user.util";
+
+const keyframeRepository = appDataSource.getRepository(Keyframe);
+
+/**
+ * Handles get keyframe
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - keyframe
+ * BAD_REQUEST 400 - error getting keyframe
+ *
+ */
+export const handleGetKeyframe = async (
+  req: RequestType<unknown, unknown, KeyframeParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  try {
+    const keyframe = await findOneKeyframe({
+      where: { uuid },
+      select: getKeyframeSelectedColumns({}),
+    });
+
+    if (!keyframe) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { keyframe } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles get keyframe
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - keyframe
+ * BAD_REQUEST 400 - error getting keyframe
+ *
+ */
+export const handleGetKeyframes = async (
+  req: RequestType<unknown, GetKeyframeQuery>,
+  res: ResponseType,
+) => {
+  const take = Math.min(
+    Number(req.query.take) || PAGINATION.TAKE,
+    PAGINATION.MAX_TAKE,
+  );
+  const skip = Number(req.query.skip) || PAGINATION.SKIP;
+  const userUUID: string = req.query.userUUID!;
+
+  const search = req.query?.search
+    ? { name: ILike(`%${req.query.search}%`) }
+    : undefined;
+
+  try {
+    const [keyframes, count] = await keyframeRepository.findAndCount({
+      where: { user: { uuid: userUUID }, ...search },
+      select: getKeyframeSelectedColumns(),
+      order: { updated_at: "DESC" },
+      relations: {
+        playlistKeyframes: true,
+      },
+      take,
+      skip,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { keyframes, count } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles create keyframe
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - keyframe
+ * BAD_REQUEST 400 - error creating keyframe
+ *
+ */
+export const handleCreateKeyframe = async (
+  req: RequestType<CreateKeyframeRequest>,
+  res: ResponseType,
+) => {
+  const { name } = req.body;
+  const user = res.locals.user!;
+
+  try {
+    // create keyframe
+    const keyframe = new Keyframe();
+    keyframe.name = name;
+    keyframe.user = user!;
+    const createdKeyframe = await keyframeRepository.save(keyframe);
+
+    tracker.sendEventWithRequestContext(res, user.uuid, "KEYFRAME_CREATED", {
+      keyframe_uuid: keyframe.uuid,
+    });
+
+    return res
+      .status(httpStatus.CREATED)
+      .json(
+        jsonResponse({ success: true, data: { keyframe: createdKeyframe } }),
+      );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles update keyframe
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - keyframe
+ * BAD_REQUEST 400 - error updating keyframe
+ *
+ */
+export const handleUpdateKeyframe = async (
+  req: RequestType<UpdateKeyframeRequest, unknown, KeyframeParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+
+  try {
+    const keyframe = await findOneKeyframe({
+      where: { uuid },
+      select: getKeyframeSelectedColumns({}),
+    });
+
+    if (!keyframe) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: keyframe.user.id === user.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    // Define an object to hold the fields that are allowed to be updated
+    let updateData: Partial<Keyframe> = {
+      ...(req.body as Omit<UpdateKeyframeRequest, "">),
+    };
+
+    if (!isAdmin(user)) {
+      /*
+       * Check if the user is an admin
+       * remove fields from the updateData object if is not an admin
+       */
+      updateData = { ...updateData };
+    }
+
+    await keyframeRepository.update(keyframe.id, {
+      ...updateData,
+    });
+
+    const updatedKeyframe = await findOneKeyframe({
+      where: { id: keyframe.id },
+      select: getKeyframeSelectedColumns({}),
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(
+        jsonResponse({ success: true, data: { keyframe: updatedKeyframe } }),
+      );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles delete keyframe
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - keyframe
+ * BAD_REQUEST 400 - error deleting keyframe
+ *
+ */
+export const handleDeleteKeyframe = async (
+  req: RequestType<unknown, unknown, KeyframeParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+  try {
+    const keyframe = await findOneKeyframe({
+      where: { uuid },
+      select: getKeyframeSelectedColumns(),
+    });
+
+    if (!keyframe) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: keyframe.user.id === user.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    const affected = await keyframeRepository.softRemove(keyframe);
+
+    if (!affected) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};

@@ -19,6 +19,7 @@ import { Vote } from "./Vote.entity";
 import { Invite } from "./Invite.entity";
 import { NEW_USER_DEFAULT_QUOTA } from "constants/user.constants";
 import { ApiKey } from "./ApiKey.entity";
+import { Keyframe } from "./Keyframe.entity";
 
 @Entity()
 export class User {
@@ -65,6 +66,9 @@ export class User {
 
   @OneToMany(() => Playlist, (playlist) => playlist.user)
   playlists: Playlist[];
+
+  @OneToMany(() => Keyframe, (keyframe) => keyframe.user)
+  keyframes: Playlist[];
 
   /**
    *  Role

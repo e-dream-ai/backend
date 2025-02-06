@@ -1,5 +1,9 @@
 import { Keyframe } from "entities";
-import { FindOptionsSelect, FindOptionsWhere } from "typeorm";
+import {
+  FindOptionsRelations,
+  FindOptionsSelect,
+  FindOptionsWhere,
+} from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
 
@@ -14,6 +18,7 @@ export const getKeyframeSelectedColumns = ({
     id: true,
     uuid: true,
     name: true,
+    image: true,
     created_at: true,
     updated_at: true,
     deleted_at: true,
@@ -21,20 +26,25 @@ export const getKeyframeSelectedColumns = ({
   };
 };
 
+export const getKeyframeFindOptionsRelations =
+  (): FindOptionsRelations<Keyframe> => {
+    return {
+      playlistKeyframes: true,
+      user: true,
+    };
+  };
+
 export const findOneKeyframe = async ({
   where,
   select,
 }: {
   where: FindOptionsWhere<Keyframe> | FindOptionsWhere<Keyframe>[];
   select: FindOptionsSelect<Keyframe>;
-  filter?: {
-    nsfw?: boolean;
-    onlyProcessedDreams?: boolean;
-  };
 }): Promise<Keyframe | null> => {
   const playlist = await keyframeRepository.findOne({
     where: where,
     select: select,
+    relations: getKeyframeFindOptionsRelations(),
   });
 
   return playlist;

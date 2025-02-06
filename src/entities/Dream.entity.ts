@@ -21,6 +21,7 @@ import { DreamStatusType, Frame } from "types/dream.types";
 import { ColumnNumericTransformer } from "transformers/numeric.transformer";
 import { ColumnVideoTransformer } from "transformers/video.transformer";
 import env from "shared/env";
+import { Keyframe } from "./Keyframe.entity";
 
 @Entity()
 export class Dream {
@@ -158,6 +159,16 @@ export class Dream {
 
   @Column({ nullable: true, type: "varchar", length: 32 })
   md5?: string | null;
+
+  // start keyframe column
+  @ManyToOne(() => Keyframe)
+  @JoinColumn()
+  startKeyframe: Keyframe;
+
+  // end keyframe column
+  @ManyToOne(() => Keyframe)
+  @JoinColumn()
+  endKeyframe: Keyframe;
 
   // last processed at date
   @Column({ nullable: true, type: "timestamp" })

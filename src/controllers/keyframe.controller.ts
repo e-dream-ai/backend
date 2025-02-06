@@ -1,4 +1,3 @@
-import { tracker } from "clients/google-analytics";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
@@ -15,6 +14,7 @@ import {
 import { canExecuteAction } from "utils/permissions.util";
 import {
   findOneKeyframe,
+  getKeyframeFindOptionsRelations,
   getKeyframeSelectedColumns,
 } from "utils/keyframe.util";
 import {
@@ -93,9 +93,7 @@ export const handleGetKeyframes = async (
       where: { user: { uuid: userUUID }, ...search },
       select: getKeyframeSelectedColumns(),
       order: { updated_at: "DESC" },
-      relations: {
-        playlistKeyframes: true,
-      },
+      relations: getKeyframeFindOptionsRelations(),
       take,
       skip,
     });
@@ -133,10 +131,6 @@ export const handleCreateKeyframe = async (
     keyframe.name = name;
     keyframe.user = user!;
     const createdKeyframe = await keyframeRepository.save(keyframe);
-
-    tracker.sendEventWithRequestContext(res, user.uuid, "KEYFRAME_CREATED", {
-      keyframe_uuid: keyframe.uuid,
-    });
 
     return res
       .status(httpStatus.CREATED)

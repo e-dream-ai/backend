@@ -74,6 +74,12 @@ export const getPlaylistFindOptionsRelations =
       playlistItems: {
         playlist: true,
       },
+      playlistKeyframes: {
+        keyframe: {
+          user: true,
+          displayedOwner: true,
+        },
+      },
     };
   };
 

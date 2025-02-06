@@ -7,6 +7,7 @@ import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import dreamRouter from "routes/v1/dream.routes";
 import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
+import keyframeRouter from "routes/v1/keyframe.routes";
 import featureRouter from "./feature.routes";
 import userRouter from "routes/v1/user.routes";
 import clientRouter from "routes/v1/client.routes";
@@ -420,6 +421,9 @@ export const registerRoutes = (app: express.Application) => {
 
   // register playlist router
   app.use("/api/v1/playlist", playlistRouter);
+
+  // register keyframe router
+  app.use("/api/v1/keyframe", keyframeRouter);
 
   // register playlist router
   app.use("/api/v1/feed", feedRouter);

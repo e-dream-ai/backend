@@ -75,7 +75,7 @@ export class Playlist {
      */
     cascade: ["soft-remove", "update"],
   })
-  keyframes: PlaylistKeyframe[];
+  playlistKeyframes: PlaylistKeyframe[];
 
   /**
    * Playlist where is included current playlist

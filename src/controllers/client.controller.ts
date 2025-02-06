@@ -242,7 +242,13 @@ export const handleGetDreams = async (
   try {
     const dreams = await dreamRepository.find({
       where: { uuid: In(uuids) },
-      relations: { user: true, displayedOwner: true, playlistItems: true },
+      relations: {
+        user: true,
+        displayedOwner: true,
+        playlistItems: true,
+        startKeyframe: true,
+        endKeyframe: true,
+      },
       select: getDreamSelectedColumns({
         originalVideo: true,
         featureRank: true,
@@ -287,7 +293,13 @@ export const handleDreamsRequest = async (
   try {
     const dreams = await dreamRepository.find({
       where: { uuid: In(uuids) },
-      relations: { user: true, displayedOwner: true, playlistItems: true },
+      relations: {
+        user: true,
+        displayedOwner: true,
+        playlistItems: true,
+        startKeyframe: true,
+        endKeyframe: true,
+      },
       select: getDreamSelectedColumns({
         originalVideo: true,
         featureRank: true,

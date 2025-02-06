@@ -18,6 +18,7 @@ import { FeedItemType } from "types/feed-item.types";
 import { APP_LOGGER } from "shared/logger";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { DreamStatusType } from "types/dream.types";
+import { getKeyframeSelectedColumns } from "./keyframe.util";
 
 const queueUrl = ""; // env.AWS_SQS_URL;
 
@@ -129,11 +130,15 @@ export const getDreamSelectedColumns = ({
   featureRank,
   userEmail,
   playlistItems,
+  startKeyframe,
+  endKeyframe,
 }: {
   originalVideo?: boolean;
   featureRank?: boolean;
   userEmail?: boolean;
   playlistItems?: boolean;
+  startKeyframe?: boolean;
+  endKeyframe?: boolean;
 } = {}): FindOptionsSelect<Dream> => {
   return {
     id: true,
@@ -163,6 +168,8 @@ export const getDreamSelectedColumns = ({
     playlistItems: playlistItems,
     user: getUserSelectedColumns({ userEmail }),
     displayedOwner: getUserSelectedColumns(),
+    startKeyframe: startKeyframe ? getKeyframeSelectedColumns() : undefined,
+    endKeyframe: endKeyframe ? getKeyframeSelectedColumns() : undefined,
   };
 };
 

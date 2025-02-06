@@ -1,7 +1,7 @@
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Keyframe } from "entities";
+import { Keyframe, User } from "entities";
 import httpStatus from "http-status";
 import { ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
@@ -26,6 +26,7 @@ import {
 import { isAdmin } from "utils/user.util";
 
 const keyframeRepository = appDataSource.getRepository(Keyframe);
+const userRepository = appDataSource.getRepository(User);
 
 /**
  * Handles get keyframe
@@ -183,15 +184,21 @@ export const handleUpdateKeyframe = async (
 
     // Define an object to hold the fields that are allowed to be updated
     let updateData: Partial<Keyframe> = {
-      ...(req.body as Omit<UpdateKeyframeRequest, "">),
+      ...(req.body as Omit<UpdateKeyframeRequest, "displayedOwner">),
     };
 
-    if (!isAdmin(user)) {
-      /*
-       * Check if the user is an admin
-       * remove fields from the updateData object if is not an admin
-       */
-      updateData = { ...updateData };
+    let displayedOwner: User | null = null;
+    if (isAdmin(user) && req.body.displayedOwner) {
+      displayedOwner = await userRepository.findOneBy({
+        id: req.body.displayedOwner,
+      });
+    }
+
+    /**
+     * update displayed owner for keyframe
+     */
+    if (displayedOwner) {
+      updateData = { ...updateData, displayedOwner: displayedOwner };
     }
 
     await keyframeRepository.update(keyframe.id, {

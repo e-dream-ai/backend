@@ -15,4 +15,5 @@ export type CreateKeyframeRequest = {
 
 export type UpdateKeyframeRequest = {
   name?: string;
+  displayedOwner?: number;
 };

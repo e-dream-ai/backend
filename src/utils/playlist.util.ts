@@ -1,4 +1,4 @@
-import { Playlist, PlaylistItem } from "entities";
+import { Playlist, PlaylistItem, PlaylistKeyframe } from "entities";
 import {
   FindOptionsSelect,
   FindOptionsRelations,
@@ -219,6 +219,55 @@ export const deletePlaylistItemAndResetOrder = async ({
 
       // 4. Update the items
       await transactionalEntityManager.update(PlaylistItem, itemId, {
+        order: newOrder,
+      });
+    }
+  });
+};
+
+/**
+ * Deletes playlist keyframe and resets playlist order
+ */
+export const deletePlaylistKeyframeAndResetOrder = async ({
+  playlistId,
+  playlistKeyframeId,
+}: {
+  playlistId: number;
+  playlistKeyframeId: number;
+}) => {
+  // Start a transaction and following steps
+  await appDataSource.transaction(async (transactionalEntityManager) => {
+    const keyframeToDelete = await transactionalEntityManager.findOne(
+      PlaylistKeyframe,
+      {
+        where: { id: playlistKeyframeId, playlist: { id: playlistId } },
+      },
+    );
+
+    // Handle not found
+    if (!keyframeToDelete) {
+      throw new Error("Playlist keyframe not found");
+    }
+
+    // 1. Soft remove the specified keyframe
+    await transactionalEntityManager.softRemove(keyframeToDelete);
+
+    // 2. Fetch all remaining keyframes in the playlist, ordered by their current order
+    const remainingKeyframes = await transactionalEntityManager.find(
+      PlaylistKeyframe,
+      {
+        where: { playlist: { id: playlistId } },
+        order: { order: "ASC" },
+      },
+    );
+
+    for (let i = 0; i < remainingKeyframes.length; i++) {
+      // 3. Update the order of all remaining keyframes using zero-based indexing
+      const newOrder = i;
+      const keyframeId = remainingKeyframes[i].id;
+
+      // 4. Update the keyframes
+      await transactionalEntityManager.update(PlaylistKeyframe, keyframeId, {
         order: newOrder,
       });
     }

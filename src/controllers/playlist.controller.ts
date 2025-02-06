@@ -9,7 +9,15 @@ import { PAGINATION } from "constants/pagination.constants";
 import { PLAYLIST_PREFIX } from "constants/playlist.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Dream, FeedItem, Playlist, PlaylistItem, User } from "entities";
+import {
+  Dream,
+  FeedItem,
+  Keyframe,
+  Playlist,
+  PlaylistItem,
+  PlaylistKeyframe,
+  User,
+} from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { ILike } from "typeorm";
@@ -18,18 +26,21 @@ import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import {
   AddPlaylistItemRequest,
+  AddPlaylistKeyframeRequest,
   CreatePlaylistRequest,
   GetPlaylistQuery,
   OrderPlaylistRequest,
   PlaylistItemType,
   PlaylistParamsRequest,
   RemovePlaylistItemRequest,
+  RemovePlaylistKeyframeRequest,
   UpdatePlaylistRequest,
 } from "types/playlist.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
   deletePlaylistItemAndResetOrder,
+  deletePlaylistKeyframeAndResetOrder,
   findOnePlaylist,
   getPlaylistSelectedColumns,
   refreshPlaylistUpdatedAtTimestamp,
@@ -44,7 +55,10 @@ import { getUserIdentifier, isAdmin } from "utils/user.util";
 
 const playlistRepository = appDataSource.getRepository(Playlist);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
+const playlistKeyframeRepository =
+  appDataSource.getRepository(PlaylistKeyframe);
 const dreamRepository = appDataSource.getRepository(Dream);
+const keyframeRepository = appDataSource.getRepository(Keyframe);
 const feedItemRepository = appDataSource.getRepository(FeedItem);
 const userRepository = appDataSource.getRepository(User);
 
@@ -497,7 +511,7 @@ export const handleOrderPlaylist = async (
  *
  * @returns {Response} Returns response
  * OK 200 - playlist
- * BAD_REQUEST 400 - error deleting playlist
+ * BAD_REQUEST 400 - error adding playlist item
  *
  */
 export const handleAddPlaylistItem = async (
@@ -621,14 +635,14 @@ export const handleAddPlaylistItem = async (
 };
 
 /**
- * Handles remove item to playlist
+ * Handles remove item from playlist
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object
  *
  * @returns {Response} Returns response
  * OK 200 - playlist
- * BAD_REQUEST 400 - error deleting playlist
+ * BAD_REQUEST 400 - error deleting playlist item
  *
  */
 export const handleRemovePlaylistItem = async (
@@ -671,6 +685,161 @@ export const handleRemovePlaylistItem = async (
     await deletePlaylistItemAndResetOrder({
       playlistId: playlist.id,
       itemIdToDelete: playlistItem.id,
+    });
+    await refreshPlaylistUpdatedAtTimestamp(playlist.id);
+
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles add keyframe to playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlist
+ * BAD_REQUEST 400 - error adding playlist keyframe
+ *
+ */
+export const handleAddPlaylistKeyframe = async (
+  req: RequestType<AddPlaylistKeyframeRequest, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const keyframeUUID = req.body.uuid!;
+  const user = res.locals.user!;
+
+  try {
+    const playlist = await findOnePlaylist({
+      where: { uuid },
+      select: getPlaylistSelectedColumns(),
+      filter: { nsfw: user?.nsfw },
+    });
+
+    if (!playlist) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: playlist.user.id === user.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    /**
+     * Handle duplicated keyframe
+     */
+    let [playlistKeyframe] = await playlistKeyframeRepository.find({
+      where: { playlist: { uuid }, keyframe: { uuid: keyframeUUID } },
+    });
+
+    if (playlistKeyframe) {
+      return res.status(httpStatus.CONFLICT).json(
+        jsonResponse({
+          success: false,
+          message: GENERAL_MESSAGES.DUPLICATED,
+        }),
+      );
+    }
+
+    /**
+     * Creating playlist keyframe
+     */
+    playlistKeyframe = new PlaylistKeyframe();
+    playlistKeyframe.playlist = playlist;
+
+    /**
+     * Set the order of the new keyframe based on the current number of keyframes in the playlist
+     */
+    playlistKeyframe.order = playlist.playlistKeyframes?.length || 0;
+
+    const keyframeToAdd = await keyframeRepository.findOne({
+      where: { uuid: keyframeUUID },
+    });
+
+    if (!keyframeToAdd) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    playlistKeyframe.keyframe = keyframeToAdd;
+
+    const createdPlaylistKeyframe =
+      await playlistKeyframeRepository.save(playlistKeyframe);
+
+    refreshPlaylistUpdatedAtTimestamp(playlist.id);
+
+    return res.status(httpStatus.CREATED).json(
+      jsonResponse({
+        success: true,
+        data: { playlistKeyframe: createdPlaylistKeyframe },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles remove keyframe from playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlist
+ * BAD_REQUEST 400 - error deleting playlist keyframe
+ *
+ */
+export const handleRemovePlaylistKeyframe = async (
+  req: RequestType<unknown, unknown, RemovePlaylistKeyframeRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const playlistKeyframeId: number = req.params.playlistKeyframeId!;
+  const user = res.locals.user!;
+  try {
+    const playlist = await findOnePlaylist({
+      where: { uuid },
+      select: getPlaylistSelectedColumns(),
+      filter: { nsfw: user?.nsfw },
+    });
+
+    if (!playlist) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: playlist.user.id === user.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    const playlistKeyframe = await playlistKeyframeRepository.findOne({
+      where: { id: playlistKeyframeId, playlist: { id: playlist.id } },
+    });
+
+    if (!playlistKeyframe) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    // Delete keyframe and reset order
+    await deletePlaylistKeyframeAndResetOrder({
+      playlistId: playlist.id,
+      playlistKeyframeId: playlistKeyframe.id,
     });
     await refreshPlaylistUpdatedAtTimestamp(playlist.id);
 

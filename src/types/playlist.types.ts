@@ -45,3 +45,12 @@ export type RemovePlaylistItemRequest = {
   uuid: string;
   itemId: number;
 };
+
+export type AddPlaylistKeyframeRequest = {
+  uuid: string;
+};
+
+export type RemovePlaylistKeyframeRequest = {
+  uuid: string;
+  playlistKeyframeId: number;
+};

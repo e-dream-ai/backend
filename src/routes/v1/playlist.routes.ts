@@ -7,9 +7,11 @@ import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import {
   addPlaylistItemSchema,
+  addPlaylistKeyframeSchema,
   createPlaylistSchema,
   orderPlaylistSchema,
   removePlaylistItemSchema,
+  removePlaylistKeyframeSchema,
   requestPlaylistSchema,
   updatePlaylistSchema,
 } from "schemas/playlist.schema";
@@ -426,8 +428,8 @@ playlistRouter.put(
  *  put:
  *    tags:
  *      - playlist
- *    summary: Updates playlist order
- *    description: Updates playlist order
+ *    summary: Adds playlist item
+ *    description: Adds playlist item
  *    requestBody:
  *      required: true
  *      content:
@@ -437,8 +439,8 @@ playlistRouter.put(
  *            properties:
  *              type:
  *                type: string
- *              id:
- *                type: number
+ *              uuid:
+ *                type: string
  *    parameters:
  *      - name: uuid
  *        in: query
@@ -448,7 +450,7 @@ playlistRouter.put(
  *          type: string
  *    responses:
  *      '200':
- *        description: Updates playlist order
+ *        description: Adds playlist item
  *        content:
  *          application/json:
  *            schema:
@@ -540,6 +542,128 @@ playlistRouter.delete(
   ]),
   validatorMiddleware(removePlaylistItemSchema),
   playlistController.handleRemovePlaylistItem,
+);
+
+/**
+ * @swagger
+ * /playlist/{uuid}/keyframe:
+ *  put:
+ *    tags:
+ *      - playlist
+ *    summary: Adds playlist keyframe
+ *    description: Adds playlist keyframe
+ *    requestBody:
+ *      required: true
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            properties:
+ *              type:
+ *                type: string
+ *              uuid:
+ *                type: number
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: Playlist uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Adds playlist keyframe
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        playlist:
+ *                          $ref: '#/components/schemas/Playlist'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.post(
+  "/:uuid/keyframe",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(addPlaylistKeyframeSchema),
+  playlistController.handleAddPlaylistKeyframe,
+);
+
+/**
+ * @swagger
+ * /playlist/{uuid}/keyframe/{playlistKeyframeId}:
+ *  delete:
+ *    tags:
+ *      - playlist
+ *    summary: Deletes playlist keyframe
+ *    description: Deletes playlist keyframe
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: Playlist uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *      - name: playlistKeyframeId
+ *        in: query
+ *        description: playlist keyframe id
+ *        required: true
+ *        schema:
+ *          type: integer
+ *          example: 1
+ *    responses:
+ *      '200':
+ *        description: Deletes playlist keyframe
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        playlist:
+ *                          $ref: '#/components/schemas/Playlist'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.delete(
+  "/:uuid/keyframe/:playlistKeyframeId",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(removePlaylistKeyframeSchema),
+  playlistController.handleRemovePlaylistKeyframe,
 );
 
 export default playlistRouter;

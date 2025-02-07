@@ -15,7 +15,7 @@ import {
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Dream, FeedItem, User, Vote } from "entities";
+import { Dream, FeedItem, Keyframe, User, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import {
@@ -74,6 +74,7 @@ const dreamRepository = appDataSource.getRepository(Dream);
 const userRepository = appDataSource.getRepository(User);
 const feedItemRepository = appDataSource.getRepository(FeedItem);
 const voteRepository = appDataSource.getRepository(Vote);
+const keyframeRepository = appDataSource.getRepository(Keyframe);
 
 /**
  * Handles get dreams
@@ -692,6 +693,8 @@ export const handleGetDream = async (
         user: true,
         displayedOwner: true,
         playlistItems: { playlist: getPlaylistFindOptionsRelations() },
+        startKeyframe: true,
+        endKeyframe: true,
       },
       select: getDreamSelectedColumns({
         originalVideo: true,
@@ -1036,8 +1039,17 @@ export const handleUpdateDream = async (
   try {
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true, displayedOwner: true },
-      select: getDreamSelectedColumns({ featureRank: true }),
+      relations: {
+        user: true,
+        displayedOwner: true,
+        startKeyframe: true,
+        endKeyframe: true,
+      },
+      select: getDreamSelectedColumns({
+        featureRank: true,
+        startKeyframe: true,
+        endKeyframe: true,
+      }),
     });
 
     if (!dream) {
@@ -1064,14 +1076,46 @@ export const handleUpdateDream = async (
 
     // Define an object to hold the fields that are allowed to be updated
     let updateData: Partial<Dream> = {
-      ...(req.body as Omit<UpdateDreamRequest, "displayedOwner">),
+      ...(req.body as Omit<
+        UpdateDreamRequest,
+        "displayedOwner" | "startKeyframe" | "endKeyframe"
+      >),
     };
 
     let displayedOwner: User | null = null;
+    let startKeyframe: Keyframe | null,
+      endKeyframe: Keyframe | null = null;
+
     if (isAdmin(user) && req.body.displayedOwner) {
       displayedOwner = await userRepository.findOneBy({
         id: req.body.displayedOwner,
       });
+    }
+
+    // find start keyframe, if exists save it into the dream
+    if (req.body.startKeyframe) {
+      startKeyframe = await keyframeRepository.findOne({
+        where: {
+          uuid: req.body.startKeyframe,
+        },
+      });
+
+      if (startKeyframe) {
+        updateData = { ...updateData, startKeyframe };
+      }
+    }
+
+    // find end keyframe, if exists save it into the dream
+    if (req.body.endKeyframe) {
+      endKeyframe = await keyframeRepository.findOne({
+        where: {
+          uuid: req.body.endKeyframe,
+        },
+      });
+
+      if (endKeyframe) {
+        updateData = { ...updateData, endKeyframe };
+      }
     }
 
     /**

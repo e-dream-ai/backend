@@ -55,6 +55,8 @@ export const updateDreamSchema: RequestValidationSchema = {
       }),
     nsfw: Joi.boolean(),
     ccbyLicense: Joi.boolean(),
+    startKeyframe: Joi.string().uuid(),
+    endKeyframe: Joi.string().uuid(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

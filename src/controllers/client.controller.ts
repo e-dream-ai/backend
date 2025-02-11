@@ -246,8 +246,6 @@ export const handleGetDreams = async (
         user: true,
         displayedOwner: true,
         playlistItems: true,
-        startKeyframe: true,
-        endKeyframe: true,
       },
       select: getDreamSelectedColumns({
         originalVideo: true,
@@ -297,8 +295,6 @@ export const handleDreamsRequest = async (
         user: true,
         displayedOwner: true,
         playlistItems: true,
-        startKeyframe: true,
-        endKeyframe: true,
       },
       select: getDreamSelectedColumns({
         originalVideo: true,

@@ -69,7 +69,12 @@ export const getPlaylistFindOptionsRelations =
            */
           items: { dreamItem: true, playlistItem: true },
         },
-        dreamItem: { user: true, displayedOwner: true },
+        dreamItem: {
+          user: true,
+          displayedOwner: true,
+          startKeyframe: true,
+          endKeyframe: true,
+        },
       },
       playlistItems: {
         playlist: true,
@@ -100,6 +105,12 @@ export const getPlaylistItemSelectedColumns =
         updated_at: true,
         status: true,
         video: true,
+        startKeyframe: {
+          uuid: true,
+        },
+        endKeyframe: {
+          uuid: true,
+        },
       },
       playlistItem: {
         id: true,

@@ -31,8 +31,6 @@ export const formatClientDream = (dream: Dream): ClientDream => ({
   frontendUrl: dream.frontendUrl,
   activityLevel: dream?.activityLevel ?? null,
   md5: dream?.md5,
-  start_keyframe: dream?.startKeyframe?.uuid ?? null,
-  end_keyframe: dream?.endKeyframe?.uuid ?? null,
   video_timestamp: dream?.processed_at ? dream?.processed_at.getTime() : null,
   timestamp: dream.updated_at.getTime(),
 });
@@ -51,6 +49,8 @@ const flattenPlaylistItems = (
         {
           uuid: item.dreamItem.uuid,
           timestamp: item.dreamItem.updated_at.getTime(),
+          start_keyframe: item?.dreamItem?.startKeyframe?.uuid ?? null,
+          end_keyframe: item?.dreamItem?.endKeyframe?.uuid ?? null,
         },
       ];
     } else if (item.playlistItem) {

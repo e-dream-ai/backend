@@ -31,6 +31,7 @@ export const getKeyframeFindOptionsRelations =
     return {
       playlistKeyframes: true,
       user: true,
+      displayedOwner: true,
     };
   };
 

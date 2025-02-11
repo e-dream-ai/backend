@@ -6,6 +6,7 @@ import httpStatus from "http-status";
 import { ILike } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import {
+  CompleteMultipartUploadKeyframeRequest,
   CreateKeyframeRequest,
   GetKeyframeQuery,
   KeyframeParamsRequest,
@@ -23,7 +24,15 @@ import {
   jsonResponse,
   handleInternalServerError,
 } from "utils/responses.util";
-import { isAdmin } from "utils/user.util";
+import { getUserIdentifier, isAdmin } from "utils/user.util";
+import {
+  completeMultipartUpload,
+  createMultipartUpload,
+  generateKeyframePath,
+  getUploadPartSignedUrl,
+} from "utils/s3.util";
+import { CreateMultipartUploadFileRequest } from "types/keyframe.types";
+import { generateBucketObjectURL } from "utils/aws/bucket.util";
 
 const keyframeRepository = appDataSource.getRepository(Keyframe);
 const userRepository = appDataSource.getRepository(User);
@@ -145,6 +154,164 @@ export const handleCreateKeyframe = async (
 };
 
 /**
+ * Handles create multipart upload with presigned urls to post keyframe image files
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - upload parts
+ * BAD_REQUEST 400 - error creating parts
+ *
+ */
+export const handleInitKeyframeImageUpload = async (
+  req: RequestType<
+    CreateMultipartUploadFileRequest,
+    unknown,
+    KeyframeParamsRequest
+  >,
+  res: ResponseType,
+) => {
+  // setting vars
+  const user = res.locals.user;
+  const keyframeUUID: string = req.params.uuid!;
+  const fileExtension = req.body.extension!;
+
+  try {
+    // find keyframe
+    const [keyframe] = await keyframeRepository.find({
+      where: { uuid: keyframeUUID! },
+      relations: { user: true },
+      select: getKeyframeSelectedColumns(),
+    });
+
+    if (!keyframe) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: keyframe.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+    /**
+     * keyframe owner uuid to generate s3 file path
+     */
+    const userIdentifier = getUserIdentifier(keyframe.user);
+
+    /**
+     * filePath s3 generation
+     */
+    const filePath = generateKeyframePath({
+      userIdentifier,
+      keyframeUUID,
+      extension: fileExtension,
+    });
+
+    const uploadId = await createMultipartUpload(filePath!);
+    const arrayUrls = Array.from({ length: 1 });
+    const urls = await Promise.all(
+      arrayUrls.map(
+        async (_, index) =>
+          await getUploadPartSignedUrl(filePath, uploadId!, index + 1),
+      ),
+    );
+    return res.status(httpStatus.CREATED).json(
+      jsonResponse({
+        success: true,
+        data: { keyframe, urls, uploadId },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles complete multipart upload with presigned urls to post
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - keyframe image updated
+ * BAD_REQUEST 400 - error updating keyframe image
+ *
+ */
+export const handleCompleteKeyframeImageUpload = async (
+  req: RequestType<
+    CompleteMultipartUploadKeyframeRequest,
+    unknown,
+    KeyframeParamsRequest
+  >,
+  res: ResponseType,
+) => {
+  const user = res.locals.user!;
+  const keyframeUUID: string = req.params.uuid!;
+  const uploadId = req.body.uploadId!;
+  const fileExtension = req.body.extension!;
+  const parts = req.body.parts!;
+
+  try {
+    const [keyframe] = await keyframeRepository.find({
+      where: { uuid: keyframeUUID! },
+      relations: { user: true },
+      select: getKeyframeSelectedColumns(),
+    });
+
+    if (!keyframe) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: keyframe.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    /**
+     * keyframe owner uuid to generate s3 file path
+     */
+    const userIdentifier = getUserIdentifier(keyframe.user);
+
+    /**
+     * filePath s3 generation, updates database values if needed
+     */
+
+    const filePath = generateKeyframePath({
+      userIdentifier,
+      keyframeUUID,
+      extension: fileExtension,
+    });
+
+    await keyframeRepository.update(keyframe.id, {
+      image: generateBucketObjectURL(filePath!),
+    });
+
+    /**
+     * completes multipart upload with path, upload id and parts
+     */
+    await completeMultipartUpload(filePath!, uploadId!, parts!);
+
+    return res
+      .status(httpStatus.CREATED)
+      .json(jsonResponse({ success: true, data: {} }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
  * Handles update keyframe
  *
  * @param {RequestType} req - Request object
@@ -215,6 +382,60 @@ export const handleUpdateKeyframe = async (
       .json(
         jsonResponse({ success: true, data: { keyframe: updatedKeyframe } }),
       );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles delete image keyframe
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - keyframe
+ * BAD_REQUEST 400 - error deleting keyframe
+ *
+ */
+export const handleDeleteImageKeyframe = async (
+  req: RequestType<unknown, unknown, KeyframeParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+  try {
+    const keyframe = await findOneKeyframe({
+      where: { uuid },
+      select: getKeyframeSelectedColumns(),
+    });
+
+    if (!keyframe) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: keyframe.user.id === user.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    const { affected } = await keyframeRepository.update(keyframe.id, {
+      image: null,
+    });
+
+    console.log({ affected });
+
+    if (!affected) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

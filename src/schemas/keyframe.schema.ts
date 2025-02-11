@@ -1,6 +1,10 @@
+import { CompletedPart } from "@aws-sdk/client-s3";
+import { ALLOWED_IMAGE_TYPES } from "constants/file.constants";
 import Joi from "joi";
 import {
+  CompleteMultipartUploadKeyframeRequest,
   CreateKeyframeRequest,
+  CreateMultipartUploadFileRequest,
   GetKeyframeQuery,
   KeyframeParamsRequest,
   UpdateKeyframeRequest,
@@ -8,6 +12,12 @@ import {
 import { RequestValidationSchema } from "types/validator.types";
 
 export const requestKeyframeSchema: RequestValidationSchema = {
+  params: Joi.object<KeyframeParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const getKeyframesSchema: RequestValidationSchema = {
   query: Joi.object<GetKeyframeQuery>().keys({
     take: Joi.number(),
     skip: Joi.number(),
@@ -28,6 +38,30 @@ export const createKeyframeSchema: RequestValidationSchema = {
 export const updateKeyframeSchema: RequestValidationSchema = {
   body: Joi.object<UpdateKeyframeRequest>().keys({
     name: Joi.string().required().max(100),
+  }),
+  params: Joi.object<KeyframeParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const createMultipartUploadFileSchema: RequestValidationSchema = {
+  body: Joi.object<CreateMultipartUploadFileRequest>().keys({
+    extension: Joi.string()
+      .valid(...ALLOWED_IMAGE_TYPES)
+      .required(),
+  }),
+  params: Joi.object<KeyframeParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const completeMultipartUploadKeyframeSchema: RequestValidationSchema = {
+  body: Joi.object<CompleteMultipartUploadKeyframeRequest>().keys({
+    extension: Joi.string()
+      .valid(...ALLOWED_IMAGE_TYPES)
+      .required(),
+    uploadId: Joi.string().required(),
+    parts: Joi.array<CompletedPart>().required(),
   }),
   params: Joi.object<KeyframeParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

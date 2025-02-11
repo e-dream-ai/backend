@@ -395,7 +395,7 @@ export const handleRefreshMultipartUploadUrl = async (
 };
 
 /**
- * Handles create multipart upload with presigned urls to post
+ * Handles complete multipart upload with presigned urls to post
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object
@@ -1141,6 +1141,8 @@ export const handleUpdateDream = async (
       relations: {
         user: true,
         displayedOwner: true,
+        startKeyframe: true,
+        endKeyframe: true,
       },
     });
 

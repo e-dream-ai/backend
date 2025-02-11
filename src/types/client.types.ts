@@ -28,8 +28,6 @@ export type ClientDream = {
   frontendUrl: string;
   activityLevel?: number | null;
   md5?: string | null;
-  start_keyframe: string | null;
-  end_keyframe: string | null;
   timestamp: number;
   video_timestamp?: number | null;
 };

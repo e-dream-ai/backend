@@ -185,3 +185,14 @@ export const generateDreamPath = ({
   `${userIdentifier}/${dreamUUID}/${dreamUUID}${
     processed ? `_${PROCESSED_VIDEO_SUFFIX}` : ""
   }.${extension}`;
+
+export const generateKeyframePath = ({
+  userIdentifier,
+  keyframeUUID,
+  extension,
+}: {
+  userIdentifier: string;
+  keyframeUUID: string;
+  extension: string;
+}) =>
+  `${userIdentifier}/keyframes/${keyframeUUID}/${keyframeUUID}.${extension}`;

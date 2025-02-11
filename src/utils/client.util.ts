@@ -49,8 +49,10 @@ const flattenPlaylistItems = (
         {
           uuid: item.dreamItem.uuid,
           timestamp: item.dreamItem.updated_at.getTime(),
-          start_keyframe: item?.dreamItem?.startKeyframe?.uuid ?? null,
-          end_keyframe: item?.dreamItem?.endKeyframe?.uuid ?? null,
+          // start_keyframe and end_keyframe will be skipped instead of sending null if dream doesn't have them
+          // https://github.com/e-dream-ai/backend/issues/22#issuecomment-2649658596
+          start_keyframe: item?.dreamItem?.startKeyframe?.uuid,
+          end_keyframe: item?.dreamItem?.endKeyframe?.uuid,
         },
       ];
     } else if (item.playlistItem) {

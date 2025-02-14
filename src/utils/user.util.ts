@@ -137,7 +137,12 @@ export const syncWorkOSUser = async (
     relations: {
       role: true,
       currentPlaylist: { user: true, displayedOwner: true },
-      currentDream: { user: true, displayedOwner: true },
+      currentDream: {
+        user: true,
+        displayedOwner: true,
+        endKeyframe: true,
+        startKeyframe: true,
+      },
     },
   });
 

@@ -429,8 +429,6 @@ export const handleDeleteImageKeyframe = async (
       image: null,
     });
 
-    console.log({ affected });
-
     if (!affected) {
       return handleNotFound(req as RequestType, res);
     }

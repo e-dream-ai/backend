@@ -20,6 +20,7 @@ import { Invite } from "./Invite.entity";
 import { NEW_USER_DEFAULT_QUOTA } from "constants/user.constants";
 import { ApiKey } from "./ApiKey.entity";
 import { Keyframe } from "./Keyframe.entity";
+import { Report } from "./Report.entity";
 
 @Entity()
 export class User {
@@ -69,6 +70,12 @@ export class User {
 
   @OneToMany(() => Keyframe, (keyframe) => keyframe.user)
   keyframes: Playlist[];
+
+  @OneToMany(() => Report, (report) => report.reportedBy)
+  reports: Report[];
+
+  @OneToMany(() => Report, (report) => report.reportedBy)
+  processedReports: Report[];
 
   /**
    *  Role

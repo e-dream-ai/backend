@@ -22,6 +22,7 @@ import { ColumnNumericTransformer } from "transformers/numeric.transformer";
 import { ColumnVideoTransformer } from "transformers/video.transformer";
 import env from "shared/env";
 import { Keyframe } from "./Keyframe.entity";
+import { Report } from "./Report.entity";
 
 @Entity()
 export class Dream {
@@ -175,6 +176,9 @@ export class Dream {
   @JoinColumn()
   @Index()
   endKeyframe: Keyframe | null;
+
+  @OneToMany(() => Report, (report) => report.dream)
+  reports: Report[];
 
   // last processed at date
   @Column({ nullable: true, type: "timestamp" })

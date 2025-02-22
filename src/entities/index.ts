@@ -9,3 +9,4 @@ export * from "./User.entity";
 export * from "./Invite.entity";
 export * from "./Feature.entity";
 export * from "./Vote.entity";
+export * from "./Report.entity";

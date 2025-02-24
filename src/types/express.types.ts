@@ -31,3 +31,7 @@ export type LocalsType = {
 } & Record<string, unknown>;
 
 export type ResponseType = Response<Record<string, unknown>, LocalsType>;
+
+export type ResponseOptions = {
+  message?: string;
+};

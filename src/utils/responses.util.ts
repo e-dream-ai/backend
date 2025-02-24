@@ -2,7 +2,11 @@ import httpStatus from "http-status";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { APP_LOGGER } from "shared/logger";
 import { JsonResponse } from "types/responses.types";
-import { RequestType, ResponseType } from "types/express.types";
+import {
+  RequestType,
+  ResponseOptions,
+  ResponseType,
+} from "types/express.types";
 import { GenericServerException, OauthException } from "@workos-inc/node";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import { User } from "entities";
@@ -27,11 +31,15 @@ export const handleInternalServerError = (
 };
 
 // Not Found Handler
-export const handleNotFound = (req: RequestType, res: ResponseType) => {
+export const handleNotFound = (
+  req: RequestType,
+  res: ResponseType,
+  options: ResponseOptions = {},
+) => {
   res.status(httpStatus.NOT_FOUND).json(
     jsonResponse({
       success: false,
-      message: GENERAL_MESSAGES.NOT_FOUND,
+      message: options?.message ?? GENERAL_MESSAGES.NOT_FOUND,
     }),
   );
 };

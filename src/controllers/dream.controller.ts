@@ -12,6 +12,7 @@ import {
   TURN_OFF_QUANTITY,
   TURN_ON_QUANTITY,
 } from "constants/job.constants";
+import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
@@ -1074,13 +1075,20 @@ export const handleUpdateDream = async (
       delete dream.featureRank;
     }
 
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    const {
+      displayedOwner: _displayedOwner,
+      startKeyframe: _startKeyframe,
+      endKeyframe: _endKeyframe,
+      ...sanitizedDreamData
+    } = req.body;
+    /* eslint-enable @typescript-eslint/no-unused-vars */
+
     // Define an object to hold the fields that are allowed to be updated
-    let updateData: Partial<Dream> = {
-      ...(req.body as Omit<
-        UpdateDreamRequest,
-        "displayedOwner" | "startKeyframe" | "endKeyframe"
-      >),
-    };
+    let updateData: Partial<Dream> = sanitizedDreamData as Omit<
+      UpdateDreamRequest,
+      "displayedOwner" | "startKeyframe" | "endKeyframe"
+    >;
 
     let displayedOwner: User | null = null;
     let startKeyframe: Keyframe | null,
@@ -1100,9 +1108,12 @@ export const handleUpdateDream = async (
         },
       });
 
-      if (startKeyframe) {
-        updateData = { ...updateData, startKeyframe };
+      if (!startKeyframe) {
+        return handleNotFound(req as RequestType, res, {
+          message: DREAM_MESSAGES.START_KEYFRAME_NOT_FOUND,
+        });
       }
+      updateData = { ...updateData, startKeyframe };
     }
 
     // find end keyframe, if exists save it into the dream
@@ -1113,9 +1124,12 @@ export const handleUpdateDream = async (
         },
       });
 
-      if (endKeyframe) {
-        updateData = { ...updateData, endKeyframe };
+      if (!endKeyframe) {
+        return handleNotFound(req as RequestType, res, {
+          message: DREAM_MESSAGES.END_KEYFRAME_NOT_FOUND,
+        });
       }
+      updateData = { ...updateData, endKeyframe };
     }
 
     /**

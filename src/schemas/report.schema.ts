@@ -24,7 +24,12 @@ export const getReportsSchema: RequestValidationSchema = {
 };
 
 export const createReportSchema: RequestValidationSchema = {
-  body: Joi.object<CreateReportRequest>().keys({}),
+  body: Joi.object<CreateReportRequest>().keys({
+    dreamUUID: Joi.string().uuid().required(),
+    typeId: Joi.number().positive().required(),
+    comments: Joi.string().empty().allow(""),
+    link: Joi.string().empty(),
+  }),
 };
 
 export const updateReportSchema: RequestValidationSchema = {

@@ -1,7 +1,10 @@
+import { DREAM_MESSAGES } from "constants/messages/dream.constants";
+import { REPORT_TYPES_MESSAGES } from "constants/messages/report.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Report, User } from "entities";
+import { Dream, Report, User } from "entities";
+import { ReportType } from "entities/ReportType.entity";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
 import {
@@ -23,8 +26,38 @@ import {
   handleInternalServerError,
 } from "utils/responses.util";
 import { isAdmin } from "utils/user.util";
+
 const reportRepository = appDataSource.getRepository(Report);
+const reportTypeRepository = appDataSource.getRepository(ReportType);
 const userRepository = appDataSource.getRepository(User);
+const dreamRepository = appDataSource.getRepository(Dream);
+
+/**
+ * Handles get report
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - report
+ * BAD_REQUEST 400 - error getting report
+ *
+ */
+export const handleGetReportTypes = async (
+  req: RequestType<unknown, unknown>,
+  res: ResponseType,
+) => {
+  try {
+    const reportTypes = await reportTypeRepository.find();
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { reportTypes } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
 
 /**
  * Handles get report
@@ -115,13 +148,36 @@ export const handleCreateReport = async (
   req: RequestType<CreateReportRequest>,
   res: ResponseType,
 ) => {
-  // const {} = req.body;
+  const { comments, link, dreamUUID, typeId } = req.body;
   const user = res.locals.user!;
+
+  const [dream, type] = await Promise.all([
+    dreamRepository.findOne({ where: { uuid: dreamUUID } }),
+    reportTypeRepository.findOne({ where: { id: typeId } }),
+  ]);
+
+  // Handle not found cases
+  if (!dream) {
+    return handleNotFound(req, res, {
+      message: DREAM_MESSAGES.NOT_FOUND,
+    });
+  }
+
+  if (!type) {
+    return handleNotFound(req, res, {
+      message: REPORT_TYPES_MESSAGES.NOT_FOUND,
+    });
+  }
 
   try {
     // create report
     const report = new Report();
     report.reportedBy = user!;
+    report.type = type;
+    report.dream = dream;
+    report.comments = comments;
+    report.link = link;
+    report.reportedAt = new Date();
     const createdReport = await reportRepository.save(report);
 
     return res
@@ -172,6 +228,7 @@ export const handleUpdateReport = async (
     }
 
     // Define an object to hold the fields that are allowed to be updated
+    // @ts-expect-error remove after finishing feature
     let updateData: Partial<Report> = {
       ...(req.body as Omit<UpdateReportRequest, "reportedBy">),
     };

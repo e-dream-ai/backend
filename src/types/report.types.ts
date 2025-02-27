@@ -8,8 +8,8 @@ export type ReportParamsRequest = {
 };
 
 export type CreateReportRequest = {
-  dream: string;
-  reportedBy?: number;
+  typeId: number;
+  dreamUUID: string;
   comments?: string;
   link?: string;
 };

@@ -19,13 +19,15 @@ export const getReportSelectedColumns = (): FindOptionsSelect<Report> => {
     reportedBy: {
       uuid: true,
       name: true,
+      email: true,
     },
-    description: true,
+    comments: true,
     processed: true,
     link: true,
     processedBy: {
       uuid: true,
       name: true,
+      email: true,
     },
     reportedAt: true,
     processedAt: true,

@@ -12,6 +12,7 @@ import {
 } from "typeorm";
 import { User } from "./User.entity";
 import { Dream } from "./Dream.entity";
+import { ReportType } from "./ReportType.entity";
 
 @Entity()
 export class Report {
@@ -22,6 +23,13 @@ export class Report {
   @Generated("uuid")
   @Index()
   uuid: string;
+
+  /**
+   *  ReportType
+   */
+  @ManyToOne(() => ReportType)
+  @JoinColumn()
+  type: ReportType;
 
   @ManyToOne(() => Dream, (dream) => dream.reports)
   @JoinColumn()
@@ -41,7 +49,7 @@ export class Report {
   processed: boolean;
 
   @Column({ nullable: true, type: "varchar" })
-  description?: string | null;
+  comments?: string | null;
 
   @Column({ nullable: true, type: "varchar" })
   link?: string | null;

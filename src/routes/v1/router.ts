@@ -12,6 +12,7 @@ import featureRouter from "./feature.routes";
 import userRouter from "routes/v1/user.routes";
 import clientRouter from "routes/v1/client.routes";
 import inviteRouter from "routes/v1/invite.routes";
+import reportRouter from "routes/v1/report.routes";
 import authRouterV2 from "routes/v2/auth.routes";
 import webhooksRouterV2 from "routes/v2/webhooks.routes";
 import { jsonResponse } from "utils/responses.util";
@@ -301,6 +302,48 @@ export const registerRoutes = (app: express.Application) => {
    *         updated_at:
    *           type: string
    *           format: date
+   *     ReportType:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         description:
+   *           type: string
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *     Report:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         uuid:
+   *           type: string
+   *         dream:
+   *           type: Dream
+   *         reportedBy:
+   *           type: User
+   *         processed:
+   *           type: boolean
+   *         comments:
+   *           type: string
+   *         link:
+   *           type: string
+   *         processedBy:
+   *           type: User
+   *         reportedAt:
+   *           type: string
+   *         processedAt:
+   *           type: string
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
    *     Feature:
    *       type: object
    *       properties:
@@ -428,8 +471,11 @@ export const registerRoutes = (app: express.Application) => {
   // register playlist router
   app.use("/api/v1/feed", feedRouter);
 
-  // register playlist router
+  // register invite router
   app.use("/api/v1/invite", inviteRouter);
+
+  // register report router
+  app.use("/api/v1/report", reportRouter);
 
   // register v2 auth
   app.use("/api/v2/auth", authRouterV2);

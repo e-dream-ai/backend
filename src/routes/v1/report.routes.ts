@@ -14,6 +14,50 @@ const reportRouter = Router();
 
 /**
  * @swagger
+ * /report/type:
+ *  get:
+ *    tags:
+ *      - report
+ *    summary: Gets report types
+ *    description: Gets report types
+ *    responses:
+ *      '200':
+ *        description: Gets report
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        report:
+ *                          $ref: '#/components/schemas/ReportType'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+reportRouter.get(
+  "/type",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  reportController.handleGetReportTypes,
+);
+
+/**
+ * @swagger
  * /report/{uuid}:
  *  get:
  *    tags:

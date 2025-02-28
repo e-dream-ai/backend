@@ -44,10 +44,7 @@ import {
 } from "utils/dream.util";
 import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
-import {
-  getPlaylistFindOptionsRelations,
-  refreshPlaylistUpdatedAtTimestampFromPlaylistItems,
-} from "utils/playlist.util";
+import { refreshPlaylistUpdatedAtTimestampFromPlaylistItems } from "utils/playlist.util";
 import { isBrowserRequest } from "utils/request.util";
 import {
   jsonResponse,
@@ -640,22 +637,9 @@ export const handleGetDreamVote = async (
   const user = res.locals.user;
   const dreamUUID: string = req.params.uuid!;
   try {
-    const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID! },
-      relations: { user: true, displayedOwner: true, playlistItems: true },
-      select: getDreamSelectedColumns({
-        originalVideo: true,
-        featureRank: true,
-      }),
-    });
-
-    if (!dream) {
-      return handleNotFound(req as RequestType, res);
-    }
-
     const vote = await voteRepository.findOne({
       where: {
-        dream: { id: dream.id },
+        dream: { uuid: dreamUUID },
         user: { id: user?.id },
       },
     });
@@ -688,12 +672,12 @@ export const handleGetDream = async (
   const user = res.locals.user;
   const dreamUUID: string = req.params.uuid!;
   try {
-    const [dream] = await dreamRepository.find({
+    const dream = await dreamRepository.findOne({
       where: { uuid: dreamUUID! },
       relations: {
         user: true,
         displayedOwner: true,
-        playlistItems: { playlist: getPlaylistFindOptionsRelations() },
+        playlistItems: { playlist: { user: true, displayedOwner: true } },
         startKeyframe: true,
         endKeyframe: true,
       },
@@ -1261,7 +1245,7 @@ export const handleUpvoteDream = async (
   const user = res.locals.user!;
 
   try {
-    const [dream] = await dreamRepository.find({
+    const dream = await dreamRepository.findOne({
       where: { uuid: dreamUUID! },
     });
 
@@ -1271,15 +1255,9 @@ export const handleUpvoteDream = async (
 
     await handleVoteDream({ dream, user, voteType: VoteType.UPVOTE });
 
-    const [updatedDream] = await dreamRepository.find({
-      where: { id: dream.id },
-      relations: { user: true },
-      select: getDreamSelectedColumns(),
-    });
-
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+      .json(jsonResponse({ success: true, data: { dream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -1304,7 +1282,7 @@ export const handleDownvoteDream = async (
   const dreamUUID: string = req.params.uuid!;
   const user = res.locals.user!;
   try {
-    const [dream] = await dreamRepository.find({
+    const dream = await dreamRepository.findOne({
       where: { uuid: dreamUUID! },
     });
 
@@ -1314,15 +1292,9 @@ export const handleDownvoteDream = async (
 
     await handleVoteDream({ dream, user, voteType: VoteType.DOWNVOTE });
 
-    const [updatedDream] = await dreamRepository.find({
-      where: { id: dream.id },
-      relations: { user: true },
-      select: getDreamSelectedColumns(),
-    });
-
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+      .json(jsonResponse({ success: true, data: { dream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

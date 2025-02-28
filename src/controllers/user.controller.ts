@@ -6,7 +6,7 @@ import { AVATAR } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Playlist, User } from "entities";
+import { User } from "entities";
 import { ApiKey } from "entities/ApiKey.entity";
 import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
@@ -25,7 +25,7 @@ import { decrypt } from "utils/crypto.util";
 import { getVotedDreams } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
-  getPlaylistFindOptionsRelations,
+  findOnePlaylist,
   getPlaylistSelectedColumns,
 } from "utils/playlist.util";
 import {
@@ -45,7 +45,6 @@ import { workos } from "utils/workos.util";
 
 const userRepository = appDataSource.getRepository(User);
 const roleRepository = appDataSource.getRepository(Role);
-const playlistRepository = appDataSource.getRepository(Playlist);
 const apiKeyRepository = appDataSource.getRepository(ApiKey);
 
 /**
@@ -287,10 +286,10 @@ export const handleGetCurrentPlaylist = async (
       return handleNotFound(req, res);
     }
 
-    const playlist = await playlistRepository.findOne({
+    const playlist = await findOnePlaylist({
       where: { id: currentPlaylistId },
       select: getPlaylistSelectedColumns(),
-      relations: getPlaylistFindOptionsRelations(),
+      filter: { nsfw: user?.nsfw },
     });
 
     if (!playlist) {

@@ -43,7 +43,7 @@ export const getPlaylistSelectedColumns = ({
     uuid: true,
     name: true,
     thumbnail: true,
-    items: getPlaylistItemSelectedColumns(),
+    // items: getPlaylistItemSelectedColumns(),
     created_at: true,
     updated_at: true,
     deleted_at: true,
@@ -59,23 +59,10 @@ export const getPlaylistFindOptionsRelations =
     return {
       user: true,
       displayedOwner: true,
-      feedItem: true,
-      items: {
-        playlistItem: {
-          user: true,
-          displayedOwner: true,
-          /**
-           * will be optimize on https://github.com/e-dream-ai/backend/issues/87
-           */
-          items: { dreamItem: true, playlistItem: true },
-        },
-        dreamItem: {
-          user: true,
-          displayedOwner: true,
-          startKeyframe: true,
-          endKeyframe: true,
-        },
-      },
+      // feedItem: true,
+      // Avoid getting items from entity is causing performance issues when items increase
+      // try use `getPlaylistItemsQueryBuilder` instead
+      // items: true,
       playlistItems: {
         playlist: true,
       },
@@ -143,32 +130,75 @@ export const findOnePlaylist = async ({
     where: where,
     select: select,
     relations: getPlaylistFindOptionsRelations(),
-    order: { items: { order: "ASC" } },
   });
 
   if (!playlist) return null;
 
-  /**
-   * Filter for NSFW
-   * If user nsfw flag is not active, remove all content that has nsfw flag active (playlist and dreams)
-   */
-  if (!filter?.nsfw) {
-    playlist.items = playlist.items.filter(
-      (item) => !(item?.dreamItem?.nsfw ?? item?.playlistItem?.nsfw),
+  // Get playlist items using query builder
+  playlist.items = await getPlaylistItemsQueryBuilder(playlist.id, filter);
+  // Call computeThumbnail explicitly after getting the items
+  playlist.computeThumbnail();
+  return playlist;
+};
+
+/**
+ * Creates an optimized query builder for playlist items with all necessary relations
+ */
+export const getPlaylistItemsQueryBuilder = (
+  playlistId: number,
+  filter?: {
+    nsfw?: boolean;
+    onlyProcessedDreams?: boolean;
+  },
+) => {
+  const queryBuilder = playlistItemRepository
+    .createQueryBuilder("item")
+    .where("item.playlistId = :playlistId", { playlistId })
+    // Ensure playlist items aren't deleted
+    .andWhere("item.deleted_at IS NULL")
+    // Dream item and its relations
+    .leftJoinAndSelect("item.dreamItem", "dreamItem")
+    .leftJoinAndSelect("dreamItem.user", "dreamItemUser")
+    .leftJoinAndSelect("dreamItem.displayedOwner", "dreamItemDisplayedOwner")
+    .leftJoinAndSelect("dreamItem.startKeyframe", "startKeyframe")
+    .leftJoinAndSelect("dreamItem.endKeyframe", "endKeyframe")
+    // Playlist item and its relations
+    .leftJoinAndSelect("item.playlistItem", "playlistItem")
+    .leftJoinAndSelect("playlistItem.user", "playlistItemUser")
+    .leftJoinAndSelect(
+      "playlistItem.displayedOwner",
+      "playlistItemDisplayedOwner",
+    )
+    // Nested items within playlist items
+    .leftJoinAndSelect("playlistItem.items", "nestedItems")
+    .leftJoinAndSelect("nestedItems.dreamItem", "nestedDreamItem")
+    .leftJoinAndSelect("nestedItems.playlistItem", "nestedPlaylistItem")
+    // Order by item order
+    .orderBy("item.order", "ASC");
+
+  // Apply filtering for nsfw
+  if (filter?.nsfw === false) {
+    queryBuilder.andWhere(
+      `(
+      (dreamItem.nsfw IS NULL OR dreamItem.nsfw = :nsfw) AND 
+      (playlistItem.nsfw IS NULL OR playlistItem.nsfw = :nsfw)
+    )`,
+      { nsfw: false },
     );
   }
 
-  /**
-   * Filter for onlyProcessedDreams
-   */
+  // Apply filtering for get processed dreams only
   if (filter?.onlyProcessedDreams) {
-    playlist.items = playlist.items.filter(
-      (item) =>
-        item?.dreamItem?.status === DreamStatusType.PROCESSED ||
-        Boolean(item?.playlistItem),
+    queryBuilder.andWhere(
+      `(
+      dreamItem.status = :status OR 
+      playlistItem.id IS NOT NULL
+    )`,
+      { status: DreamStatusType.PROCESSED },
     );
   }
-  return playlist;
+
+  return queryBuilder.getMany();
 };
 
 export const refreshPlaylistUpdatedAtTimestamp = (id: number) =>

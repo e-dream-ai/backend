@@ -251,10 +251,15 @@ export const handleUpdatePlaylist = async (
       return handleForbidden(req as RequestType, res);
     }
 
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    const { displayedOwner: _displayedOwner, ...sanitizedData } = req.body;
+    /* eslint-enable @typescript-eslint/no-unused-vars */
+
     // Define an object to hold the fields that are allowed to be updated
-    let updateData: Partial<Playlist> = {
-      ...(req.body as Omit<UpdatePlaylistRequest, "displayedOwner">),
-    };
+    let updateData: Partial<Playlist> = sanitizedData as Omit<
+      UpdatePlaylistRequest,
+      "displayedOwner"
+    >;
 
     let displayedOwner: User | null = null;
     if (isAdmin(user) && req.body.displayedOwner) {
@@ -289,17 +294,12 @@ export const handleUpdatePlaylist = async (
       ...updateData,
     });
 
-    const updatedPlaylist = await findOnePlaylist({
-      where: { id: playlist.id },
-      select: getPlaylistSelectedColumns({ featureRank: true }),
-      filter: { nsfw: user?.nsfw },
-    });
-
-    return res
-      .status(httpStatus.OK)
-      .json(
-        jsonResponse({ success: true, data: { playlist: updatedPlaylist } }),
-      );
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { playlist: { ...playlist, ...updateData } },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -368,16 +368,20 @@ export const handleUpdateThumbnailPlaylist = async (
       await s3Client.send(command);
     }
 
-    const updatedPlaylist = await playlistRepository.save({
-      ...playlist,
-      thumbnail: thumbnailBuffer ? generateBucketObjectURL(filePath) : null,
-    });
+    const newThumbnail = thumbnailBuffer
+      ? generateBucketObjectURL(filePath)
+      : null;
+
+    await playlistRepository.update(
+      { id: playlist.id },
+      { thumbnail: newThumbnail },
+    );
+
+    playlist.thumbnail = newThumbnail;
 
     return res
       .status(httpStatus.OK)
-      .json(
-        jsonResponse({ success: true, data: { playlist: updatedPlaylist } }),
-      );
+      .json(jsonResponse({ success: true, data: { playlist } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -402,10 +406,13 @@ export const handleDeletePlaylist = async (
   const uuid: string = req.params.uuid!;
   const user = res.locals.user!;
   try {
-    const playlist = await findOnePlaylist({
+    const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: getPlaylistSelectedColumns(),
-      filter: { nsfw: user?.nsfw },
+      // only need to query the user id
+      select: { user: { id: true } },
+      relations: {
+        user: true,
+      },
     });
 
     if (!playlist) {
@@ -456,10 +463,13 @@ export const handleOrderPlaylist = async (
   const order = req.body.order!;
 
   try {
-    const playlist = await findOnePlaylist({
+    const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: getPlaylistSelectedColumns(),
-      filter: { nsfw: user?.nsfw },
+      // only need to query the user id
+      select: { user: { id: true } },
+      relations: {
+        user: true,
+      },
     });
 
     if (!playlist) {
@@ -524,10 +534,13 @@ export const handleAddPlaylistItem = async (
   const user = res.locals.user!;
 
   try {
-    const playlist = await findOnePlaylist({
+    const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: getPlaylistSelectedColumns(),
-      filter: { nsfw: user?.nsfw },
+      // only need to query the user id
+      select: { user: { id: true } },
+      relations: {
+        user: true,
+      },
     });
 
     if (!playlist) {
@@ -582,7 +595,12 @@ export const handleAddPlaylistItem = async (
     /**
      * Set the order of the new item based on the current number of items in the playlist
      */
-    playlistItem.order = playlist.items?.length || 0;
+    const itemsCount = await playlistItemRepository.count({
+      where: {
+        playlist: { id: playlist.id },
+      },
+    });
+    playlistItem.order = itemsCount;
 
     let shouldUpdatePlaylistTimestamp = false;
 
@@ -599,10 +617,8 @@ export const handleAddPlaylistItem = async (
       shouldUpdatePlaylistTimestamp =
         dreamToAdd.status === DreamStatusType.PROCESSED;
     } else if (type === PlaylistItemType.PLAYLIST) {
-      const playlistToAdd = await findOnePlaylist({
+      const playlistToAdd = await playlistRepository.findOne({
         where: { uuid: itemUUID },
-        select: getPlaylistSelectedColumns(),
-        filter: { nsfw: user?.nsfw },
       });
 
       if (!playlistToAdd) {
@@ -653,12 +669,14 @@ export const handleRemovePlaylistItem = async (
   const itemId: number = req.params.itemId!;
   const user = res.locals.user!;
   try {
-    const playlist = await findOnePlaylist({
+    const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: getPlaylistSelectedColumns(),
-      filter: { nsfw: user?.nsfw },
+      // only need to query the user id
+      select: { user: { id: true } },
+      relations: {
+        user: true,
+      },
     });
-
     if (!playlist) {
       return handleNotFound(req as RequestType, res);
     }
@@ -715,10 +733,13 @@ export const handleAddPlaylistKeyframe = async (
   const user = res.locals.user!;
 
   try {
-    const playlist = await findOnePlaylist({
+    const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: getPlaylistSelectedColumns(),
-      filter: { nsfw: user?.nsfw },
+      // only need to query the user id
+      select: { user: { id: true } },
+      relations: {
+        user: true,
+      },
     });
 
     if (!playlist) {
@@ -760,7 +781,12 @@ export const handleAddPlaylistKeyframe = async (
     /**
      * Set the order of the new keyframe based on the current number of keyframes in the playlist
      */
-    playlistKeyframe.order = playlist.playlistKeyframes?.length || 0;
+    const keyframeCount = await playlistKeyframeRepository.count({
+      where: {
+        playlist: { id: playlist.id },
+      },
+    });
+    playlistKeyframe.order = keyframeCount || 0;
 
     const keyframeToAdd = await keyframeRepository.findOne({
       where: { uuid: keyframeUUID },
@@ -777,10 +803,13 @@ export const handleAddPlaylistKeyframe = async (
 
     refreshPlaylistUpdatedAtTimestamp(playlist.id);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { playlist: __, ...plKeyframe } = createdPlaylistKeyframe;
+
     return res.status(httpStatus.CREATED).json(
       jsonResponse({
         success: true,
-        data: { playlistKeyframe: createdPlaylistKeyframe },
+        data: { playlistKeyframe: plKeyframe },
       }),
     );
   } catch (err) {
@@ -808,10 +837,13 @@ export const handleRemovePlaylistKeyframe = async (
   const playlistKeyframeId: number = req.params.playlistKeyframeId!;
   const user = res.locals.user!;
   try {
-    const playlist = await findOnePlaylist({
+    const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: getPlaylistSelectedColumns(),
-      filter: { nsfw: user?.nsfw },
+      // only need to query the user id
+      select: { user: { id: true } },
+      relations: {
+        user: true,
+      },
     });
 
     if (!playlist) {

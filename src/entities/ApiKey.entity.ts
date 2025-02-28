@@ -44,6 +44,7 @@ export class ApiKey {
 
   @ManyToOne(() => User, (user) => user.apikeys)
   @JoinColumn()
+  @Index()
   user: User;
 
   @CreateDateColumn()

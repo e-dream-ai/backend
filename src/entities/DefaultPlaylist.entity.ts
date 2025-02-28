@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -20,6 +21,7 @@ export class DefaultPlaylist {
    */
   @ManyToOne(() => User, (user) => user.dreams)
   @JoinColumn()
+  @Index()
   user: User;
 
   // Define a JSON column

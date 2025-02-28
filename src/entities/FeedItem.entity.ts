@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToOne,
@@ -20,6 +21,7 @@ export class FeedItem {
   id: number;
 
   @ManyToOne(() => User, (user) => user.dreams)
+  @Index()
   user: User;
 
   @Column({
@@ -27,6 +29,7 @@ export class FeedItem {
     enum: FeedItemType,
     default: FeedItemType.NONE,
   })
+  @Index()
   type: FeedItemType;
 
   /**
@@ -35,6 +38,7 @@ export class FeedItem {
    */
   @OneToOne(() => Dream, (dream) => dream.feedItem)
   @JoinColumn()
+  @Index()
   dreamItem: Dream;
 
   /**
@@ -43,6 +47,7 @@ export class FeedItem {
    */
   @OneToOne(() => Playlist, (playlist) => playlist.feedItem)
   @JoinColumn()
+  @Index()
   playlistItem: Playlist;
 
   @CreateDateColumn()

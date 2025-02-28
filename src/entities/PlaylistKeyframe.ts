@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -21,12 +22,15 @@ export class PlaylistKeyframe {
    */
   @ManyToOne(() => Playlist)
   @JoinColumn()
+  @Index()
   playlist: Playlist;
 
   /**
    * Keyframe
    */
   @ManyToOne(() => Keyframe, (keyframe) => keyframe.playlistKeyframes)
+  @JoinColumn()
+  @Index()
   keyframe: Keyframe;
 
   /**
@@ -34,6 +38,7 @@ export class PlaylistKeyframe {
    * Set default order value to 0
    */
   @Column({ default: 0, type: "integer" })
+  @Index()
   order: number;
 
   @CreateDateColumn()

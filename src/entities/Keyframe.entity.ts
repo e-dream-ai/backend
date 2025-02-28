@@ -27,6 +27,7 @@ export class Keyframe {
 
   @ManyToOne(() => User, (user) => user.keyframes)
   @JoinColumn()
+  @Index()
   user: User;
 
   /**
@@ -34,6 +35,7 @@ export class Keyframe {
    */
   @ManyToOne(() => User, (user) => user.keyframes, { nullable: true })
   @JoinColumn()
+  @Index()
   displayedOwner?: User | null;
 
   @Column({ nullable: true, type: "varchar" })

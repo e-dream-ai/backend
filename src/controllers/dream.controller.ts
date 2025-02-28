@@ -16,7 +16,7 @@ import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Dream, FeedItem, Keyframe, User, Vote } from "entities";
+import { Dream, FeedItem, Keyframe, Report, User, Vote } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import {
@@ -73,6 +73,7 @@ const userRepository = appDataSource.getRepository(User);
 const feedItemRepository = appDataSource.getRepository(FeedItem);
 const voteRepository = appDataSource.getRepository(Vote);
 const keyframeRepository = appDataSource.getRepository(Keyframe);
+const reportRepository = appDataSource.getRepository(Report);
 
 /**
  * Handles get dreams
@@ -670,6 +671,7 @@ export const handleGetDream = async (
 ) => {
   const isBrowser = isBrowserRequest(req as RequestType);
   const user = res.locals.user;
+  const isUserAdmin = isAdmin(user);
   const dreamUUID: string = req.params.uuid!;
   try {
     const dream = await dreamRepository.findOne({
@@ -692,11 +694,24 @@ export const handleGetDream = async (
       return handleNotFound(req as RequestType, res);
     }
 
+    const isOwner = dream.user.id === user?.id;
+
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
+
+    let reports: Report[] = [];
+
+    if (isUserAdmin || isOwner) {
+      // Find unprocessed reports
+      reports = await reportRepository.find({
+        where: { dream: { uuid: dream.uuid }, processed: false },
+      });
+    }
+
+    dream.reports = reports;
 
     /**
      * remove original video if is not admin or owner or browser requested

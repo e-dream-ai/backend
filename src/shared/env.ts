@@ -33,6 +33,11 @@ export const env = cleanEnv(process.env, {
   AWS_SES_EMAIL_IDENTITY: str(),
 
   /**
+   * SES
+   */
+  OPS_EMAIL: str(),
+
+  /**
    * Heroku
    */
   HEROKU_API_URL: str(),

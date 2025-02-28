@@ -15,11 +15,5 @@ export type CreateReportRequest = {
 };
 
 export type UpdateReportRequest = {
-  name?: string;
-  reportedBy?: number;
-  processedBy?: number;
-};
-
-export type CreateMultipartUploadFileRequest = {
-  extension: string;
+  processed: boolean;
 };

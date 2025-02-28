@@ -34,7 +34,7 @@ export const createReportSchema: RequestValidationSchema = {
 
 export const updateReportSchema: RequestValidationSchema = {
   body: Joi.object<UpdateReportRequest>().keys({
-    name: Joi.string().required().max(100),
+    processed: Joi.boolean().required,
   }),
   params: Joi.object<ReportParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

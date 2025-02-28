@@ -99,11 +99,7 @@ reportRouter.get(
 reportRouter.get(
   "/:uuid",
   requireAuth,
-  checkRoleMiddleware([
-    ROLES.USER_GROUP,
-    ROLES.CREATOR_GROUP,
-    ROLES.ADMIN_GROUP,
-  ]),
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
   validatorMiddleware(getReportsSchema),
   reportController.handleGetReport,
 );
@@ -157,11 +153,7 @@ reportRouter.get(
 reportRouter.get(
   "/",
   requireAuth,
-  checkRoleMiddleware([
-    ROLES.USER_GROUP,
-    ROLES.CREATOR_GROUP,
-    ROLES.ADMIN_GROUP,
-  ]),
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
   reportController.handleGetReports,
 );
 
@@ -265,11 +257,7 @@ reportRouter.post(
 reportRouter.put(
   "/:uuid",
   requireAuth,
-  checkRoleMiddleware([
-    ROLES.USER_GROUP,
-    ROLES.CREATOR_GROUP,
-    ROLES.ADMIN_GROUP,
-  ]),
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
   validatorMiddleware(updateReportSchema),
   reportController.handleUpdateReport,
 );
@@ -310,11 +298,7 @@ reportRouter.put(
 reportRouter.delete(
   "/:uuid",
   requireAuth,
-  checkRoleMiddleware([
-    ROLES.USER_GROUP,
-    ROLES.CREATOR_GROUP,
-    ROLES.ADMIN_GROUP,
-  ]),
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
   validatorMiddleware(requestReportSchema),
   reportController.handleDeleteReport,
 );

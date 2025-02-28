@@ -3,7 +3,7 @@ import { REPORT_TYPES_MESSAGES } from "constants/messages/report.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Dream, Report, User } from "entities";
+import { Dream, Report } from "entities";
 import { ReportType } from "entities/ReportType.entity";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
@@ -18,6 +18,7 @@ import {
   findOneReport,
   getReportFindOptionsRelations,
   getReportSelectedColumns,
+  sendReportEmail,
 } from "utils/report.util";
 import {
   handleNotFound,
@@ -25,11 +26,9 @@ import {
   jsonResponse,
   handleInternalServerError,
 } from "utils/responses.util";
-import { isAdmin } from "utils/user.util";
 
 const reportRepository = appDataSource.getRepository(Report);
 const reportTypeRepository = appDataSource.getRepository(ReportType);
-const userRepository = appDataSource.getRepository(User);
 const dreamRepository = appDataSource.getRepository(Dream);
 
 /**
@@ -180,6 +179,8 @@ export const handleCreateReport = async (
     report.reportedAt = new Date();
     const createdReport = await reportRepository.save(report);
 
+    await sendReportEmail(report);
+
     return res
       .status(httpStatus.CREATED)
       .json(jsonResponse({ success: true, data: { report: createdReport } }));
@@ -217,39 +218,13 @@ export const handleUpdateReport = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    const isAllowed = canExecuteAction({
-      isOwner: report.reportedBy.id === user.id,
-      allowedRoles: [ROLES.ADMIN_GROUP],
-      userRole: user?.role?.name,
-    });
-
-    if (!isAllowed) {
-      return handleForbidden(req as RequestType, res);
-    }
-
-    // Define an object to hold the fields that are allowed to be updated
-    // @ts-expect-error remove after finishing feature
-    let updateData: Partial<Report> = {
-      ...(req.body as Omit<UpdateReportRequest, "reportedBy">),
-    };
-
-    let reportedBy: User | null = null;
-    if (isAdmin(user) && req.body.reportedBy) {
-      reportedBy = await userRepository.findOneBy({
-        id: req.body.reportedBy,
+    if (req.body.processed) {
+      await reportRepository.update(report.id, {
+        processed: req.body.processed,
+        processedBy: user,
+        processedAt: new Date(),
       });
     }
-
-    /**
-     * update displayed owner for report
-     */
-    if (reportedBy) {
-      updateData = { ...updateData, reportedBy: reportedBy };
-    }
-
-    await reportRepository.update(report.id, {
-      ...updateData,
-    });
 
     const updatedReport = await findOneReport({
       where: { id: report.id },

@@ -35,6 +35,7 @@ export class Dream {
 
   @ManyToOne(() => User, (user) => user.dreams)
   @JoinColumn()
+  @Index()
   user: User;
 
   /**
@@ -42,6 +43,7 @@ export class Dream {
    */
   @ManyToOne(() => User, (user) => user.dreams, { nullable: true })
   @JoinColumn()
+  @Index()
   displayedOwner?: User | null;
 
   /**
@@ -60,6 +62,7 @@ export class Dream {
     enum: DreamStatusType,
     default: DreamStatusType.NONE,
   })
+  @Index()
   status: DreamStatusType;
 
   /**
@@ -95,6 +98,7 @@ export class Dream {
    * default 0
    */
   @Column({ type: "integer", default: 0 })
+  @Index()
   featureRank?: number;
 
   @Column({ nullable: true, type: "varchar" })
@@ -161,14 +165,16 @@ export class Dream {
   md5?: string | null;
 
   // start keyframe column
-  @ManyToOne(() => Keyframe)
+  @ManyToOne(() => Keyframe, { nullable: true })
   @JoinColumn()
-  startKeyframe: Keyframe;
+  @Index()
+  startKeyframe: Keyframe | null;
 
   // end keyframe column
-  @ManyToOne(() => Keyframe)
+  @ManyToOne(() => Keyframe, { nullable: true })
   @JoinColumn()
-  endKeyframe: Keyframe;
+  @Index()
+  endKeyframe: Keyframe | null;
 
   // last processed at date
   @Column({ nullable: true, type: "timestamp" })

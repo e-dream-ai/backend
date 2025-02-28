@@ -66,7 +66,7 @@ export const computeUserDefaultPlaylist = async (
   const designedPlaylistUUIDS =
     designedPlaylist?.items
       ?.filter((item) => item.type === PlaylistItemType.DREAM)
-      .map((item) => item?.dreamItem.uuid) ?? [];
+      .map((item) => item?.dreamItem!.uuid) ?? [];
 
   /**
    * dreams user downvotes uuids

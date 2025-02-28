@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -19,10 +20,12 @@ export class Vote {
 
   @ManyToOne(() => User, (user) => user.votes)
   @JoinColumn()
+  @Index()
   user: User;
 
   @ManyToOne(() => Dream, (dream) => dream.votes)
   @JoinColumn()
+  @Index()
   dream: Dream;
 
   @Column({
@@ -30,6 +33,7 @@ export class Vote {
     enum: VoteType,
     default: VoteType.NONE,
   })
+  @Index()
   vote: VoteType;
 
   @CreateDateColumn()

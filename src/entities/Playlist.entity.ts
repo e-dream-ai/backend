@@ -30,6 +30,7 @@ export class Playlist {
 
   @ManyToOne(() => User, (user) => user.playlists)
   @JoinColumn()
+  @Index()
   user: User;
 
   /**
@@ -37,6 +38,7 @@ export class Playlist {
    */
   @ManyToOne(() => User, (user) => user.dreams, { nullable: true })
   @JoinColumn()
+  @Index()
   displayedOwner?: User | null;
 
   /**
@@ -90,6 +92,7 @@ export class Playlist {
    * default 0
    */
   @Column({ type: "integer", default: 0 })
+  @Index()
   featureRank?: number;
 
   /**

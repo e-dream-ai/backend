@@ -151,6 +151,16 @@ export const getPlaylistItemsQueryBuilder = (
     onlyProcessedDreams?: boolean;
   },
 ) => {
+  // Define the user fields to select (excluding email)
+  const createUserFieldSelections = (alias: string) => {
+    return [
+      `${alias}.uuid`,
+      `${alias}.name`,
+      `${alias}.avatar`,
+      // Add more if needed
+    ];
+  };
+
   const queryBuilder = playlistItemRepository
     .createQueryBuilder("item")
     .where("item.playlistId = :playlistId", { playlistId })
@@ -158,17 +168,18 @@ export const getPlaylistItemsQueryBuilder = (
     .andWhere("item.deleted_at IS NULL")
     // Dream item and its relations
     .leftJoinAndSelect("item.dreamItem", "dreamItem")
-    .leftJoinAndSelect("dreamItem.user", "dreamItemUser")
-    .leftJoinAndSelect("dreamItem.displayedOwner", "dreamItemDisplayedOwner")
+    .leftJoin("dreamItem.user", "dreamItemUser")
+    .addSelect(createUserFieldSelections("dreamItemUser"))
+    .leftJoin("dreamItem.displayedOwner", "dreamItemDisplayedOwner")
+    .addSelect(createUserFieldSelections("dreamItemDisplayedOwner"))
     .leftJoinAndSelect("dreamItem.startKeyframe", "startKeyframe")
     .leftJoinAndSelect("dreamItem.endKeyframe", "endKeyframe")
     // Playlist item and its relations
     .leftJoinAndSelect("item.playlistItem", "playlistItem")
-    .leftJoinAndSelect("playlistItem.user", "playlistItemUser")
-    .leftJoinAndSelect(
-      "playlistItem.displayedOwner",
-      "playlistItemDisplayedOwner",
-    )
+    .leftJoin("playlistItem.user", "playlistItemUser")
+    .addSelect(createUserFieldSelections("playlistItemUser"))
+    .leftJoin("playlistItem.displayedOwner", "playlistItemDisplayedOwner")
+    .addSelect(createUserFieldSelections("playlistItemDisplayedOwner"))
     // Nested items within playlist items
     .leftJoinAndSelect("playlistItem.items", "nestedItems")
     .leftJoinAndSelect("nestedItems.dreamItem", "nestedDreamItem")

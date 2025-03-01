@@ -154,6 +154,7 @@ export const getPlaylistItemsQueryBuilder = (
   // Define the user fields to select (excluding email)
   const createUserFieldSelections = (alias: string) => {
     return [
+      `${alias}.id`,
       `${alias}.uuid`,
       `${alias}.name`,
       `${alias}.avatar`,

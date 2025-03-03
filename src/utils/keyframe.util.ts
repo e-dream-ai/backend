@@ -23,6 +23,8 @@ export const getKeyframeSelectedColumns = ({
     updated_at: true,
     deleted_at: true,
     user: getUserSelectedColumns({ userEmail }),
+    dreamsStartingWith: true,
+    dreamsEndingWith: true,
   };
 };
 
@@ -32,6 +34,14 @@ export const getKeyframeFindOptionsRelations =
       playlistKeyframes: true,
       user: true,
       displayedOwner: true,
+      dreamsEndingWith: {
+        user: true,
+        displayedOwner: true,
+      },
+      dreamsStartingWith: {
+        user: true,
+        displayedOwner: true,
+      },
     };
   };
 
@@ -42,11 +52,11 @@ export const findOneKeyframe = async ({
   where: FindOptionsWhere<Keyframe> | FindOptionsWhere<Keyframe>[];
   select: FindOptionsSelect<Keyframe>;
 }): Promise<Keyframe | null> => {
-  const playlist = await keyframeRepository.findOne({
+  const keyframe = await keyframeRepository.findOne({
     where: where,
     select: select,
     relations: getKeyframeFindOptionsRelations(),
   });
 
-  return playlist;
+  return keyframe;
 };

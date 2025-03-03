@@ -1,4 +1,5 @@
 import {
+  AfterLoad,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -61,6 +62,8 @@ export class Keyframe {
   @OneToMany(() => Dream, (dream) => dream.endKeyframe)
   dreamsEndingWith: Dream[];
 
+  dreams: Dream[] = [];
+
   @CreateDateColumn()
   created_at: Date;
 
@@ -69,4 +72,19 @@ export class Keyframe {
 
   @DeleteDateColumn()
   deleted_at: Date;
+
+  // Combine startDreams and endDreams into dreams
+  @AfterLoad()
+  computeAllDreams() {
+    const startDreams = this.dreamsStartingWith || [];
+    const endDreams = this.dreamsEndingWith || [];
+
+    // Deduplicate dreams
+    const uniqueDreams = new Map();
+    [...startDreams, ...endDreams].forEach((dream) => {
+      uniqueDreams.set(dream.id, dream);
+    });
+
+    this.dreams = Array.from(uniqueDreams.values());
+  }
 }

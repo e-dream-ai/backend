@@ -28,7 +28,7 @@ export const createReportSchema: RequestValidationSchema = {
     dreamUUID: Joi.string().uuid().required(),
     typeId: Joi.number().positive().required(),
     comments: Joi.string().empty().allow(""),
-    link: Joi.string().empty(),
+    link: Joi.string().empty().allow(""),
   }),
 };
 

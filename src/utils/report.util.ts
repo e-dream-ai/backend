@@ -45,6 +45,7 @@ export const getReportFindOptionsRelations =
       dream: true,
       reportedBy: true,
       processedBy: true,
+      type: true,
     };
   };
 
@@ -75,9 +76,13 @@ export const sendReportEmail = async (report: Report): Promise<void> => {
   const reportType = report.type.description;
   const reportedBy =
     report.reportedBy.name ?? report.reportedBy.email ?? report.reportedBy.uuid;
-  const reportComments = report.comments ?? "-";
+  const reportComments = report.comments || "-";
 
+  const reportUuidLink = `<a href="${env.FRONTEND_URL}/reports" target="_blank"><b>${report.uuid}</b></a>`;
   const dreamLink = `<a href="${env.FRONTEND_URL}/dream/${dreamUUID}" target="_blank"><b>${dreamUUID}</b></a>`;
+  const reportLink = report.link
+    ? `<a href="${report.link}" target="_blank"><b>${report.link}</b></a>`
+    : "-";
 
   const EMAIL_PREFIX = getEmailPrefix();
   const EMAIL_SUBJECT = `${EMAIL_PREFIX}Dream Video Reported - [Report ${report.uuid}]`;
@@ -95,7 +100,7 @@ export const sendReportEmail = async (report: Report): Promise<void> => {
         <ul>
           <li>
             <b>Report UUID:</b>
-            ${report.uuid}
+            ${reportUuidLink}
           </li>
           <li>
             <b>Dream UUID:</b>
@@ -116,6 +121,10 @@ export const sendReportEmail = async (report: Report): Promise<void> => {
           <li>
             <b>Comments:</b>
             ${reportComments}
+          </li>
+          <li>
+            <b>Link:</b>
+            ${reportLink}
           </li>
         </ul>
       </body>

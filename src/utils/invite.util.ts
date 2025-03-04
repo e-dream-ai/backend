@@ -1,3 +1,4 @@
+import env from "shared/env";
 import appDataSource from "database/app-data-source";
 import { Invite } from "entities";
 import { Role } from "entities/Role.entity";
@@ -8,7 +9,7 @@ import {
 } from "typeorm";
 import { sendEmail } from "./ses.util";
 import { ROLES } from "constants/role.constants";
-import env from "shared/env";
+import { getEmailPrefix } from "./email.util";
 
 const DEFAULT_CODE_LENGTH = 4;
 
@@ -189,7 +190,8 @@ export const sendInviteEmail = async ({
     invite.signupUrl
   }&${searchParams.toString()}" target="_blank"><b>${invite.code}</b></a>`;
 
-  const INVITE_SUBJECT = "e-dream private alpha invitation";
+  const EMAIL_PREFIX = getEmailPrefix();
+  const INVITE_SUBJECT = `${EMAIL_PREFIX}e-dream private alpha invitation`;
   const USER_BODY = `
     <html>
       <body>

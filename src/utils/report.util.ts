@@ -7,6 +7,7 @@ import {
 import appDataSource from "database/app-data-source";
 import env from "shared/env";
 import { sendEmail } from "./ses.util";
+import { getEmailPrefix } from "./email.util";
 
 const reportRepository = appDataSource.getRepository(Report);
 
@@ -78,7 +79,8 @@ export const sendReportEmail = async (report: Report): Promise<void> => {
 
   const dreamLink = `<a href="${env.FRONTEND_URL}/dream/${dreamUUID}" target="_blank"><b>${dreamUUID}</b></a>`;
 
-  const EMAIL_SUBJECT = `Dream Video Reported - [Report ${report.uuid}]`;
+  const EMAIL_PREFIX = getEmailPrefix();
+  const EMAIL_SUBJECT = `${EMAIL_PREFIX}Dream Video Reported - [Report ${report.uuid}]`;
   const REPORT_BODY = `
     <html>
       <body>

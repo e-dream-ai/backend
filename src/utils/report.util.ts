@@ -1,4 +1,4 @@
-import { Report } from "entities";
+import { Dream, Report, User } from "entities";
 import {
   FindOptionsRelations,
   FindOptionsSelect,
@@ -8,6 +8,8 @@ import appDataSource from "database/app-data-source";
 import env from "shared/env";
 import { sendEmail } from "./ses.util";
 import { getEmailPrefix } from "./email.util";
+import { ReportType } from "entities/ReportType.entity";
+import { NATIVE_REPORT_TYPE_ID } from "constants/report.constantes";
 
 const reportRepository = appDataSource.getRepository(Report);
 
@@ -63,6 +65,20 @@ export const findOneReport = async ({
   });
 
   return playlist;
+};
+
+export const generateReportFromNative = async (user: User, dream: Dream) => {
+  const report = new Report();
+  report.reportedBy = user!;
+  report.type = {
+    id: NATIVE_REPORT_TYPE_ID,
+  } as ReportType;
+  report.dream = dream;
+  report.comments = "Report generated from native client.";
+  report.reportedAt = new Date();
+  const createdReport = await reportRepository.save(report);
+
+  await sendReportEmail(createdReport);
 };
 
 /**

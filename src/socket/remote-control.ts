@@ -11,6 +11,7 @@ import {
   getDreamSelectedColumns,
   handleVoteDream,
 } from "utils/dream.util";
+import { generateReportFromNative } from "utils/report.util";
 import { SessionTracker } from "utils/socket-session-tracker";
 import {
   removeUserCurrentPlaylist,
@@ -244,6 +245,28 @@ export const handleNewControlEvent = ({
         user,
         voteType: VoteType.DOWNVOTE,
       });
+    }
+
+    /**
+     * Report dream
+     */
+    if ([REMOTE_CONTROLS.REPORT].includes(event)) {
+      // if event is REMOTE_CONTROLS.REPORT, dream will be reported creating a report on db
+      const dream = await setUserCurrentDream(
+        user,
+        data.uuid,
+        event === REMOTE_CONTROLS.PLAYING,
+      );
+      if (!dream) {
+        socket.emit(GENERAL_MESSAGES.ERROR, {
+          error: GENERAL_MESSAGES.NOT_FOUND,
+        });
+        return;
+      }
+
+      await generateReportFromNative(user, dream);
+
+      data = { ...data, name: dream?.name };
     }
 
     /**

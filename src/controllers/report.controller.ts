@@ -1,6 +1,7 @@
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { REPORT_TYPES_MESSAGES } from "constants/messages/report.constants";
 import { PAGINATION } from "constants/pagination.constants";
+import { NATIVE_REPORT_TYPE_ID } from "constants/report.constantes";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import { Dream, Report } from "entities";
@@ -49,9 +50,16 @@ export const handleGetReportTypes = async (
   try {
     const reportTypes = await reportTypeRepository.find();
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { reportTypes } }));
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          reportTypes: reportTypes.filter(
+            (rt) => rt.id !== NATIVE_REPORT_TYPE_ID,
+          ),
+        },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -179,7 +187,7 @@ export const handleCreateReport = async (
     report.reportedAt = new Date();
     const createdReport = await reportRepository.save(report);
 
-    await sendReportEmail(report);
+    await sendReportEmail(createdReport);
 
     return res
       .status(httpStatus.CREATED)

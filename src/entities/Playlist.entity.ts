@@ -104,6 +104,15 @@ export class Playlist {
   })
   nsfw: boolean;
 
+  /**
+   * hidden flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  hidden: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

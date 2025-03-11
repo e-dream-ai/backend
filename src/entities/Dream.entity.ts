@@ -141,7 +141,16 @@ export class Dream {
   nsfw: boolean;
 
   /**
-   * nsfw flag
+   * hidden flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  hidden: boolean;
+
+  /**
+   * ccbyLicense flag
    */
   @Column({
     type: "boolean",

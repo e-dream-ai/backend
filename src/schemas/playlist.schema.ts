@@ -29,6 +29,8 @@ export const requestPlaylistSchema: RequestValidationSchema = {
 export const createPlaylistSchema: RequestValidationSchema = {
   body: Joi.object<CreatePlaylistRequest>().keys({
     name: Joi.string().required(),
+    nsfw: Joi.boolean(),
+    hidden: Joi.boolean(),
   }),
 };
 
@@ -37,6 +39,7 @@ export const updatePlaylistSchema: RequestValidationSchema = {
     name: Joi.string().required().max(100),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0).integer(),
+    hidden: Joi.boolean(),
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

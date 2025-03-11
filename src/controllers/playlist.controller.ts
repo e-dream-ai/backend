@@ -78,7 +78,7 @@ export const handleGetPlaylist = async (
   res: ResponseType,
 ) => {
   const uuid: string = req.params.uuid!;
-  const user = res.locals.user;
+  const user = res.locals.user!;
   try {
     const playlist = await findOnePlaylist({
       where: { uuid },
@@ -87,6 +87,19 @@ export const handleGetPlaylist = async (
     });
 
     if (!playlist) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isOwner = playlist.user.id === user.id;
+
+    const isAllowed = canExecuteAction({
+      isOwner,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    // If is hidden and is not allowed to view return not found
+    if (playlist.hidden && !isAllowed) {
       return handleNotFound(req as RequestType, res);
     }
 
@@ -172,7 +185,7 @@ export const handleCreatePlaylist = async (
   req: RequestType<CreatePlaylistRequest>,
   res: ResponseType,
 ) => {
-  const { name, nsfw } = req.body;
+  const { name, nsfw, hidden } = req.body;
   const user = res.locals.user!;
 
   try {
@@ -180,6 +193,7 @@ export const handleCreatePlaylist = async (
     const playlist = new Playlist();
     playlist.name = name;
     playlist.nsfw = nsfw ?? false;
+    playlist.hidden = hidden ?? false;
     playlist.user = user!;
     const createdPlaylist = await playlistRepository.save(playlist);
 

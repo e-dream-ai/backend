@@ -147,6 +147,7 @@ export const handleCreateMultipartUpload = async (
     const extension = req.body.extension;
     const parts = req.body.parts ?? 1;
     const nsfw = req.body.nsfw;
+    const hidden = req.body.hidden;
     const ccbyLicense = req.body.ccbyLicense;
 
     if (!dreamUUID) {
@@ -157,6 +158,7 @@ export const handleCreateMultipartUpload = async (
       dream.sourceUrl = sourceUrl;
       dream.user = user!;
       dream.nsfw = nsfw ?? false;
+      dream.hidden = hidden ?? false;
       dream.ccbyLicense = ccbyLicense ?? false;
       await dreamRepository.save(dream);
     } else {
@@ -701,6 +703,11 @@ export const handleGetDream = async (
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
+
+    // If is hidden and is not allowed to view return not found
+    if (dream.hidden && !isAllowed) {
+      return handleNotFound(req as RequestType, res);
+    }
 
     let reports: Report[] = [];
 

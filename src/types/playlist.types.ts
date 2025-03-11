@@ -18,6 +18,7 @@ export type PlaylistParamsRequest = {
 export type CreatePlaylistRequest = {
   name: string;
   nsfw?: boolean;
+  hidden?: boolean;
 };
 
 export type UpdatePlaylistRequest = {
@@ -25,6 +26,7 @@ export type UpdatePlaylistRequest = {
   featureRank?: number;
   displayedOwner?: number;
   nsfw?: boolean;
+  hidden?: boolean;
 };
 
 export type OrderPlaylist = {

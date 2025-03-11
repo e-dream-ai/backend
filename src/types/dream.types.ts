@@ -25,6 +25,7 @@ export type UpdateDreamRequest = {
   startKeyframe?: string;
   endKeyframe: string;
   nsfw?: boolean;
+  hidden?: boolean;
   description?: string;
   sourceUrl?: string;
   ccbyLicense?: boolean;
@@ -45,6 +46,7 @@ export type CreateMultipartUploadDreamRequest = {
   extension: string;
   parts: number;
   nsfw?: boolean;
+  hidden?: boolean;
   description?: string;
   sourceUrl?: string;
   ccbyLicense?: boolean;

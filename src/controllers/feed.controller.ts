@@ -12,6 +12,7 @@ import {
   getFeedSelectedColumns,
 } from "utils/feed.util";
 import { handleInternalServerError, jsonResponse } from "utils/responses.util";
+import { isAdmin } from "utils/user.util";
 
 const feedRepository = appDataSource.getRepository(FeedItem);
 
@@ -35,17 +36,26 @@ export const handleGetRankedFeed = async (
     PAGINATION.MAX_TAKE,
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
-  const user = res.locals.user;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
   const showNSFW = user?.nsfw;
 
   try {
-    const whereSentence: FindOptionsWhere<FeedItem> = {
+    // Base query options
+    const baseOptions: FindOptionsWhere<FeedItem> = {
       type: FeedItemType.PLAYLIST,
       playlistItem: { featureRank: MoreThanOrEqual(1) },
     };
 
+    // Get where conditions with appropriate hidden item handling
+    const whereSentence = getFeedFindOptionsWhere(baseOptions, {
+      showNSFW,
+      isAdmin: isUserAdmin,
+      userId: user.id,
+    });
+
     const [feed, count] = await feedRepository.findAndCount({
-      where: getFeedFindOptionsWhere(whereSentence, { showNSFW }),
+      where: whereSentence,
       select: getFeedSelectedColumns(),
       relations: getFeedFindOptionsRelations(),
       order: {
@@ -95,23 +105,24 @@ export const handleGetFeed = async (
   const search = req.query.search ? String(req.query.search) : undefined;
   const userUUID = req.query.userUUID;
   const type = req.query.type;
-  const user = res.locals.user;
+  const user = res.locals.user!;
   const showNSFW = user?.nsfw;
+  const isUserAdmin = isAdmin(user);
 
   try {
-    const dreamItemSearch: FindOptionsWhere<FeedItem> = {
-      user: userUUID ? { uuid: userUUID } : undefined,
-      type: type,
-    };
-    const playlistItemSearch: FindOptionsWhere<FeedItem> = {
+    // Base query options
+    const baseOptions: FindOptionsWhere<FeedItem> = {
       user: userUUID ? { uuid: userUUID } : undefined,
       type: type,
     };
 
-    const whereSentence = [
-      ...getFeedFindOptionsWhere(dreamItemSearch, { showNSFW, search }),
-      ...getFeedFindOptionsWhere(playlistItemSearch, { showNSFW, search }),
-    ];
+    // Get where conditions with appropriate hidden item handling
+    const whereSentence = getFeedFindOptionsWhere(baseOptions, {
+      showNSFW,
+      search,
+      isAdmin: isUserAdmin,
+      userId: user.id,
+    });
 
     const [feed, count] = await feedRepository.findAndCount({
       where: whereSentence,
@@ -152,16 +163,24 @@ export const handleGetMyDreams = async (
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
   const showNSFW = user?.nsfw;
 
   try {
+    // Base query options
+    const baseOptions: FindOptionsWhere<FeedItem> = {
+      user: { id: user?.id },
+    };
+
+    // Get where conditions with appropriate hidden item handling
+    const whereSentence = getFeedFindOptionsWhere(baseOptions, {
+      showNSFW,
+      isAdmin: isUserAdmin,
+      userId: user.id,
+    });
+
     const [feed, count] = await feedRepository.findAndCount({
-      where: getFeedFindOptionsWhere(
-        {
-          user: { id: user?.id },
-        },
-        { showNSFW },
-      ),
+      where: whereSentence,
       select: getFeedSelectedColumns(),
       relations: getFeedFindOptionsRelations(),
       order: { created_at: "DESC" },

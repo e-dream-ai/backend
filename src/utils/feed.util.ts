@@ -1,10 +1,11 @@
-import { FeedItem, Playlist } from "entities";
+import { FeedItem } from "entities";
 import {
   FindOptionsRelations,
   FindOptionsSelect,
   FindOptionsWhere,
   ILike,
   IsNull,
+  Raw,
 } from "typeorm";
 import { getDreamSelectedColumns } from "./dream.util";
 import { getUserSelectedColumns } from "./user.util";
@@ -13,54 +14,55 @@ import { getPlaylistSelectedColumns } from "./playlist.util";
 type FeedItemFindOptions = {
   showNSFW?: boolean;
   search?: string;
+  isAdmin?: boolean;
+  userId: number;
 };
 
-type GetFeedFindOptionsWhere = (
+/**
+ * Get where conditions that properly handle where query
+ */
+export const getFeedFindOptionsWhere = (
   options?: FindOptionsWhere<FeedItem>,
-  feedFindOptions?: FeedItemFindOptions,
-) => FindOptionsWhere<FeedItem>[];
-
-export const getFeedFindOptionsWhere: GetFeedFindOptionsWhere = (
-  options,
-  feedFindOptions,
-) => {
-  const search = feedFindOptions?.search
-    ? { name: ILike(`%${feedFindOptions.search}%`) }
+  findOptions?: FeedItemFindOptions,
+): FindOptionsWhere<FeedItem>[] => {
+  // Handle findOptions
+  const search = findOptions?.search
+    ? { name: ILike(`%${findOptions.search}%`) }
     : undefined;
+  const userId = findOptions?.userId;
+  const isAdmin = findOptions?.isAdmin || false;
 
-  let playlistItemOption: FindOptionsWhere<Playlist> = {};
+  // Base conditions for NSFW and search
+  const nsfwCondition = findOptions?.showNSFW ? {} : { nsfw: false };
+  const searchCondition = search ? { name: ILike(`%${search}%`) } : {};
 
-  if (options?.playlistItem && typeof options?.playlistItem === "object") {
-    playlistItemOption = options?.playlistItem as FindOptionsWhere<Playlist>;
-  }
+  // Combine base conditions
+  const baseConditions = { ...nsfwCondition, ...searchCondition };
 
-  if (feedFindOptions?.showNSFW) {
+  // For admins, no hidden filter is applied
+  if (isAdmin) {
     return [
-      {
-        ...options,
-        dreamItem: { ...search },
-        playlistItem: IsNull(),
-      },
-      {
-        ...options,
-        dreamItem: IsNull(),
-        playlistItem: { ...search, ...playlistItemOption },
-      },
-    ];
-  } else {
-    return [
-      {
-        ...options,
-        dreamItem: { nsfw: false, ...search },
-        playlistItem: IsNull(),
-      },
-      {
-        ...options,
-        dreamItem: IsNull(),
-        playlistItem: { nsfw: false, ...search, ...playlistItemOption },
-      },
+      { ...options, dreamItem: baseConditions, playlistItem: IsNull() },
+      { ...options, dreamItem: IsNull(), playlistItem: baseConditions },
     ];
   }
+  // For normal users, handle hidden items and ownership
+  // Apply on both (dreams and playlists)
+  // Add base conditions (search and NSFW)
+  // Show if not hidden OR if hidden but user is owner
+  const itemsConditions = [
+    { ...baseConditions, hidden: false },
+    {
+      ...baseConditions,
+      hidden: true,
+      user: Raw((alias) => `${alias} = :userId`, { userId }),
+    },
+  ];
+
+  return [
+    { ...options, dreamItem: itemsConditions, playlistItem: IsNull() },
+    { ...options, dreamItem: IsNull(), playlistItem: itemsConditions },
+  ];
 };
 
 export const getFeedSelectedColumns = ({

@@ -1,4 +1,4 @@
-import { Dream, FeedItem, User, Vote } from "entities";
+import { Dream, FeedItem, PlaylistItem, User, Vote } from "entities";
 import {
   SendMessageCommand,
   SendMessageCommandInput,
@@ -19,6 +19,7 @@ import { APP_LOGGER } from "shared/logger";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { DreamStatusType } from "types/dream.types";
 import { getKeyframeSelectedColumns } from "./keyframe.util";
+import { getPlaylistFindOptionsWhere } from "./playlist.util";
 
 const queueUrl = ""; // env.AWS_SQS_URL;
 
@@ -28,6 +29,7 @@ const VIDEO_INGESTION_API_KEY = env.VIDEO_INGESTION_API_KEY;
 const dreamRepository = appDataSource.getRepository(Dream);
 const feedRepository = appDataSource.getRepository(FeedItem);
 const voteRepository = appDataSource.getRepository(Vote);
+const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 
 /**
  * @deprecated Currently unused due to sqs queue being replaced by redis queue
@@ -221,6 +223,32 @@ export const createFeedItem = async (dream: Dream) => {
   }
 
   return feedItem;
+};
+
+/**
+ * Fetches playlist items for a dream
+ *
+ * @param dreamUUID UUID of the dream to fetch playlist items for
+ * @param userId id of the current user
+ * @param isAdmin Boolean to verify if user is an admin
+ * @returns Array of playlist items the user has permission to see
+ */
+export const findDreamPlaylistItems = async (
+  dreamUUID: string,
+  userId: number,
+  isAdmin: boolean,
+): Promise<PlaylistItem[]> => {
+  return await playlistItemRepository.find({
+    where: {
+      dreamItem: {
+        uuid: dreamUUID,
+      },
+      playlist: getPlaylistFindOptionsWhere(userId, isAdmin),
+    },
+    relations: {
+      playlist: { user: true, displayedOwner: true },
+    },
+  });
 };
 
 /**

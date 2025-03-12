@@ -38,6 +38,7 @@ import { VoteType } from "types/vote.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import {
   createFeedItem,
+  findDreamPlaylistItems,
   getDreamSelectedColumns,
   handleVoteDream,
   processDreamRequest,
@@ -677,13 +678,10 @@ export const handleGetDream = async (
   const dreamUUID: string = req.params.uuid!;
   try {
     const dream = await dreamRepository.findOne({
-      where: {
-        uuid: dreamUUID,
-      },
+      where: { uuid: dreamUUID },
       relations: {
         user: true,
         displayedOwner: true,
-        playlistItems: { playlist: { user: true, displayedOwner: true } },
         startKeyframe: true,
         endKeyframe: true,
       },
@@ -691,12 +689,21 @@ export const handleGetDream = async (
         originalVideo: true,
         featureRank: true,
         playlistItems: true,
+        startKeyframe: true,
+        endKeyframe: true,
       }),
     });
 
     if (!dream) {
       return handleNotFound(req as RequestType, res);
     }
+
+    // Get playlist items separately
+    dream.playlistItems = await findDreamPlaylistItems(
+      dreamUUID,
+      user.id,
+      isUserAdmin,
+    );
 
     const isOwner = dream.user.id === user?.id;
 
@@ -899,6 +906,8 @@ export const handleSetDreamStatusProcessed = async (
   req: RequestType<UpdateDreamProcessedRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
   const dreamUUID: string = req.params.uuid!;
   const processedVideoSize = req.body.processedVideoSize;
   const processedVideoFrames = req.body.processedVideoFrames!;
@@ -950,9 +959,16 @@ export const handleSetDreamStatusProcessed = async (
 
     const [updatedDream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true, playlistItems: true },
+      relations: { user: true },
       select: getDreamSelectedColumns(),
     });
+
+    // Get playlist items separately
+    updatedDream.playlistItems = await findDreamPlaylistItems(
+      dreamUUID,
+      user.id,
+      isUserAdmin,
+    );
 
     await createFeedItem(updatedDream);
     await refreshPlaylistUpdatedAtTimestampFromPlaylistItems(
@@ -1043,11 +1059,12 @@ export const handleUpdateDream = async (
   res: ResponseType,
 ) => {
   const dreamUUID: string = req.params.uuid!;
-  const user = res.locals.user;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
 
   try {
-    const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID! },
+    const dream = await dreamRepository.findOne({
+      where: { uuid: dreamUUID },
       relations: {
         user: true,
         displayedOwner: true,
@@ -1055,7 +1072,9 @@ export const handleUpdateDream = async (
         endKeyframe: true,
       },
       select: getDreamSelectedColumns({
+        originalVideo: true,
         featureRank: true,
+        playlistItems: true,
         startKeyframe: true,
         endKeyframe: true,
       }),
@@ -1064,6 +1083,13 @@ export const handleUpdateDream = async (
     if (!dream) {
       return handleNotFound(req as RequestType, res);
     }
+
+    // Get playlist items separately
+    dream.playlistItems = await findDreamPlaylistItems(
+      dreamUUID,
+      user.id,
+      isUserAdmin,
+    );
 
     const isAllowed = canExecuteAction({
       isOwner: dream.user.id === user?.id,
@@ -1158,15 +1184,10 @@ export const handleUpdateDream = async (
       ...updateData,
     });
 
-    const updatedDream = await dreamRepository.findOne({
-      where: { id: dream.id },
-      relations: {
-        user: true,
-        displayedOwner: true,
-        startKeyframe: true,
-        endKeyframe: true,
-      },
-    });
+    const updatedDream = {
+      ...dream,
+      ...updateData,
+    };
 
     return res
       .status(httpStatus.OK)

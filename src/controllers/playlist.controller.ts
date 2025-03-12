@@ -79,11 +79,16 @@ export const handleGetPlaylist = async (
 ) => {
   const uuid: string = req.params.uuid!;
   const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
   try {
     const playlist = await findOnePlaylist({
       where: { uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      filter: { nsfw: user?.nsfw },
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
     });
 
     if (!playlist) {
@@ -243,12 +248,17 @@ export const handleUpdatePlaylist = async (
 ) => {
   const uuid: string = req.params.uuid!;
   const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
 
   try {
     const playlist = await findOnePlaylist({
       where: { uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      filter: { nsfw: user?.nsfw },
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
     });
 
     if (!playlist) {
@@ -337,12 +347,17 @@ export const handleUpdateThumbnailPlaylist = async (
 ) => {
   const user = res.locals.user!;
   const uuid: string = req.params.uuid!;
+  const isUserAdmin = isAdmin(user);
 
   try {
     const playlist = await findOnePlaylist({
       where: { uuid },
       select: getPlaylistSelectedColumns(),
-      filter: { nsfw: user?.nsfw },
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
     });
 
     if (!playlist) {

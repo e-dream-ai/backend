@@ -672,12 +672,14 @@ export const handleGetDream = async (
   res: ResponseType,
 ) => {
   const isBrowser = isBrowserRequest(req as RequestType);
-  const user = res.locals.user;
+  const user = res.locals.user!;
   const isUserAdmin = isAdmin(user);
   const dreamUUID: string = req.params.uuid!;
   try {
     const dream = await dreamRepository.findOne({
-      where: { uuid: dreamUUID! },
+      where: {
+        uuid: dreamUUID,
+      },
       relations: {
         user: true,
         displayedOwner: true,

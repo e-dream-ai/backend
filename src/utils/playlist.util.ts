@@ -8,24 +8,32 @@ import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
 import { DreamStatusType } from "types/dream.types";
 
-type PlaylistFindOptions = {
-  showNSFW?: boolean;
+type GetPlaylistFilterOptions = {
+  // userId from the user that is requesting the playlist
+  // needed to handle hidden field on playlist and nested items
+  userId: number;
+  isAdmin?: boolean;
+  nsfw?: boolean;
+  onlyProcessedDreams?: boolean;
 };
-
-type GetPlaylistFindOptionsWhere = (
-  options?: FindOptionsWhere<Playlist>,
-  playlistFindOptions?: PlaylistFindOptions,
-) => FindOptionsWhere<Playlist>[];
 
 const playlistRepository = appDataSource.getRepository(Playlist);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 
-export const getPlaylistFindOptionsWhere: GetPlaylistFindOptionsWhere = (
-  options,
-) => {
+export const getPlaylistFindOptionsWhere = (
+  userId: number,
+  isAdmin: boolean,
+): FindOptionsWhere<Playlist> | FindOptionsWhere<Playlist>[] => {
+  // For admins, no filtering is needed
+  if (isAdmin) {
+    return {};
+  }
+
   return [
+    { hidden: false },
     {
-      ...options,
+      hidden: true,
+      user: { id: userId },
     },
   ];
 };
@@ -122,10 +130,7 @@ export const findOnePlaylist = async ({
 }: {
   where: FindOptionsWhere<Playlist> | FindOptionsWhere<Playlist>[];
   select: FindOptionsSelect<Playlist>;
-  filter?: {
-    nsfw?: boolean;
-    onlyProcessedDreams?: boolean;
-  };
+  filter: GetPlaylistFilterOptions;
 }): Promise<Playlist | null> => {
   const playlist = await playlistRepository.findOne({
     where: where,
@@ -147,11 +152,11 @@ export const findOnePlaylist = async ({
  */
 export const getPlaylistItemsQueryBuilder = (
   playlistId: number,
-  filter?: {
-    nsfw?: boolean;
-    onlyProcessedDreams?: boolean;
-  },
+  filter: GetPlaylistFilterOptions,
 ) => {
+  const isAdmin = filter.isAdmin;
+  const userId = filter.userId;
+
   // Define the user fields to select (excluding email)
   const createUserFieldSelections = (alias: string) => {
     return [
@@ -208,6 +213,17 @@ export const getPlaylistItemsQueryBuilder = (
       playlistItem.id IS NOT NULL
     )`,
       { status: DreamStatusType.PROCESSED },
+    );
+  }
+
+  if (!isAdmin) {
+    // If the user is not an admin, only show non-hidden items if is not the owner
+    queryBuilder.andWhere(
+      `(
+        (dreamItem.hidden IS NULL OR (dreamItem.hidden = false OR (dreamItem.hidden = true AND dreamItem.user.id = :userId))) AND
+        (playlistItem.hidden IS NULL OR (playlistItem.hidden = false OR (playlistItem.hidden = true AND playlistItem.user.id = :userId)))
+      )`,
+      { userId },
     );
   }
 

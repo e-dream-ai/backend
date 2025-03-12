@@ -64,6 +64,7 @@ import { isFeatureActive } from "utils/feature.util";
 import { FEATURES } from "constants/feature.constants";
 import {
   authenticateUser,
+  isAdmin,
   setUserLastLoginAt,
   syncWorkOSUser,
 } from "utils/user.util";
@@ -497,7 +498,8 @@ export const handleCurrentUserPlaylist = async (
   req: RequestType<UserLoginCredentials>,
   res: ResponseType,
 ) => {
-  const user = res.locals.user;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
   const currentPlaylist = user?.currentPlaylist;
   let playlist: Playlist | null = null;
 
@@ -505,7 +507,11 @@ export const handleCurrentUserPlaylist = async (
     playlist = await findOnePlaylist({
       where: { uuid: currentPlaylist?.uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      filter: { nsfw: user?.nsfw },
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
     });
   }
 

@@ -280,6 +280,7 @@ export const handleGetCurrentPlaylist = async (
 ) => {
   try {
     const user = res.locals.user;
+    const isUserAdmin = isAdmin(user);
     const currentPlaylistId = user?.currentPlaylist?.id;
 
     if (!currentPlaylistId) {
@@ -289,7 +290,11 @@ export const handleGetCurrentPlaylist = async (
     const playlist = await findOnePlaylist({
       where: { id: currentPlaylistId },
       select: getPlaylistSelectedColumns(),
-      filter: { nsfw: user?.nsfw },
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
     });
 
     if (!playlist) {

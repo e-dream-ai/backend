@@ -30,7 +30,7 @@ import {
   handleNotFound,
   jsonResponse,
 } from "utils/responses.util";
-import { reduceUserQuota } from "utils/user.util";
+import { isAdmin, reduceUserQuota } from "utils/user.util";
 
 /**
  * Repositories
@@ -148,7 +148,8 @@ export const handleGetPlaylist = async (
   res: ResponseType,
 ) => {
   const uuid = req.params.uuid!;
-  const user = res.locals?.user;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
 
   try {
     const playlist = await findOnePlaylist({
@@ -157,7 +158,12 @@ export const handleGetPlaylist = async (
       /**
        * Filter to get only processed dreams for client
        */
-      filter: { nsfw: user?.nsfw, onlyProcessedDreams: true },
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+        onlyProcessedDreams: true,
+      },
     });
 
     if (!playlist) {

@@ -1,4 +1,4 @@
-import { FeedItem } from "entities";
+import { Dream, FeedItem, Playlist } from "entities";
 import {
   FindOptionsRelations,
   FindOptionsSelect,
@@ -15,8 +15,13 @@ type FeedItemFindOptions = {
   showNSFW?: boolean;
   search?: string;
   isAdmin?: boolean;
+  onlyHidden?: boolean;
   userId: number;
 };
+
+type FeedItemFindOptionsWhere =
+  | FindOptionsWhere<Playlist | Dream>[]
+  | FindOptionsWhere<Playlist | Dream>;
 
 /**
  * Get where conditions that properly handle where query
@@ -31,13 +36,18 @@ export const getFeedFindOptionsWhere = (
     : undefined;
   const userId = findOptions?.userId;
   const isAdmin = findOptions?.isAdmin || false;
+  const onlyHidden = findOptions?.onlyHidden || false;
 
   // Base conditions for NSFW and search
   const nsfwCondition = findOptions?.showNSFW ? {} : { nsfw: false };
   const searchCondition = search ? { name: ILike(`%${search}%`) } : {};
 
   // Combine base conditions
-  const baseConditions = { ...nsfwCondition, ...searchCondition };
+  const baseConditions: FeedItemFindOptionsWhere = {
+    ...nsfwCondition,
+    ...searchCondition,
+    ...(onlyHidden ? { hidden: true } : {}),
+  };
 
   // For admins, no hidden filter is applied
   if (isAdmin) {
@@ -46,18 +56,22 @@ export const getFeedFindOptionsWhere = (
       { ...options, dreamItem: IsNull(), playlistItem: baseConditions },
     ];
   }
-  // For normal users, handle hidden items and ownership
+  // For normal users
+  // Handle hidden items with ownership
   // Apply on both (dreams and playlists)
   // Add base conditions (search and NSFW)
-  // Show if not hidden OR if hidden but user is owner
-  const itemsConditions = [
-    { ...baseConditions, hidden: false },
+  const itemsConditions: FeedItemFindOptionsWhere = [
     {
       ...baseConditions,
       hidden: true,
       user: Raw((alias) => `${alias} = :userId`, { userId }),
     },
+    // If onlyHidden, skip adding not hidden items to the query
+    // If not onlyHidden, add visible items to the query
+    ...(onlyHidden ? [] : [{ ...baseConditions, hidden: false }]),
   ];
+
+  console.log({ onlyHidden, type: typeof onlyHidden });
 
   return [
     { ...options, dreamItem: itemsConditions, playlistItem: IsNull() },

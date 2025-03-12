@@ -107,6 +107,8 @@ export const handleGetFeed = async (
   const type = req.query.type;
   const user = res.locals.user!;
   const showNSFW = user?.nsfw;
+  // Convert to boolean since Joi handles it as string since we are working with a query param
+  const onlyHidden = req.query.onlyHidden === "true";
   const isUserAdmin = isAdmin(user);
 
   try {
@@ -120,6 +122,7 @@ export const handleGetFeed = async (
     const whereSentence = getFeedFindOptionsWhere(baseOptions, {
       showNSFW,
       search,
+      onlyHidden,
       isAdmin: isUserAdmin,
       userId: user.id,
     });

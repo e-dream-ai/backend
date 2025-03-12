@@ -6,4 +6,5 @@ export type GetFeedRequest = {
   search?: string;
   userUUID?: string;
   type?: FeedItemType;
+  onlyHidden?: string;
 };

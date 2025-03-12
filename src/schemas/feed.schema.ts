@@ -9,5 +9,6 @@ export const feedSchema = {
     search: Joi.string(),
     type: Joi.string().valid(FeedItemType.DREAM, FeedItemType.PLAYLIST),
     userUUID: Joi.string().uuid(),
+    onlyHidden: Joi.string().valid("true", "false"),
   }),
 };

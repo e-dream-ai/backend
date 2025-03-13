@@ -1,4 +1,5 @@
 import { tracker } from "clients/google-analytics";
+import { redisClient } from "clients/redis.client";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { User } from "entities";
 import { remoteControlSchema } from "schemas/socket.schema";
@@ -25,6 +26,7 @@ import {
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
 const PING_EVENT = "ping";
+const PING_EVENT_REDIS = "ping_redis";
 const GOOD_BYE_EVENT = "goodbye";
 
 const sessionTracker = new SessionTracker({
@@ -66,6 +68,11 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     PING_EVENT,
     handlePingEvent({ socket, user, roomId, sessionTracker }),
   );
+
+  /**
+   * Register ping redis handler
+   */
+  socket.on(PING_EVENT_REDIS, handlePingRedisEvent());
 
   /**
    * Register goodbye handler
@@ -324,6 +331,32 @@ export const handlePingEvent = ({
      * Emit boradcast {PING_EVENT} event
      */
     socket.broadcast.to(roomId).emit(PING_EVENT);
+  };
+};
+
+export const handlePingRedisEvent = () => {
+  return async () => {
+    const key = "TESTING_KEY";
+    const value = "testingValue";
+    console.time("PING REDIS SERVER");
+    await redisClient.ping();
+    console.timeEnd("PING REDIS SERVER");
+
+    console.time("SAVE AND GET REDIS VALUE");
+
+    console.time("SAVE REDIS VALUE");
+    await redisClient.set(key, value);
+    console.timeEnd("SAVE REDIS VALUE");
+
+    console.time("GET REDIS VALUE");
+    await redisClient.get(key);
+    console.timeEnd("GET REDIS VALUE");
+
+    console.timeEnd("SAVE AND GET REDIS VALUE");
+
+    console.time("DELETE REDIS VALUE");
+    await redisClient.del(key);
+    console.timeEnd("DELETE REDIS VALUE");
   };
 };
 

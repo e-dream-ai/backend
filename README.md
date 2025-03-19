@@ -151,11 +151,48 @@ Logical grouping of sockets to partition the "`remote-control`" communication ch
 
 ### User remote control room
 
-Provide a way to organize sockets into groups, allowing you to broadcast messages to multiple clients at once and direct it only for the user sessions. Room name "`user-cognito-uuid`".
+Provide a way to organize sockets into groups, allowing you to broadcast messages to multiple clients at once and direct it only for the user sessions. Room name "`USER:id`".
 
 ### Auth middleware
 
 Verifies the identity of clients connecting to the server via sockets and adds user data to logic
+
+### Autoscaling
+
+In order to enable autoscaling on Heroku, the project needs to handle websocket messages while having multiple NodeJS instances running.
+
+When deploying multiple Socket.IO servers, there are two things to take care of:
+
+- Enabling sticky session
+- Using an redis adapter
+
+To achieve this, it is necessary to follow next steps to fix multiple problems that scaling generates.
+
+#### Sticky-sessions
+
+[Using multiple nodes](https://socket.io/docs/v4/using-multiple-nodes/#using-nodejs-cluster) with Socket.IO will need to make sure that all requests associated with a particular session ID. Found this problem after scaling to 5 dynos.
+
+> If you plan to distribute the load of connections among different processes or machines, you have to make sure that all requests associated with a particular session ID reach the process that originated them. Without enabling sticky-session, you will experience HTTP 400 errors due to "Session ID unknown"
+
+Heroku provides [Session Affinity](https://devcenter.heroku.com/articles/session-affinity) feature to solve sticky-sessions problem.
+
+Active http-session-affinity on stage:
+
+```sh
+heroku features:enable http-session-affinity -a e-dream
+```
+
+#### Redis Adapter
+
+The [Redis Adapter](https://socket.io/docs/v4/redis-adapter/) is a server-side component which is responsible for broadcasting events to all or a subset of clients. When scaling to multiple Socket.IO servers, is needed to replace the default in-memory adapter by another implementation, so the events are properly routed to all clients (connected to one of the multiple server instances). Adapter is used on `src/server.ts` file.
+
+> The Redis adapter relies on the Redis Pub/Sub mechanism.
+> Every packet that is sent to multiple clients (e.g. io.to("room1").emit() or socket.broadcast.emit()) is:
+>
+> - sent to all matching clients connected to the current server
+> - published in a Redis channel, and received by the other Socket.IO servers of the cluster
+>
+> ![image](https://socket.io/images/broadcasting-redis-dark.png)
 
 ## Authentication
 

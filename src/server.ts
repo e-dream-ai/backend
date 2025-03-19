@@ -2,7 +2,7 @@ import http from "http";
 import express from "express";
 import { Server } from "socket.io";
 import Redis from "ioredis";
-// import { createAdapter } from "@socket.io/redis-adapter";
+import { createAdapter } from "@socket.io/redis-adapter";
 import env from "shared/env";
 import appDataSource from "database/app-data-source";
 import { APP_LOGGER } from "shared/logger";
@@ -49,7 +49,7 @@ export async function startServer(): Promise<ServerResources> {
       methods: ALLOWED_METHODS,
       allowedHeaders: ALLOWED_HEADERS,
     },
-    // adapter: createAdapter(pubClient, subClient),
+    adapter: createAdapter(pubClient, subClient),
   });
 
   // Database connection

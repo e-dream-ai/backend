@@ -30,7 +30,11 @@ export const createPlaylistSchema: RequestValidationSchema = {
   body: Joi.object<CreatePlaylistRequest>().keys({
     name: Joi.string().required(),
     nsfw: Joi.boolean(),
-    hidden: Joi.boolean(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
   }),
 };
 
@@ -39,7 +43,11 @@ export const updatePlaylistSchema: RequestValidationSchema = {
     name: Joi.string().required().max(100),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0).integer(),
-    hidden: Joi.boolean(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

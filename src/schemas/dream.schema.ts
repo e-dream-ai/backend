@@ -54,7 +54,11 @@ export const updateDreamSchema: RequestValidationSchema = {
           "Invalid URL format. URL must start with http:// or https://",
       }),
     nsfw: Joi.boolean(),
-    hidden: Joi.boolean(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
     ccbyLicense: Joi.boolean(),
     startKeyframe: Joi.string().uuid(),
     endKeyframe: Joi.string().uuid(),
@@ -103,7 +107,11 @@ export const createMultipartUploadDreamSchema: RequestValidationSchema = {
           "Invalid URL format. URL must start with http:// or https://",
       }),
     nsfw: Joi.boolean(),
-    hidden: Joi.boolean(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
     ccbyLicense: Joi.boolean(),
   }),
 };

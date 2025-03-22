@@ -1,9 +1,11 @@
-import type { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request } from "express";
 import httpStatus from "http-status";
 import Joi from "joi";
 import { RequestValidationSchema } from "types/validator.types";
 import { jsonResponse } from "utils/responses.util";
 import { APP_LOGGER } from "shared/logger";
+import { isAdmin } from "utils/user.util";
+import { ResponseType } from "types/express.types";
 
 export const mapValidatorErrors = (error: Joi.ValidationError | undefined) =>
   error?.details?.map((err) => ({
@@ -20,14 +22,22 @@ export const mapValidatorErrors = (error: Joi.ValidationError | undefined) =>
  *
  */
 const validatorMiddleware = (schema: RequestValidationSchema) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: ResponseType, next: NextFunction) => {
+    const isUserAdmin = isAdmin(res.locals.user!);
+
     const { error } = Joi.object(schema).validate(
       {
         body: req.body,
         query: req.query,
         params: req.params,
       },
-      { abortEarly: false, stripUnknown: true },
+      {
+        abortEarly: false,
+        stripUnknown: true,
+        // Adding context to validations
+        // `isUserAdmin` indicates if logged user is admin
+        context: { isUserAdmin },
+      },
     );
 
     // if there's no error, next()

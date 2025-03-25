@@ -370,10 +370,19 @@ export const handleUpdateUser = async (
           userId: user.workOSId,
         });
 
-        const organizationMembership = list?.data[0]?.id;
+        let organizationMembership = list?.data[0];
+
+        if (!organizationMembership) {
+          organizationMembership =
+            await workos.userManagement.createOrganizationMembership({
+              userId: user.workOSId,
+              organizationId: env.WORKOS_ORGANIZATION_ID,
+              roleSlug: role.name,
+            });
+        }
 
         await workos.userManagement.updateOrganizationMembership(
-          organizationMembership,
+          organizationMembership.id,
           {
             roleSlug: role.name,
           },

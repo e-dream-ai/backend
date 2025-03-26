@@ -87,6 +87,7 @@ export const getFeedDreamItemSelectedColumns = (): FindOptionsSelect<Dream> => {
       id: true,
       playlist: {
         id: true,
+        uuid: true,
         name: true,
       },
     },

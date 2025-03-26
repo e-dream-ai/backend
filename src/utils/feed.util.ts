@@ -7,9 +7,7 @@ import {
   IsNull,
   Raw,
 } from "typeorm";
-import { getDreamSelectedColumns } from "./dream.util";
 import { getUserSelectedColumns } from "./user.util";
-import { getPlaylistSelectedColumns } from "./playlist.util";
 
 type FeedItemFindOptions = {
   showNSFW?: boolean;
@@ -71,28 +69,57 @@ export const getFeedFindOptionsWhere = (
     ...(onlyHidden ? [] : [{ ...baseConditions, hidden: false }]),
   ];
 
-  console.log({ onlyHidden, type: typeof onlyHidden });
-
   return [
     { ...options, dreamItem: itemsConditions, playlistItem: IsNull() },
     { ...options, dreamItem: IsNull(), playlistItem: itemsConditions },
   ];
 };
 
-export const getFeedSelectedColumns = ({
-  userEmail,
-}: {
-  userEmail?: boolean;
-} = {}): FindOptionsSelect<FeedItem> => {
+export const getFeedDreamItemSelectedColumns = (): FindOptionsSelect<Dream> => {
+  return {
+    id: true,
+    uuid: true,
+    name: true,
+    thumbnail: true,
+    user: getUserSelectedColumns(),
+    displayedOwner: getUserSelectedColumns(),
+    playlistItems: {
+      id: true,
+      playlist: {
+        id: true,
+        uuid: true,
+        name: true,
+      },
+    },
+    created_at: true,
+    updated_at: true,
+  };
+};
+
+export const getFeedPlaylistItemSelectedColumns =
+  (): FindOptionsSelect<Playlist> => {
+    return {
+      id: true,
+      uuid: true,
+      name: true,
+      thumbnail: true,
+      user: getUserSelectedColumns(),
+      displayedOwner: getUserSelectedColumns(),
+      created_at: true,
+      updated_at: true,
+    };
+  };
+
+export const getFeedSelectedColumns = (): FindOptionsSelect<FeedItem> => {
   return {
     id: true,
     type: true,
-    dreamItem: getDreamSelectedColumns({ featureRank: true }),
-    playlistItem: getPlaylistSelectedColumns({ featureRank: true }),
+    dreamItem: getFeedDreamItemSelectedColumns(),
+    playlistItem: getFeedPlaylistItemSelectedColumns(),
     created_at: true,
     updated_at: true,
     deleted_at: true,
-    user: getUserSelectedColumns({ userEmail }),
+    user: getUserSelectedColumns(),
   };
 };
 
@@ -100,7 +127,11 @@ export const getFeedFindOptionsRelations =
   (): FindOptionsRelations<FeedItem> => {
     return {
       user: true,
-      dreamItem: true,
+      dreamItem: {
+        playlistItems: {
+          playlist: true,
+        },
+      },
       playlistItem: {
         /**
          * will be optimize on https://github.com/e-dream-ai/backend/issues/87

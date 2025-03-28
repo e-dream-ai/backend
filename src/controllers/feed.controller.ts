@@ -136,6 +136,12 @@ export const handleGetFeed = async (
       skip,
     });
 
+    //Remove feature rank column
+    feed.forEach((item: FeedItem) => {
+      delete item?.dreamItem?.featureRank;
+      delete item?.playlistItem?.featureRank;
+    });
+
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { feed, count } }));

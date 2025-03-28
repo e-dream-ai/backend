@@ -29,7 +29,7 @@ export const getFeedFindOptionsWhere = (
   findOptions?: FeedItemFindOptions,
 ): FindOptionsWhere<FeedItem>[] => {
   // Handle findOptions
-  const search = findOptions?.search
+  const searchCondition = findOptions?.search
     ? { name: ILike(`%${findOptions.search}%`) }
     : undefined;
   const userId = findOptions?.userId;
@@ -38,7 +38,6 @@ export const getFeedFindOptionsWhere = (
 
   // Base conditions for NSFW and search
   const nsfwCondition = findOptions?.showNSFW ? {} : { nsfw: false };
-  const searchCondition = search ? { name: ILike(`%${search}%`) } : {};
 
   // Combine base conditions
   const baseConditions: FeedItemFindOptionsWhere = {
@@ -103,6 +102,7 @@ export const getFeedPlaylistItemSelectedColumns =
       uuid: true,
       name: true,
       thumbnail: true,
+      featureRank: true,
       user: getUserSelectedColumns(),
       displayedOwner: getUserSelectedColumns(),
       created_at: true,

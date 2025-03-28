@@ -1,25 +1,37 @@
-import { Dream, FeedItem, Playlist } from "entities";
+import { Dream, FeedItem, Playlist, PlaylistItem } from "entities";
 import {
   FindOptionsRelations,
   FindOptionsSelect,
   FindOptionsWhere,
   ILike,
   IsNull,
+  MoreThanOrEqual,
+  Not,
   Raw,
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
+import appDataSource from "database/app-data-source";
 
 type FeedItemFindOptions = {
-  showNSFW?: boolean;
+  // Filters NSFW content
+  nsfw?: boolean;
+  // Performs text search
   search?: string;
+  // Allows to admins get hidden items
   isAdmin?: boolean;
+  // Helps obtain hidden items only
   onlyHidden?: boolean;
+  // User filter
   userId: number;
+  // Gets best ranked content
+  ranked?: boolean;
 };
 
 type FeedItemFindOptionsWhere =
   | FindOptionsWhere<Playlist | Dream>[]
   | FindOptionsWhere<Playlist | Dream>;
+
+const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 
 /**
  * Get where conditions that properly handle where query
@@ -35,9 +47,10 @@ export const getFeedFindOptionsWhere = (
   const userId = findOptions?.userId;
   const isAdmin = findOptions?.isAdmin || false;
   const onlyHidden = findOptions?.onlyHidden || false;
+  const ranked = findOptions?.ranked || false;
 
   // Base conditions for NSFW and search
-  const nsfwCondition = findOptions?.showNSFW ? {} : { nsfw: false };
+  const nsfwCondition = findOptions?.nsfw ? {} : { nsfw: false };
 
   // Combine base conditions
   const baseConditions: FeedItemFindOptionsWhere = {
@@ -50,7 +63,13 @@ export const getFeedFindOptionsWhere = (
   if (isAdmin) {
     return [
       { ...options, dreamItem: baseConditions, playlistItem: IsNull() },
-      { ...options, dreamItem: IsNull(), playlistItem: baseConditions },
+      {
+        ...options,
+        dreamItem: IsNull(),
+        playlistItem: ranked
+          ? { ...baseConditions, featureRank: MoreThanOrEqual(1) }
+          : baseConditions,
+      },
     ];
   }
   // For normal users
@@ -70,7 +89,13 @@ export const getFeedFindOptionsWhere = (
 
   return [
     { ...options, dreamItem: itemsConditions, playlistItem: IsNull() },
-    { ...options, dreamItem: IsNull(), playlistItem: itemsConditions },
+    {
+      ...options,
+      dreamItem: IsNull(),
+      playlistItem: ranked
+        ? { ...itemsConditions, featureRank: MoreThanOrEqual(1) }
+        : itemsConditions,
+    },
   ];
 };
 
@@ -127,19 +152,58 @@ export const getFeedFindOptionsRelations =
   (): FindOptionsRelations<FeedItem> => {
     return {
       user: true,
+      // Need to get playlists where dream is included to collapse into virtual playlists on feed frontend view
       dreamItem: {
         playlistItems: {
           playlist: true,
         },
       },
-      playlistItem: {
-        /**
-         * will be optimize on https://github.com/e-dream-ai/backend/issues/87
-         */
-        items: {
-          playlistItem: { items: { dreamItem: true, playlistItem: true } },
-          dreamItem: true,
-        },
-      },
+      playlistItem: true,
     };
   };
+
+export const formatFeedResponse = async (
+  feed: FeedItem[],
+): Promise<FeedItem[]> => {
+  const processedItems = feed.map(async (item) => {
+    /**
+     * Need to obtain playlist items to fill empty thumbnail on playlists
+     * will be optimize on https://github.com/e-dream-ai/backend/issues/87
+     */
+    // Only query if playlistItem exists and has no thumbnail to fill it
+    if (item.playlistItem?.id && !item.playlistItem.thumbnail) {
+      // Try to find an item with thumbnail
+      const foundPI = await playlistItemRepository.findOne({
+        where: {
+          dreamItem: {
+            thumbnail: Not(IsNull()),
+          },
+          playlist: {
+            id: item.playlistItem.id,
+          },
+        },
+        relations: {
+          dreamItem: true,
+        },
+        select: {
+          dreamItem: {
+            thumbnail: true,
+          },
+        },
+      });
+
+      // If there's an item use its thumbnail
+      if (foundPI && foundPI.dreamItem) {
+        item.playlistItem.thumbnail = foundPI.dreamItem.thumbnail;
+      }
+    }
+
+    //Remove feature rank column
+    delete item?.dreamItem?.featureRank;
+    delete item?.playlistItem?.featureRank;
+
+    return item;
+  });
+
+  return Promise.all(processedItems);
+};

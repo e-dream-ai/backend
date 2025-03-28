@@ -159,6 +159,9 @@ Verifies the identity of clients connecting to the server via sockets and adds u
 
 ### Autoscaling
 
+> [!WARNING]  
+> Consider this works only for [scaling](https://devcenter.heroku.com/articles/autoscaling), not vertical scale (change dyno type)
+
 In order to enable autoscaling on Heroku, the project needs to handle websocket messages while having multiple NodeJS instances running.
 
 When deploying multiple Socket.IO servers, there are two things to take care of:

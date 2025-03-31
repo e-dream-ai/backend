@@ -72,6 +72,7 @@ export const getFeedFindOptionsWhere = (
       },
     ];
   }
+
   // For normal users
   // Handle hidden items with ownership
   // Apply on both (dreams and playlists)
@@ -81,10 +82,19 @@ export const getFeedFindOptionsWhere = (
       ...baseConditions,
       hidden: true,
       user: Raw((alias) => `${alias} = :userId`, { userId }),
+      ...(ranked && { featureRank: MoreThanOrEqual(1) }),
     },
     // If onlyHidden, skip adding not hidden items to the query
     // If not onlyHidden, add visible items to the query
-    ...(onlyHidden ? [] : [{ ...baseConditions, hidden: false }]),
+    ...(onlyHidden
+      ? []
+      : [
+        {
+          ...baseConditions,
+          hidden: false,
+          ...(ranked && { featureRank: MoreThanOrEqual(1) }),
+        },
+      ]),
   ];
 
   return [
@@ -92,9 +102,7 @@ export const getFeedFindOptionsWhere = (
     {
       ...options,
       dreamItem: IsNull(),
-      playlistItem: ranked
-        ? { ...itemsConditions, featureRank: MoreThanOrEqual(1) }
-        : itemsConditions,
+      playlistItem: itemsConditions,
     },
   ];
 };

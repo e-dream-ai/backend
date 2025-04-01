@@ -68,13 +68,9 @@ export const getPlaylistFindOptionsRelations =
     return {
       user: true,
       displayedOwner: true,
-      // feedItem: true,
       // Avoid getting items from entity is causing performance issues when items increase
       // try use `getPlaylistItemsQueryBuilder` instead
       // items: true,
-      playlistItems: {
-        playlist: true,
-      },
       playlistKeyframes: {
         keyframe: {
           user: true,

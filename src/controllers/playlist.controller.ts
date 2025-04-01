@@ -126,6 +126,52 @@ export const handleGetPlaylist = async (
 };
 
 /**
+ * Handles get playlist references
+ * Playlists Items where current playlist is included as child
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlists
+ * BAD_REQUEST 400 - error getting playlists
+ *
+ */
+export const handleGetPlaylistReferences = async (
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+
+  try {
+    const references = await playlistItemRepository.find({
+      where: {
+        playlistItem: {
+          uuid,
+        },
+      },
+      select: {
+        playlist: {
+          id: true,
+          uuid: true,
+          name: true,
+        },
+      },
+      relations: {
+        playlist: true,
+      },
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { references } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
  * Handles get playlist
  *
  * @param {RequestType} req - Request object

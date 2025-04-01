@@ -19,6 +19,58 @@ const playlistRouter = Router();
 
 /**
  * @swagger
+ * /playlist/{uuid}/references:
+ *  get:
+ *    tags:
+ *      - playlist
+ *    summary: Gets parent references of the playlist
+ *    description: Gets parent references of the playlist
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: Playlist uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Gets parent references of the playlist
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        playlist:
+ *                          $ref: '#/components/schemas/Playlist'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.get(
+  "/:uuid/references",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(requestPlaylistSchema),
+  playlistController.handleGetPlaylistReferences,
+);
+
+/**
+ * @swagger
  * /playlist/{uuid}:
  *  get:
  *    tags:

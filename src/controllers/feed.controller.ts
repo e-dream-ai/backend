@@ -1,5 +1,5 @@
 import { PAGINATION } from "constants/pagination.constants";
-import appDataSource from "database/app-data-source";
+import { feedItemRepository } from "database/repositories";
 import { FeedItem } from "entities/FeedItem.entity";
 import httpStatus from "http-status";
 import { FindOptionsWhere } from "typeorm";
@@ -14,8 +14,6 @@ import {
 } from "utils/feed.util";
 import { handleInternalServerError, jsonResponse } from "utils/responses.util";
 import { isAdmin } from "utils/user.util";
-
-const feedRepository = appDataSource.getRepository(FeedItem);
 
 /**
  * Handles get ranked feed
@@ -55,7 +53,7 @@ export const handleGetRankedFeed = async (
       ranked: true,
     });
 
-    const [rawFeed, count] = await feedRepository.findAndCount({
+    const [rawFeed, count] = await feedItemRepository.findAndCount({
       where: whereSentence,
       select: getFeedSelectedColumns(),
       relations: getFeedFindOptionsRelations(),
@@ -127,7 +125,7 @@ export const handleGetFeed = async (
       userId: user.id,
     });
 
-    const [rawFeed, count] = await feedRepository.findAndCount({
+    const [rawFeed, count] = await feedItemRepository.findAndCount({
       where: whereSentence,
       select: getFeedSelectedColumns(),
       relations: getFeedFindOptionsRelations(),
@@ -187,7 +185,7 @@ export const handleGetMyDreams = async (
       userId: user.id,
     });
 
-    const [rawFeed, count] = await feedRepository.findAndCount({
+    const [rawFeed, count] = await feedItemRepository.findAndCount({
       where: whereSentence,
       select: getFeedSelectedColumns(),
       relations: getFeedFindOptionsRelations(),

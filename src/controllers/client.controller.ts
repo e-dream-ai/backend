@@ -1,7 +1,9 @@
 import { tracker } from "clients/google-analytics";
-import appDataSource from "database/app-data-source";
-import { Dream, Vote } from "entities";
-import { DefaultPlaylist } from "entities/DefaultPlaylist.entity";
+import {
+  defaultPlaylistRepository,
+  dreamRepository,
+  voteRepository,
+} from "database/repositories";
 import httpStatus from "http-status";
 import { In } from "typeorm";
 import {
@@ -35,13 +37,6 @@ import {
   isAdmin,
   reduceUserQuota,
 } from "utils/user.util";
-
-/**
- * Repositories
- */
-const dreamRepository = appDataSource.getRepository(Dream);
-const defaultPlaylistRepository = appDataSource.getRepository(DefaultPlaylist);
-const voteRepository = appDataSource.getRepository(Vote);
 
 /**
  * Handles hello

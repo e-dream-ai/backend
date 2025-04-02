@@ -51,9 +51,7 @@ import {
   AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { ROLES } from "constants/role.constants";
-import appDataSource from "database/app-data-source";
 import { Playlist, User } from "entities";
-import { Role } from "entities/Role.entity";
 import type { NextFunction, Response } from "express";
 import { APP_LOGGER } from "shared/logger";
 import type { RequestType, ResponseType } from "types/express.types";
@@ -79,12 +77,7 @@ import {
   findOnePlaylist,
   getPlaylistSelectedColumns,
 } from "utils/playlist.util";
-
-/**
- * Repositories
- */
-const roleRepository = appDataSource.getRepository(Role);
-const userRepository = appDataSource.getRepository(User);
+import { roleRepository, userRepository } from "database/repositories";
 
 export const handleLoginWithCode = async (
   req: RequestType<UserLoginWithCodeCredentials>,

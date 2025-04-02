@@ -1,8 +1,6 @@
 import { INVITE_MESSAGES } from "constants/messages/invite.constant";
 import { PAGINATION } from "constants/pagination.constants";
-import appDataSource from "database/app-data-source";
-import { Invite } from "entities";
-import { Role } from "entities/Role.entity";
+import { inviteRepository, roleRepository } from "database/repositories";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
 import { CreateInviteRequest, GetInvitesQuery } from "types/invite.types";
@@ -18,12 +16,6 @@ import {
   handleInternalServerError,
   handleNotFound,
 } from "utils/responses.util";
-
-/**
- * Repositories
- */
-const inviteRepository = appDataSource.getRepository(Invite);
-const roleRepository = appDataSource.getRepository(Role);
 
 /**
  * Handles get invites

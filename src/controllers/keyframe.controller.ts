@@ -1,6 +1,5 @@
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
-import appDataSource from "database/app-data-source";
 import { Keyframe, User } from "entities";
 import httpStatus from "http-status";
 import { ILike } from "typeorm";
@@ -33,9 +32,7 @@ import {
 } from "utils/s3.util";
 import { CreateMultipartUploadFileRequest } from "types/keyframe.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
-
-const keyframeRepository = appDataSource.getRepository(Keyframe);
-const userRepository = appDataSource.getRepository(User);
+import { keyframeRepository, userRepository } from "database/repositories";
 
 /**
  * Handles get keyframe

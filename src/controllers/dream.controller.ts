@@ -15,8 +15,15 @@ import {
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
-import appDataSource from "database/app-data-source";
-import { Dream, FeedItem, Keyframe, Report, User, Vote } from "entities";
+import {
+  dreamRepository,
+  userRepository,
+  feedItemRepository,
+  voteRepository,
+  keyframeRepository,
+  reportRepository,
+} from "database/repositories";
+import { Dream, Keyframe, Report, User } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import {
@@ -65,16 +72,6 @@ import {
 import { truncateString } from "utils/string.util";
 import { getUserIdentifier, isAdmin } from "utils/user.util";
 import { framesToSeconds } from "utils/video.utils";
-
-/**
- * Repositories
- */
-const dreamRepository = appDataSource.getRepository(Dream);
-const userRepository = appDataSource.getRepository(User);
-const feedItemRepository = appDataSource.getRepository(FeedItem);
-const voteRepository = appDataSource.getRepository(Vote);
-const keyframeRepository = appDataSource.getRepository(Keyframe);
-const reportRepository = appDataSource.getRepository(Report);
 
 /**
  * Handles get dreams

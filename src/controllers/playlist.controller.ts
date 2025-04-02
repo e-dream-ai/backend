@@ -10,15 +10,22 @@ import { PLAYLIST_PREFIX } from "constants/playlist.constants";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
 import {
-  Dream,
+  defaultPlaylistRepository,
+  playlistRepository,
+  playlistKeyframeRepository,
+  dreamRepository,
+  keyframeRepository,
+  feedItemRepository,
+  userRepository,
+  playlistItemRepository,
+} from "database/repositories";
+import {
   FeedItem,
-  Keyframe,
   Playlist,
   PlaylistItem,
   PlaylistKeyframe,
   User,
 } from "entities";
-import { DefaultPlaylist } from "entities/DefaultPlaylist.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { ILike } from "typeorm";
@@ -55,16 +62,6 @@ import {
   handleInternalServerError,
 } from "utils/responses.util";
 import { getUserIdentifier, isAdmin } from "utils/user.util";
-
-const playlistRepository = appDataSource.getRepository(Playlist);
-const defaultPlaylistRepository = appDataSource.getRepository(DefaultPlaylist);
-const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
-const playlistKeyframeRepository =
-  appDataSource.getRepository(PlaylistKeyframe);
-const dreamRepository = appDataSource.getRepository(Dream);
-const keyframeRepository = appDataSource.getRepository(Keyframe);
-const feedItemRepository = appDataSource.getRepository(FeedItem);
-const userRepository = appDataSource.getRepository(User);
 
 /**
  * Handles get playlist

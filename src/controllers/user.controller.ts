@@ -5,7 +5,11 @@ import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { AVATAR } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
-import appDataSource from "database/app-data-source";
+import {
+  apiKeyRepository,
+  roleRepository,
+  userRepository,
+} from "database/repositories";
 import { User } from "entities";
 import { ApiKey } from "entities/ApiKey.entity";
 import { Role } from "entities/Role.entity";
@@ -43,10 +47,6 @@ import {
   isAdmin,
 } from "utils/user.util";
 import { workos } from "utils/workos.util";
-
-const userRepository = appDataSource.getRepository(User);
-const roleRepository = appDataSource.getRepository(Role);
-const apiKeyRepository = appDataSource.getRepository(ApiKey);
 
 /**
  * Handles get roles

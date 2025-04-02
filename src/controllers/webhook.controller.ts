@@ -2,18 +2,10 @@ import httpStatus from "http-status";
 import { APP_LOGGER } from "shared/logger";
 import { RequestType, ResponseType } from "types/express.types";
 import { workos } from "utils/workos.util";
-import appDataSource from "database/app-data-source";
-import { Role } from "entities/Role.entity";
-import { User } from "entities";
 import { ROLES } from "constants/role.constants";
 import { RoleType } from "types/role.types";
 import env from "shared/env";
-
-/**
- * Repositories
- */
-const roleRepository = appDataSource.getRepository(Role);
-const userRepository = appDataSource.getRepository(User);
+import { roleRepository, userRepository } from "database/repositories";
 
 /**
  * Handles workos webhooks

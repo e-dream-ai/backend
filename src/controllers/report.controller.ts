@@ -3,9 +3,12 @@ import { REPORT_TYPES_MESSAGES } from "constants/messages/report.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { NATIVE_REPORT_TYPE_ID } from "constants/report.constantes";
 import { ROLES } from "constants/role.constants";
-import appDataSource from "database/app-data-source";
-import { Dream, Report } from "entities";
-import { ReportType } from "entities/ReportType.entity";
+import {
+  dreamRepository,
+  reportRepository,
+  reportTypeRepository,
+} from "database/repositories";
+import { Report } from "entities";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
 import {
@@ -27,10 +30,6 @@ import {
   jsonResponse,
   handleInternalServerError,
 } from "utils/responses.util";
-
-const reportRepository = appDataSource.getRepository(Report);
-const reportTypeRepository = appDataSource.getRepository(ReportType);
-const dreamRepository = appDataSource.getRepository(Dream);
 
 /**
  * Handles get report

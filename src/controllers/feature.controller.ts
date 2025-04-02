@@ -1,5 +1,4 @@
-import appDataSource from "database/app-data-source";
-import { Feature } from "entities/Feature.entity";
+import { featureRepository } from "database/repositories";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
 import { UpdateFeatureRequest } from "types/feature.types";
@@ -8,11 +7,6 @@ import {
   handleNotFound,
   jsonResponse,
 } from "utils/responses.util";
-
-/**
- * Repositories
- */
-const featureRepository = appDataSource.getRepository(Feature);
 
 /**
  * Handles get features

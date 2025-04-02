@@ -30,7 +30,11 @@ import {
   handleNotFound,
   jsonResponse,
 } from "utils/responses.util";
-import { isAdmin, reduceUserQuota } from "utils/user.util";
+import {
+  getUserDownvotedDreams,
+  isAdmin,
+  reduceUserQuota,
+} from "utils/user.util";
 
 /**
  * Repositories
@@ -333,8 +337,8 @@ export const handleDreamsRequest = async (
  * @param {Response} res - Response object
  *
  * @returns {Response} Returns response
- * OK 200 - hello data
- * BAD_REQUEST 400 - error getting hello data
+ * OK 200 - disliked dreams
+ * BAD_REQUEST 400 - error getting disliked dreams
  *
  */
 export const handleGetUserDislikes = async (
@@ -342,21 +346,10 @@ export const handleGetUserDislikes = async (
   res: ResponseType,
 ) => {
   const user = res.locals.user!;
-
   /**
-   * Count total user dislikes
+   * Calculate downvoted uuids
    */
-  const downvotes = await voteRepository.find({
-    where: { user: { id: user.id }, vote: VoteType.DOWNVOTE },
-    relations: {
-      dream: true,
-    },
-  });
-
-  /**
-   * Return dislikes uuids
-   */
-  const dislikes = downvotes.map((dv) => dv.dream.uuid);
+  const dislikes = await getUserDownvotedDreams(user);
 
   try {
     return res.status(httpStatus.OK).json(

@@ -61,6 +61,51 @@ userRouter.get(
 
 /**
  * @swagger
+ * /user/current/dislikes:
+ *  get:
+ *    tags:
+ *      - client
+ *    summary: Gets disliked dreams
+ *    description: Gets disliked dreams
+ *    responses:
+ *      '200':
+ *        description: Gets disliked dreams
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                          dislikes:
+ *                            type: array
+ *                            items: string
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+userRouter.get(
+  "/current/dislikes",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  userController.handleGetUserDislikes,
+);
+
+/**
+ * @swagger
  * /user/current:
  *  get:
  *    tags:

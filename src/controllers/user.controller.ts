@@ -36,6 +36,7 @@ import {
 } from "utils/responses.util";
 import {
   getRoleSelectedColumns,
+  getUserDownvotedDreams,
   getUserFindOptionsRelations,
   getUserIdentifier,
   getUserSelectedColumns,
@@ -310,6 +311,42 @@ export const handleGetCurrentPlaylist = async (
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles get list of dream dislikes
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - disliked dreams
+ * BAD_REQUEST 400 - error getting disliked dreams
+ *
+ */
+export const handleGetUserDislikes = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const user = res.locals.user!;
+  /**
+   * Calculate downvoted uuids
+   */
+  const dislikes = await getUserDownvotedDreams(user);
+
+  try {
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          dislikes,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 

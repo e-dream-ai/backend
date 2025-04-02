@@ -5,7 +5,7 @@ import {
 } from "clients/cognito.client";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { Invite, User } from "entities";
+import { Invite, User, Vote } from "entities";
 import type { User as WorkOSUser } from "@workos-inc/node";
 import { Role } from "entities/Role.entity";
 import {
@@ -18,12 +18,14 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { fetchCognitoUser } from "controllers/auth.controller";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
+import { VoteType } from "types/vote.types";
 
 /**
  * Repositories
  */
 const userRepository = appDataSource.getRepository(User);
 const roleRepository = appDataSource.getRepository(Role);
+const voteRepository = appDataSource.getRepository(Vote);
 
 export const authenticateUser = async ({
   username,
@@ -230,4 +232,29 @@ export const setUserLastLoginAt = async (user: User) => {
     last_login_at: new Date(),
     verified: true,
   });
+};
+
+/**
+ * Retrieves the UUIDs of dreams that a user has downvoted
+ *
+ * @param user
+ * @returns string[]
+ */
+export const getUserDownvotedDreams = async (user: User): Promise<string[]> => {
+  /**
+   * Get downvoted dreams
+   */
+  const downvotes = await voteRepository.find({
+    where: { user: { id: user.id }, vote: VoteType.DOWNVOTE },
+    relations: {
+      dream: true,
+    },
+  });
+
+  /**
+   * Return uuids
+   */
+  const dislikes = downvotes.map((dv) => dv.dream.uuid);
+
+  return dislikes;
 };

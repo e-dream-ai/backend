@@ -56,7 +56,7 @@ authRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
-  userController.handleGetCurrentUser,
+  userController.handleGetAuthenticatedUser,
 );
 
 /**

@@ -17,15 +17,15 @@ const userRouter = Router();
 
 /**
  * @swagger
- * /user/current/playlist:
+ * /user/me/playlist:
  *  get:
  *    tags:
  *      - user
- *    summary: Gets current user playlist
- *    description: Gets current user playlist
+ *    summary: Gets authenticated user playlist
+ *    description: Gets authenticated user playlist
  *    responses:
  *      '200':
- *        description: Gets current user playlist
+ *        description: Gets authenticated user playlist
  *        content:
  *          application/json:
  *            schema:
@@ -49,27 +49,27 @@ const userRouter = Router();
  *      - apiKeyAuth: []
  */
 userRouter.get(
-  "/current/playlist",
+  "/me/playlist",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
-  userController.handleGetCurrentPlaylist,
+  userController.handleGetAuthenticatedUserPlaylist,
 );
 
 /**
  * @swagger
- * /user/current/dislikes:
+ * /user/me/dislikes:
  *  get:
  *    tags:
  *      - client
- *    summary: Gets disliked dreams
- *    description: Gets disliked dreams
+ *    summary: Gets authenticated user disliked dreams
+ *    description: Gets authenticated user disliked dreams
  *    responses:
  *      '200':
- *        description: Gets disliked dreams
+ *        description: Gets authenticated user disliked dreams
  *        content:
  *          application/json:
  *            schema:
@@ -94,7 +94,7 @@ userRouter.get(
  *      - apiKeyAuth: []
  */
 userRouter.get(
-  "/current/dislikes",
+  "/me/dislikes",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
@@ -106,15 +106,15 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/current:
+ * /user/me:
  *  get:
  *    tags:
  *      - user
- *    summary: Gets current user
- *    description: Gets current user
+ *    summary: Gets authenticated user
+ *    description: Gets authenticated user
  *    responses:
  *      '200':
- *        description: Gets current user
+ *        description: Gets authenticated user
  *        content:
  *          application/json:
  *            schema:
@@ -138,14 +138,14 @@ userRouter.get(
  *      - apiKeyAuth: []
  */
 userRouter.get(
-  "/current",
+  "/me",
   requireAuth,
   checkRoleMiddleware([
     ROLES.USER_GROUP,
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
-  userController.handleGetCurrentUser,
+  userController.handleGetAuthenticatedUser,
 );
 
 /**

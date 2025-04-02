@@ -243,7 +243,7 @@ export const handleGetVotedDreams = async (
  * BAD_REQUEST 400 - error getting users
  *
  */
-export const handleGetCurrentUser = async (
+export const handleGetAuthenticatedUser = async (
   req: RequestType,
   res: ResponseType,
 ) => {
@@ -264,7 +264,7 @@ export const handleGetCurrentUser = async (
 };
 
 /**
- * Handles get user current playlist
+ * Handles get user authenticated playlist
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object
@@ -275,7 +275,7 @@ export const handleGetCurrentUser = async (
  * BAD_REQUEST 400 - error getting playlist
  *
  */
-export const handleGetCurrentPlaylist = async (
+export const handleGetAuthenticatedUserPlaylist = async (
   req: RequestType,
   res: ResponseType,
 ) => {

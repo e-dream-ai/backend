@@ -19,6 +19,50 @@ const playlistRouter = Router();
 
 /**
  * @swagger
+ * /playlist/default:
+ *  get:
+ *    tags:
+ *      - playlist
+ *    summary: Gets default playlist data
+ *    description: Gets default playlist data
+ *    responses:
+ *      '200':
+ *        description: Gets default playlist data
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dreams:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.get(
+  "/default",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  playlistController.handleGetDefaultPlaylist,
+);
+
+/**
+ * @swagger
  * /playlist/{uuid}/references:
  *  get:
  *    tags:

@@ -1,8 +1,9 @@
-import { Playlist, PlaylistItem, PlaylistKeyframe } from "entities";
+import { Dream, Playlist, PlaylistItem, PlaylistKeyframe } from "entities";
 import {
   FindOptionsSelect,
   FindOptionsRelations,
   FindOptionsWhere,
+  In,
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
@@ -19,6 +20,7 @@ type GetPlaylistFilterOptions = {
 
 const playlistRepository = appDataSource.getRepository(Playlist);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
+const dreamRepository = appDataSource.getRepository(Dream);
 
 export const getPlaylistFindOptionsWhere = (
   userId: number,
@@ -338,4 +340,37 @@ export const deletePlaylistKeyframeAndResetOrder = async ({
       });
     }
   });
+};
+
+/**
+ *
+ * @param uuids dreams uuids
+ * @returns {Dream[]} array dreams
+ */
+export const populateDefautPlaylist = async (
+  uuids?: string[],
+): Promise<Dream[]> => {
+  if (!uuids) {
+    return [];
+  }
+
+  const dreams = await dreamRepository.find({
+    where: { uuid: In(uuids) },
+    relations: { user: true, startKeyframe: true, endKeyframe: true },
+    select: {
+      id: true,
+      uuid: true,
+      name: true,
+      video: true,
+      thumbnail: true,
+      user: {
+        id: true,
+        uuid: true,
+        name: true,
+        avatar: true,
+      },
+    },
+  });
+
+  return dreams;
 };

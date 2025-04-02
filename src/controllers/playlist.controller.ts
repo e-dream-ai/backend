@@ -18,6 +18,7 @@ import {
   PlaylistKeyframe,
   User,
 } from "entities";
+import { DefaultPlaylist } from "entities/DefaultPlaylist.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { ILike } from "typeorm";
@@ -37,12 +38,14 @@ import {
   UpdatePlaylistRequest,
 } from "types/playlist.types";
 import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { computeDefaultPlaylistFromUserId } from "utils/default-playlist.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
   deletePlaylistItemAndResetOrder,
   deletePlaylistKeyframeAndResetOrder,
   findOnePlaylist,
   getPlaylistSelectedColumns,
+  populateDefautPlaylist,
   refreshPlaylistUpdatedAtTimestamp,
 } from "utils/playlist.util";
 import {
@@ -54,6 +57,7 @@ import {
 import { getUserIdentifier, isAdmin } from "utils/user.util";
 
 const playlistRepository = appDataSource.getRepository(Playlist);
+const defaultPlaylistRepository = appDataSource.getRepository(DefaultPlaylist);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 const playlistKeyframeRepository =
   appDataSource.getRepository(PlaylistKeyframe);
@@ -137,6 +141,51 @@ export const handleGetPlaylist = async (
  * BAD_REQUEST 400 - error getting playlists
  *
  */
+
+/**
+ * Handles get default playlist
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - playlist
+ * BAD_REQUEST 400 - error getting playlist
+ *
+ */
+export const handleGetDefaultPlaylist = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const user = res.locals.user!;
+
+  try {
+    let defaultPlaylist = await defaultPlaylistRepository.findOne({
+      where: {
+        user: {
+          id: user!.id,
+        },
+      },
+    });
+
+    if (!defaultPlaylist) {
+      defaultPlaylist = await computeDefaultPlaylistFromUserId(user?.id);
+    }
+
+    const dreams = await populateDefautPlaylist(defaultPlaylist.data);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { dreams },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
 export const handleGetPlaylistReferences = async (
   req: RequestType<unknown, unknown, PlaylistParamsRequest>,
   res: ResponseType,

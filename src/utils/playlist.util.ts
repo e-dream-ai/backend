@@ -1,4 +1,10 @@
-import { Dream, Playlist, PlaylistItem, PlaylistKeyframe } from "entities";
+import {
+  Dream,
+  Playlist,
+  PlaylistItem,
+  PlaylistKeyframe,
+  User,
+} from "entities";
 import {
   FindOptionsSelect,
   FindOptionsRelations,
@@ -48,6 +54,13 @@ export const getPlaylistSelectedColumns = ({
   featureRank?: boolean;
   status?: boolean;
 } = {}): FindOptionsSelect<Playlist> => {
+  const keyframeUserSelectOptions: FindOptionsSelect<User> = {
+    id: true,
+    uuid: true,
+    name: true,
+    avatar: true,
+  };
+
   return {
     id: true,
     uuid: true,
@@ -62,6 +75,19 @@ export const getPlaylistSelectedColumns = ({
     featureRank,
     user: getUserSelectedColumns({ userEmail }),
     displayedOwner: getUserSelectedColumns({ userEmail }),
+    playlistKeyframes: {
+      id: true,
+      updated_at: true,
+      keyframe: {
+        id: true,
+        uuid: true,
+        name: true,
+        image: true,
+        dreams: false,
+        user: keyframeUserSelectOptions,
+        displayedOwner: keyframeUserSelectOptions,
+      },
+    },
   };
 };
 

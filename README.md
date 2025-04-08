@@ -2,7 +2,7 @@
 
 ## Requeriments
 
-- node 20.x.x
+- node 22.x.x
 - npm 9.x.x
 - [heroku-22 stack](https://devcenter.heroku.com/articles/heroku-22-stack) (only for deploys, not need to install locally)
 - [heroku buildpack pnpm](https://github.com/unfold/heroku-buildpack-pnpm)

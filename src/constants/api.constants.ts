@@ -53,6 +53,7 @@ export const ALLOWED_HEADERS = [
 export const ALLOWED_DOMAIN_PATTERNS = [
   /^https:\/\/.*\.netlify\.app\/?$/,
   /^https:\/\/.*\.e-dream\.ai\/?$/,
+  /^https:\/\/.*\.infinidream\.ai\/?$/,
 ];
 
 export const ORIGINS = [

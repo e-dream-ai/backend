@@ -1,7 +1,7 @@
 /**
- * new user default quouta is 25GB
+ * new user default quouta is 10GB
  */
-export const NEW_USER_DEFAULT_QUOTA = 25 * 1024 * 1024 * 1024;
+export const NEW_USER_DEFAULT_QUOTA = 10 * 1024 * 1024 * 1024;
 
 /**
  * daily user default quouta is 1GB

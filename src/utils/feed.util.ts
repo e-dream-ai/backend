@@ -134,6 +134,7 @@ export const getFeedPlaylistItemSelectedColumns =
       id: true,
       uuid: true,
       name: true,
+      description: true,
       thumbnail: true,
       featureRank: true,
       user: getUserSelectedColumns(),

@@ -17,12 +17,14 @@ export type PlaylistParamsRequest = {
 
 export type CreatePlaylistRequest = {
   name: string;
+  description?: string;
   nsfw?: boolean;
   hidden?: boolean;
 };
 
 export type UpdatePlaylistRequest = {
   name?: string;
+  description?: string;
   featureRank?: number;
   displayedOwner?: number;
   nsfw?: boolean;

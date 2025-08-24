@@ -29,6 +29,7 @@ export const requestPlaylistSchema: RequestValidationSchema = {
 export const createPlaylistSchema: RequestValidationSchema = {
   body: Joi.object<CreatePlaylistRequest>().keys({
     name: Joi.string().required(),
+    description: Joi.string().max(500).allow(""),
     nsfw: Joi.boolean(),
     hidden: Joi.boolean().when("$isUserAdmin", {
       is: true,
@@ -41,6 +42,7 @@ export const createPlaylistSchema: RequestValidationSchema = {
 export const updatePlaylistSchema: RequestValidationSchema = {
   body: Joi.object<UpdatePlaylistRequest>().keys({
     name: Joi.string().required().max(100),
+    description: Joi.string().max(500).allow(""),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0).integer(),
     hidden: Joi.boolean().when("$isUserAdmin", {

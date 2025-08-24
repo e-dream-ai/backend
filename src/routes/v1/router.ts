@@ -167,6 +167,9 @@ export const registerRoutes = (app: express.Application) => {
    *           type: string
    *         name:
    *           type: string
+   *         description:
+   *           type: string
+   *           maxLength: 500
    *         thumbnail:
    *           type: string
    *         featureRank:
@@ -429,6 +432,38 @@ export const registerRoutes = (app: express.Application) => {
    *                  type: number
    *         timestamp:
    *           type: number
+   *     CreatePlaylistRequest:
+   *       type: object
+   *       required:
+   *         - name
+   *       properties:
+   *         name:
+   *           type: string
+   *           maxLength: 100
+   *         description:
+   *           type: string
+   *           maxLength: 500
+   *         nsfw:
+   *           type: boolean
+   *         hidden:
+   *           type: boolean
+   *     UpdatePlaylistRequest:
+   *       type: object
+   *       required:
+   *         - name
+   *       properties:
+   *         name:
+   *           type: string
+   *           maxLength: 100
+   *         description:
+   *           type: string
+   *           maxLength: 500
+   *         featureRank:
+   *           type: number
+   *         displayedOwner:
+   *           type: number
+   *         hidden:
+   *           type: boolean
    *   requestBodies: {}
    *   securitySchemes:
    *     bearerAuth:

@@ -52,6 +52,9 @@ export class Playlist {
   @Column({ nullable: true, type: "varchar" })
   name?: string | null;
 
+  @Column({ nullable: true, type: "text" })
+  description?: string | null;
+
   @Column({ nullable: true, type: "varchar" })
   thumbnail?: string | null;
 

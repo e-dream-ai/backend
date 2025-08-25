@@ -235,7 +235,7 @@ playlistRouter.get(
  *      content:
  *        application/json:
  *          schema:
- *            $ref: '#/components/schemas/Playlist'
+ *            $ref: '#/components/schemas/CreatePlaylistRequest'
  *    responses:
  *      '200':
  *        description: Creates playlist
@@ -286,7 +286,7 @@ playlistRouter.post(
  *      content:
  *        application/json:
  *          schema:
- *            $ref: '#/components/schemas/Playlist'
+ *            $ref: '#/components/schemas/UpdatePlaylistRequest'
  *    parameters:
  *      - name: uuid
  *        in: query

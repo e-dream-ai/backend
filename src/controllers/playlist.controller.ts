@@ -282,13 +282,14 @@ export const handleCreatePlaylist = async (
   req: RequestType<CreatePlaylistRequest>,
   res: ResponseType,
 ) => {
-  const { name, nsfw, hidden } = req.body;
+  const { name, description, nsfw, hidden } = req.body;
   const user = res.locals.user!;
 
   try {
     // create playlist
     const playlist = new Playlist();
     playlist.name = name;
+    playlist.description = description ?? "";
     playlist.nsfw = nsfw ?? false;
     playlist.hidden = hidden ?? false;
     playlist.user = user!;

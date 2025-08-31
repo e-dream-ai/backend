@@ -1,6 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { s3Client } from "clients/s3.client";
-import { BUCKET_ACL } from "constants/aws/s3.constants";
+import { r2Client } from "clients/r2.client";
+
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { AVATAR } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
@@ -24,7 +24,7 @@ import {
   UpdateUserRoleRequest,
   UserParamsRequest,
 } from "types/user.types";
-import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { generateBucketObjectURL } from "utils/cloudflare/bucket.util";
 import { decrypt } from "utils/crypto.util";
 import { getVotedDreams } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
@@ -492,7 +492,7 @@ export const handleUpdateUserAvatar = async (
 
     // update playlist
     const avatarBuffer = req.file?.buffer;
-    const bucketName = env.AWS_BUCKET_NAME;
+    const bucketName = env.R2_BUCKET_NAME;
     const fileMymeType = req.file?.mimetype;
     const fileExtension =
       MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
@@ -504,11 +504,10 @@ export const handleUpdateUserAvatar = async (
         Bucket: bucketName,
         Key: filePath,
         Body: avatarBuffer,
-        ACL: BUCKET_ACL,
         CacheControl: "no-store",
         Expires: new Date(),
       });
-      await s3Client.send(command);
+      await r2Client.send(command);
     }
 
     const updatedUser = await userRepository.save({

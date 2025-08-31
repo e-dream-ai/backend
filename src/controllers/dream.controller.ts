@@ -1,7 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
-import { s3Client } from "clients/s3.client";
-import { BUCKET_ACL } from "constants/aws/s3.constants";
+import { r2Client } from "clients/r2.client";
+
 import {
   FILE_EXTENSIONS,
   MYME_TYPES,
@@ -42,7 +42,7 @@ import {
 } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { VoteType } from "types/vote.types";
-import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { generateBucketObjectURL } from "utils/cloudflare/bucket.util";
 import {
   createFeedItem,
   findDreamPlaylistItems,
@@ -68,7 +68,7 @@ import {
   generateFilmstripPath,
   generateThumbnailPath,
   getUploadPartSignedUrl,
-} from "utils/s3.util";
+} from "utils/r2.util";
 import { truncateString } from "utils/string.util";
 import { getUserIdentifier, isAdmin } from "utils/user.util";
 import { framesToSeconds } from "utils/video.utils";
@@ -248,12 +248,12 @@ export const handleCreateMultipartUploadDreamFile = async (
 
     let filePath: string;
     /**
-     * dream owner uuid to generate s3 file path
+     * dream owner uuid to generate r2 file path
      */
     const userIdentifier = getUserIdentifier(dream.user);
 
     /**
-     * filePath s3 generation
+     * filePath r2 generation
      */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
@@ -350,12 +350,12 @@ export const handleRefreshMultipartUploadUrl = async (
 
     let filePath: string;
     /**
-     * dream owner uuid to generate s3 file path
+     * dream owner uuid to generate r2 file path
      */
     const userIdentifier = getUserIdentifier(dream.user);
 
     /**
-     * filePath s3 generation
+     * filePath r2 generation
      */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
@@ -451,12 +451,12 @@ export const handleCompleteMultipartUpload = async (
 
     let filePath: string;
     /**
-     * dream owner uuid to generate s3 file path
+     * dream owner uuid to generate r2 file path
      */
     const userIdentifier = getUserIdentifier(dream.user);
 
     /**
-     * filePath s3 generation, updates database values if needed
+     * filePath r2 generation, updates database values if needed
      */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
@@ -1236,7 +1236,7 @@ export const handleUpdateThumbnailDream = async (
 
     // update dream
     const thumbnailBuffer = req.file?.buffer;
-    const bucketName = env.AWS_BUCKET_NAME;
+    const bucketName = env.R2_BUCKET_NAME;
     const fileMymeType = req.file?.mimetype;
     const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
     const fileName = `${dreamUUID}.${fileExtension}`;
@@ -1247,11 +1247,10 @@ export const handleUpdateThumbnailDream = async (
         Bucket: bucketName,
         Key: filePath,
         Body: thumbnailBuffer,
-        ACL: BUCKET_ACL,
         CacheControl: "no-cache",
         Expires: new Date(),
       });
-      await s3Client.send(command);
+      await r2Client.send(command);
     }
 
     const updatedDream = await dreamRepository.save({

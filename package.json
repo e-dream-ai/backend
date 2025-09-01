@@ -28,6 +28,7 @@
     "migration:show": "pnpm run typeorm migration:show -d src/database/app-data-source.ts",
     "script": "ts-node -r tsconfig-paths/register src/script/$script",
     "migrate:s3-to-r2": "ts-node -r tsconfig-paths/register src/script/migrate-s3-to-r2.ts",
+    "test:download-dreams": "ts-node -r tsconfig-paths/register src/script/download-dream-files.ts",
     "cron:default-playlist": "NODE_PATH=dist node dist/script/default-playlist.js",
     "husky-install": "husky install",
     "lint-staged": "npx lint-staged"

@@ -99,4 +99,59 @@ adminRouter.get(
  */
 adminRouter.get("/download-failures", adminController.handleDownloadFailures);
 
+/**
+ * @swagger
+ * /admin/start-test:
+ *  get:
+ *    tags:
+ *      - admin
+ *    summary: Start background dream download test
+ *    description: Starts a dream download test in the background that won't timeout
+ *    parameters:
+ *      - name: limit
+ *        in: query
+ *        description: Number of dreams to test (default no limit)
+ *        required: false
+ *        schema:
+ *          type: integer
+ *      - name: concurrency
+ *        in: query
+ *        description: Number of concurrent requests (default 25)
+ *        required: false
+ *        schema:
+ *          type: integer
+ *    responses:
+ *      '200':
+ *        description: Test started successfully
+ */
+adminRouter.get("/start-test", adminController.handleStartTest);
+
+/**
+ * @swagger
+ * /admin/test-status:
+ *  get:
+ *    tags:
+ *      - admin
+ *    summary: Check background test status
+ *    description: Returns current status of background test
+ *    responses:
+ *      '200':
+ *        description: Test status information
+ */
+adminRouter.get("/test-status", adminController.handleTestStatus);
+
+/**
+ * @swagger
+ * /admin/download-results:
+ *  get:
+ *    tags:
+ *      - admin
+ *    summary: Download test results
+ *    description: Downloads the completed test results as JSON file
+ *    responses:
+ *      '200':
+ *        description: JSON file with test results
+ */
+adminRouter.get("/download-results", adminController.handleDownloadResults);
+
 export default adminRouter;

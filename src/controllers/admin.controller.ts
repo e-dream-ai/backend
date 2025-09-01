@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import axios from "axios";
-import { DreamStatusType, Frame } from "types/dream.types";
+import { Frame } from "types/dream.types";
 import httpStatus from "http-status";
 
 interface FailedDownload {
@@ -196,6 +196,216 @@ const processConcurrently = async <T, R>(
   return results;
 };
 
+const testResults: {
+  failures: FailedDownload[];
+  stats: Record<string, string | number>;
+  inProgress: boolean;
+  startTime?: Date;
+  endTime?: Date;
+} = {
+  failures: [],
+  stats: {},
+  inProgress: false,
+};
+
+/**
+ * Run test asynchronously in background
+ */
+async function runTestAsync(limit: number | undefined, concurrency: number) {
+  try {
+    testResults.startTime = new Date();
+    console.log(
+      `🚀 Background test started at ${testResults.startTime.toISOString()}`,
+    );
+
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const queryBuilder = dreamRepository
+      .createQueryBuilder("dream")
+      .withDeleted()
+      .andWhere(
+        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL OR dream.filmstrip IS NOT NULL)",
+      )
+      .orderBy("dream.created_at", "DESC");
+
+    if (limit) {
+      queryBuilder.limit(limit);
+    }
+
+    const dreams = await queryBuilder.getMany();
+    const allFailures: FailedDownload[] = [];
+    let processed = 0;
+    let filesChecked = 0;
+    let successfulDownloads = 0;
+
+    console.log(
+      `📊 Testing ${dreams.length} dreams with concurrency ${concurrency}`,
+    );
+
+    await processConcurrently(
+      dreams,
+      async (dream) => {
+        const dreamFailures = await testDreamFiles(dream);
+
+        // Count files checked
+        let filesInDream = 0;
+        if (dream.video) filesInDream++;
+        if (dream.original_video) filesInDream++;
+        if (dream.thumbnail) filesInDream++;
+        if (dream.filmstrip && Array.isArray(dream.filmstrip)) {
+          filesInDream += dream.filmstrip.length;
+        }
+
+        filesChecked += filesInDream;
+
+        if (dreamFailures.length > 0) {
+          allFailures.push(...dreamFailures);
+        } else {
+          successfulDownloads += filesInDream;
+        }
+
+        processed++;
+        if (processed % 100 === 0) {
+          console.log(
+            `📈 Progress: ${processed}/${dreams.length} dreams (${(
+              (processed / dreams.length) *
+              100
+            ).toFixed(1)}%) - ${allFailures.length} failures so far`,
+          );
+        }
+        return dreamFailures;
+      },
+      concurrency,
+    );
+
+    testResults.endTime = new Date();
+    testResults.failures = allFailures;
+    testResults.stats = {
+      totalDreams: dreams.length,
+      filesChecked: filesChecked,
+      successfulDownloads: successfulDownloads,
+      failedDownloads: allFailures.length,
+      successRate: ((successfulDownloads / filesChecked) * 100).toFixed(2),
+      uniqueDreamsWithFailures: new Set(allFailures.map((f) => f.uuid)).size,
+      duration:
+        (
+          (testResults.endTime.getTime() - testResults.startTime!.getTime()) /
+          1000
+        ).toFixed(1) + "s",
+    };
+    testResults.inProgress = false;
+
+    console.log(
+      `✅ Background test completed in ${testResults.stats.duration}`,
+    );
+    console.log(
+      `📊 Results: ${allFailures.length} failures, ${testResults.stats.successRate}% success rate`,
+    );
+  } catch (error) {
+    testResults.endTime = new Date();
+    testResults.inProgress = false;
+    console.error("❌ Background test failed:", error);
+  }
+}
+
+/**
+ * Admin endpoint to start async test
+ * GET /admin/start-test?limit=2000&concurrency=15
+ */
+export const handleStartTest = async (req: Request, res: Response) => {
+  if (testResults.inProgress) {
+    return res.json({
+      success: false,
+      message: "Test already in progress",
+      startedAt: testResults.startTime?.toISOString(),
+      checkStatusAt: "/api/v1/admin/test-status",
+    });
+  }
+
+  const limit = req.query.limit
+    ? parseInt(req.query.limit as string, 10)
+    : undefined;
+  const concurrency = req.query.concurrency
+    ? parseInt(req.query.concurrency as string, 10)
+    : 25;
+
+  // Reset results and start async process
+  testResults.inProgress = true;
+  testResults.failures = [];
+  testResults.stats = {
+    totalDreams: 0,
+    successfulDownloads: 0,
+    failedDownloads: 0,
+    filesChecked: 0,
+  };
+  testResults.startTime = undefined;
+  testResults.endTime = undefined;
+
+  // Don't await - let it run in background
+  runTestAsync(limit, concurrency);
+
+  return res.json({
+    success: true,
+    message: "Test started in background",
+    parameters: { limit: limit || "no limit", concurrency },
+    checkStatusAt: "/api/v1/admin/test-status",
+    downloadAt: "/api/v1/admin/download-results",
+  });
+};
+
+/**
+ * Check test status
+ * GET /admin/test-status
+ */
+export const handleTestStatus = async (req: Request, res: Response) => {
+  return res.json({
+    success: true,
+    inProgress: testResults.inProgress,
+    startedAt: testResults.startTime?.toISOString(),
+    endedAt: testResults.endTime?.toISOString(),
+    currentFailures: testResults.failures.length,
+    stats: testResults.stats,
+    downloadReady: !testResults.inProgress && testResults.failures.length >= 0,
+  });
+};
+
+/**
+ * Download results when ready
+ * GET /admin/download-results
+ */
+export const handleDownloadResults = async (req: Request, res: Response) => {
+  if (testResults.inProgress) {
+    return res.json({
+      success: false,
+      message:
+        "Test still in progress. Check /api/v1/admin/test-status for updates.",
+    });
+  }
+
+  if (!testResults.endTime) {
+    return res.json({
+      success: false,
+      message:
+        "No test results available. Start a test at /api/v1/admin/start-test",
+    });
+  }
+
+  const filename = `dream-download-failures-${
+    new Date().toISOString().split("T")[0]
+  }.json`;
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+  const resultData = {
+    metadata: {
+      testCompletedAt: testResults.endTime.toISOString(),
+      stats: testResults.stats,
+    },
+    failures: testResults.failures,
+  };
+
+  return res.send(JSON.stringify(resultData, null, 2));
+};
+
 /**
  * Admin endpoint to test dream file downloads
  * GET /admin/test-dream-downloads?limit=100&concurrency=25
@@ -226,7 +436,6 @@ export const handleTestDreamDownloads = async (req: Request, res: Response) => {
     const queryBuilder = dreamRepository
       .createQueryBuilder("dream")
       .withDeleted()
-      .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
       .andWhere(
         "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL OR dream.filmstrip IS NOT NULL)",
       )

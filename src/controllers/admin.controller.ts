@@ -1,9 +1,9 @@
-import "reflect-metadata";
+import { Request, Response } from "express";
 import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import axios from "axios";
-import { writeFileSync } from "fs";
 import { DreamStatusType, Frame } from "types/dream.types";
+import httpStatus from "http-status";
 
 interface FailedDownload {
   id: number;
@@ -20,6 +20,15 @@ interface DownloadStats {
   filesChecked: number;
 }
 
+interface TestResult {
+  stats: DownloadStats;
+  failures: FailedDownload[];
+  timestamp: string;
+}
+
+/**
+ * Tests if a URL is downloadable by making a HEAD request
+ */
 const testDownload = async (url: string): Promise<boolean> => {
   try {
     if (!url || typeof url !== "string") {
@@ -37,6 +46,9 @@ const testDownload = async (url: string): Promise<boolean> => {
   }
 };
 
+/**
+ * Tests all files for a single dream
+ */
 const testDreamFiles = async (dream: Dream): Promise<FailedDownload[]> => {
   const failures: FailedDownload[] = [];
 
@@ -152,6 +164,9 @@ const testDreamFiles = async (dream: Dream): Promise<FailedDownload[]> => {
   return failures;
 };
 
+/**
+ * Process items with controlled concurrency
+ */
 const processConcurrently = async <T, R>(
   items: T[],
   processor: (item: T, index: number) => Promise<R>,
@@ -173,7 +188,6 @@ const processConcurrently = async <T, R>(
     }
   };
 
-  // Create worker promises up to concurrency limit
   const workers = Array(Math.min(concurrency, items.length))
     .fill(null)
     .map(() => worker());
@@ -182,38 +196,30 @@ const processConcurrently = async <T, R>(
   return results;
 };
 
-const main = async () => {
-  const args = process.argv.slice(2);
-  const limitStr = args
-    .find((arg) => arg.startsWith("--limit="))
-    ?.split("=")[1];
-  const limit = limitStr ? parseInt(limitStr, 10) : undefined;
-  const outputFile =
-    args.find((arg) => arg.startsWith("--output="))?.split("=")[1] ||
-    "failed-downloads.json";
-  const concurrencyStr = args
-    .find((arg) => arg.startsWith("--concurrency="))
-    ?.split("=")[1];
-  const concurrency = concurrencyStr ? parseInt(concurrencyStr, 10) : 50;
-
-  console.log("🚀 Starting dream file download test...");
-  console.log(`📊 Limit: ${limit || "No limit"}`);
-  console.log(`📁 Output file: ${outputFile}`);
-  console.log(`⚡ Concurrency: ${concurrency} dreams at once`);
-  console.log("─".repeat(50));
-
-  const allFailures: FailedDownload[] = [];
-  const stats: DownloadStats = {
-    totalDreams: 0,
-    successfulDownloads: 0,
-    failedDownloads: 0,
-    filesChecked: 0,
-  };
-
+/**
+ * Admin endpoint to test dream file downloads
+ * GET /admin/test-dream-downloads?limit=100&concurrency=25
+ */
+export const handleTestDreamDownloads = async (req: Request, res: Response) => {
   try {
-    // Initialize the data source
-    await appDataSource.initialize();
-    console.log("✅ Database connection established");
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string, 10)
+      : undefined;
+    const concurrency = req.query.concurrency
+      ? parseInt(req.query.concurrency as string, 10)
+      : 25;
+
+    console.log(`🚀 Starting dream file download test via API...`);
+    console.log(`📊 Limit: ${limit}`);
+    console.log(`⚡ Concurrency: ${concurrency}`);
+
+    const allFailures: FailedDownload[] = [];
+    const stats: DownloadStats = {
+      totalDreams: 0,
+      successfulDownloads: 0,
+      failedDownloads: 0,
+      filesChecked: 0,
+    };
 
     // Get dreams from database
     const dreamRepository = appDataSource.getRepository(Dream);
@@ -224,11 +230,8 @@ const main = async () => {
       .andWhere(
         "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL OR dream.filmstrip IS NOT NULL)",
       )
-      .orderBy("dream.created_at", "DESC");
-
-    if (limit) {
-      queryBuilder.limit(limit);
-    }
+      .orderBy("dream.created_at", "DESC")
+      .limit(limit);
 
     const dreams = await queryBuilder.getMany();
     stats.totalDreams = dreams.length;
@@ -236,12 +239,9 @@ const main = async () => {
     console.log(`Found ${dreams.length} dreams to test`);
 
     // Process dreams with controlled concurrency
-    let processedCount = 0;
-    const progressInterval = Math.max(1, Math.floor(dreams.length / 20)); // Show progress 20 times
-
     await processConcurrently(
       dreams,
-      async (dream, index) => {
+      async (dream) => {
         const dreamFailures = await testDreamFiles(dream);
 
         // Count files checked
@@ -258,24 +258,8 @@ const main = async () => {
         if (dreamFailures.length > 0) {
           allFailures.push(...dreamFailures);
           stats.failedDownloads += dreamFailures.length;
-          console.log(
-            `❌ Dream ${dream.uuid}: ${dreamFailures.length} failed files`,
-          );
         } else {
           stats.successfulDownloads += filesInDream;
-          if (index % progressInterval === 0 || dreamFailures.length > 0) {
-            console.log(`✅ Dream ${dream.uuid}: All files accessible`);
-          }
-        }
-
-        processedCount++;
-        if (processedCount % progressInterval === 0) {
-          const percentage = ((processedCount / dreams.length) * 100).toFixed(
-            1,
-          );
-          console.log(
-            `📊 Progress: ${processedCount}/${dreams.length} dreams (${percentage}%)`,
-          );
         }
 
         return dreamFailures;
@@ -283,71 +267,77 @@ const main = async () => {
       concurrency,
     );
 
-    // Write failures to JSON file
-    writeFileSync(outputFile, JSON.stringify(allFailures, null, 2));
+    const result: TestResult = {
+      stats,
+      failures: allFailures,
+      timestamp: new Date().toISOString(),
+    };
 
-    console.log("\n" + "=".repeat(50));
-    console.log("📊 DOWNLOAD TEST SUMMARY");
-    console.log("=".repeat(50));
-    console.log(`\n🎬 Dreams tested: ${stats.totalDreams}`);
-    console.log(`📁 Total files checked: ${stats.filesChecked}`);
-    console.log(`✅ Successful downloads: ${stats.successfulDownloads}`);
-    console.log(`❌ Failed downloads: ${stats.failedDownloads}`);
-    console.log(`📄 Failed downloads saved to: ${outputFile}`);
+    console.log(`✅ Test completed. ${stats.failedDownloads} failures found.`);
 
-    if (allFailures.length > 0) {
-      console.log(`\n🔍 Failure breakdown:`);
-      const failuresByType = allFailures.reduce(
-        (acc, failure) => {
-          acc[failure.fileType] = (acc[failure.fileType] || 0) + 1;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
-
-      Object.entries(failuresByType).forEach(([type, count]) => {
-        console.log(`   - ${type}: ${count} failures`);
-      });
-
-      console.log(
-        `\n🚫 Unique dreams with failures: ${
-          new Set(allFailures.map((f) => f.uuid)).size
-        }`,
-      );
-    }
-
-    console.log(
-      `\n📊 Success rate: ${(
-        (stats.successfulDownloads / stats.filesChecked) *
-        100
-      ).toFixed(2)}%`,
-    );
-
-    // For Heroku: Also output JSON data to console if there are failures
-    if (allFailures.length > 0) {
-      console.log("\n" + "=".repeat(50));
-      console.log("🔍 FAILED DOWNLOADS JSON DATA");
-      console.log("=".repeat(50));
-      console.log("Copy the JSON below to save failed downloads:");
-      console.log("\n--- START JSON ---");
-      console.log(JSON.stringify(allFailures, null, 2));
-      console.log("--- END JSON ---\n");
-    }
+    return res.status(httpStatus.OK).json({
+      success: true,
+      data: result,
+    });
   } catch (error) {
-    console.error("❌ Script failed:", error);
-    process.exit(1);
-  } finally {
-    await appDataSource.destroy();
-    process.exit(0);
+    console.error("❌ Dream download test failed:", error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 };
 
-process.on("unhandledRejection", (error) => {
-  console.error("❌ Unhandled promise rejection:", error);
-  process.exit(1);
-});
+export const handleDownloadFailures = async (req: Request, res: Response) => {
+  try {
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string, 10)
+      : undefined;
+    const concurrency = req.query.concurrency
+      ? parseInt(req.query.concurrency as string, 10)
+      : 25;
 
-main().catch((error) => {
-  console.error("❌ Error:", error);
-  process.exit(1);
-});
+    console.log(`🚀 Running dream download test for JSON download...`);
+
+    // Reuse the same logic as above
+    const dreamRepository = appDataSource.getRepository(Dream);
+    const queryBuilder = dreamRepository
+      .createQueryBuilder("dream")
+      .withDeleted()
+      .andWhere(
+        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL OR dream.filmstrip IS NOT NULL)",
+      )
+      .orderBy("dream.created_at", "DESC")
+      .limit(limit);
+
+    const dreams = await queryBuilder.getMany();
+    const allFailures: FailedDownload[] = [];
+
+    await processConcurrently(
+      dreams,
+      async (dream) => {
+        const dreamFailures = await testDreamFiles(dream);
+        if (dreamFailures.length > 0) {
+          allFailures.push(...dreamFailures);
+        }
+        return dreamFailures;
+      },
+      concurrency,
+    );
+
+    // Set headers for file download
+    const filename = `dream-download-failures-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    return res.send(JSON.stringify(allFailures, null, 2));
+  } catch (error) {
+    console.error("❌ Download failures endpoint failed:", error);
+    return res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};

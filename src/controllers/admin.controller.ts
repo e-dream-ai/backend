@@ -136,7 +136,6 @@ async function runTestAsync(limit: number | undefined, concurrency: number) {
     const dreamRepository = appDataSource.getRepository(Dream);
     const queryBuilder = dreamRepository
       .createQueryBuilder("dream")
-      .withDeleted()
       .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
       .andWhere("dream.video IS NOT NULL")
       .orderBy("dream.created_at", "DESC");
@@ -344,7 +343,6 @@ export const handleTestDreamDownloads = async (req: Request, res: Response) => {
     const dreamRepository = appDataSource.getRepository(Dream);
     const queryBuilder = dreamRepository
       .createQueryBuilder("dream")
-      .withDeleted()
       .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
       .andWhere("dream.video IS NOT NULL")
       .orderBy("dream.created_at", "DESC")
@@ -415,7 +413,6 @@ export const handleDownloadFailures = async (req: Request, res: Response) => {
     const dreamRepository = appDataSource.getRepository(Dream);
     const queryBuilder = dreamRepository
       .createQueryBuilder("dream")
-      .withDeleted()
       .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
       .andWhere("dream.video IS NOT NULL")
       .orderBy("dream.created_at", "DESC")

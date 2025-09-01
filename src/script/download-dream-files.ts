@@ -322,6 +322,17 @@ const main = async () => {
         100
       ).toFixed(2)}%`,
     );
+
+    // For Heroku: Also output JSON data to console if there are failures
+    if (allFailures.length > 0) {
+      console.log("\n" + "=".repeat(50));
+      console.log("🔍 FAILED DOWNLOADS JSON DATA");
+      console.log("=".repeat(50));
+      console.log("Copy the JSON below to save failed downloads:");
+      console.log("\n--- START JSON ---");
+      console.log(JSON.stringify(allFailures, null, 2));
+      console.log("--- END JSON ---\n");
+    }
   } catch (error) {
     console.error("❌ Script failed:", error);
     process.exit(1);

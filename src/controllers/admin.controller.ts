@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import axios from "axios";
-import { Frame } from "types/dream.types";
+import { DreamStatusType } from "types/dream.types";
 import httpStatus from "http-status";
 
 interface FailedDownload {
@@ -124,43 +124,6 @@ const testDreamFiles = async (dream: Dream): Promise<FailedDownload[]> => {
     }
   }
 
-  // Test filmstrip files
-  if (dream.filmstrip && Array.isArray(dream.filmstrip)) {
-    for (let i = 0; i < dream.filmstrip.length; i++) {
-      const frame = dream.filmstrip[i];
-      let frameUrl: string | null = null;
-
-      if (typeof frame === "string") {
-        frameUrl = frame;
-      } else if (frame && typeof frame === "object" && "url" in frame) {
-        frameUrl = (frame as Frame).url;
-      }
-
-      if (frameUrl) {
-        try {
-          const isAccessible = await testDownload(frameUrl);
-          if (!isAccessible) {
-            failures.push({
-              id: dream.id,
-              uuid: dream.uuid,
-              fileType: `filmstrip_frame_${i}`,
-              fileUrl: frameUrl,
-              error: "File not accessible",
-            });
-          }
-        } catch (error) {
-          failures.push({
-            id: dream.id,
-            uuid: dream.uuid,
-            fileType: `filmstrip_frame_${i}`,
-            fileUrl: frameUrl,
-            error: error instanceof Error ? error.message : "Unknown error",
-          });
-        }
-      }
-    }
-  }
-
   return failures;
 };
 
@@ -222,8 +185,9 @@ async function runTestAsync(limit: number | undefined, concurrency: number) {
     const queryBuilder = dreamRepository
       .createQueryBuilder("dream")
       .withDeleted()
+      .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
       .andWhere(
-        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL OR dream.filmstrip IS NOT NULL)",
+        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL)",
       )
       .orderBy("dream.created_at", "DESC");
 
@@ -251,9 +215,6 @@ async function runTestAsync(limit: number | undefined, concurrency: number) {
         if (dream.video) filesInDream++;
         if (dream.original_video) filesInDream++;
         if (dream.thumbnail) filesInDream++;
-        if (dream.filmstrip && Array.isArray(dream.filmstrip)) {
-          filesInDream += dream.filmstrip.length;
-        }
 
         filesChecked += filesInDream;
 
@@ -436,8 +397,9 @@ export const handleTestDreamDownloads = async (req: Request, res: Response) => {
     const queryBuilder = dreamRepository
       .createQueryBuilder("dream")
       .withDeleted()
+      .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
       .andWhere(
-        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL OR dream.filmstrip IS NOT NULL)",
+        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL)",
       )
       .orderBy("dream.created_at", "DESC")
       .limit(limit);
@@ -458,9 +420,6 @@ export const handleTestDreamDownloads = async (req: Request, res: Response) => {
         if (dream.video) filesInDream++;
         if (dream.original_video) filesInDream++;
         if (dream.thumbnail) filesInDream++;
-        if (dream.filmstrip && Array.isArray(dream.filmstrip)) {
-          filesInDream += dream.filmstrip.length;
-        }
 
         stats.filesChecked += filesInDream;
 
@@ -513,8 +472,9 @@ export const handleDownloadFailures = async (req: Request, res: Response) => {
     const queryBuilder = dreamRepository
       .createQueryBuilder("dream")
       .withDeleted()
+      .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
       .andWhere(
-        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL OR dream.filmstrip IS NOT NULL)",
+        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL)",
       )
       .orderBy("dream.created_at", "DESC")
       .limit(limit);

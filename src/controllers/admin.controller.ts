@@ -76,54 +76,6 @@ const testDreamFiles = async (dream: Dream): Promise<FailedDownload[]> => {
     }
   }
 
-  // Test original video file
-  if (dream.original_video) {
-    try {
-      const isAccessible = await testDownload(dream.original_video);
-      if (!isAccessible) {
-        failures.push({
-          id: dream.id,
-          uuid: dream.uuid,
-          fileType: "original_video",
-          fileUrl: dream.original_video,
-          error: "File not accessible",
-        });
-      }
-    } catch (error) {
-      failures.push({
-        id: dream.id,
-        uuid: dream.uuid,
-        fileType: "original_video",
-        fileUrl: dream.original_video,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-
-  // Test thumbnail file
-  if (dream.thumbnail) {
-    try {
-      const isAccessible = await testDownload(dream.thumbnail);
-      if (!isAccessible) {
-        failures.push({
-          id: dream.id,
-          uuid: dream.uuid,
-          fileType: "thumbnail",
-          fileUrl: dream.thumbnail,
-          error: "File not accessible",
-        });
-      }
-    } catch (error) {
-      failures.push({
-        id: dream.id,
-        uuid: dream.uuid,
-        fileType: "thumbnail",
-        fileUrl: dream.thumbnail,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    }
-  }
-
   return failures;
 };
 
@@ -186,9 +138,7 @@ async function runTestAsync(limit: number | undefined, concurrency: number) {
       .createQueryBuilder("dream")
       .withDeleted()
       .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
-      .andWhere(
-        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL)",
-      )
+      .andWhere("dream.video IS NOT NULL")
       .orderBy("dream.created_at", "DESC");
 
     if (limit) {
@@ -213,8 +163,6 @@ async function runTestAsync(limit: number | undefined, concurrency: number) {
         // Count files checked
         let filesInDream = 0;
         if (dream.video) filesInDream++;
-        if (dream.original_video) filesInDream++;
-        if (dream.thumbnail) filesInDream++;
 
         filesChecked += filesInDream;
 
@@ -398,9 +346,7 @@ export const handleTestDreamDownloads = async (req: Request, res: Response) => {
       .createQueryBuilder("dream")
       .withDeleted()
       .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
-      .andWhere(
-        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL)",
-      )
+      .andWhere("dream.video IS NOT NULL")
       .orderBy("dream.created_at", "DESC")
       .limit(limit);
 
@@ -418,8 +364,6 @@ export const handleTestDreamDownloads = async (req: Request, res: Response) => {
         // Count files checked
         let filesInDream = 0;
         if (dream.video) filesInDream++;
-        if (dream.original_video) filesInDream++;
-        if (dream.thumbnail) filesInDream++;
 
         stats.filesChecked += filesInDream;
 
@@ -473,9 +417,7 @@ export const handleDownloadFailures = async (req: Request, res: Response) => {
       .createQueryBuilder("dream")
       .withDeleted()
       .where("dream.status = :status", { status: DreamStatusType.PROCESSED })
-      .andWhere(
-        "(dream.video IS NOT NULL OR dream.original_video IS NOT NULL OR dream.thumbnail IS NOT NULL)",
-      )
+      .andWhere("dream.video IS NOT NULL")
       .orderBy("dream.created_at", "DESC")
       .limit(limit);
 

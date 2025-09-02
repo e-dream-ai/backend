@@ -1,7 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
-import { s3Client } from "clients/s3.client";
-import { BUCKET_ACL } from "constants/aws/s3.constants";
+import { r2Client } from "clients/r2.client";
+
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { THUMBNAIL } from "constants/multimedia.constants";
@@ -44,7 +44,7 @@ import {
   RemovePlaylistKeyframeRequest,
   UpdatePlaylistRequest,
 } from "types/playlist.types";
-import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { generateBucketObjectURL } from "utils/cloudflare/bucket.util";
 import { computeDefaultPlaylistFromUserId } from "utils/default-playlist.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
@@ -469,7 +469,7 @@ export const handleUpdateThumbnailPlaylist = async (
 
     // update playlist
     const thumbnailBuffer = req.file?.buffer;
-    const bucketName = env.AWS_BUCKET_NAME;
+    const bucketName = env.R2_BUCKET_NAME;
     const fileMymeType = req.file?.mimetype;
     const fileExtension =
       MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
@@ -483,11 +483,10 @@ export const handleUpdateThumbnailPlaylist = async (
         Bucket: bucketName,
         Key: filePath,
         Body: thumbnailBuffer,
-        ACL: BUCKET_ACL,
         CacheControl: "no-cache",
         Expires: new Date(),
       });
-      await s3Client.send(command);
+      await r2Client.send(command);
     }
 
     const newThumbnail = thumbnailBuffer

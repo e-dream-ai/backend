@@ -17,7 +17,7 @@ export const multerInstance = multer({
     // Get file extension removing '.'
     const ext = path.extname(file.originalname).toLowerCase().slice(1);
 
-    // Validating images only since videos are uploaded directly to s3 using multipart upload
+    // Validating images only since videos are uploaded directly to r2 using multipart upload
     const ALLOWED_EXTENSIONS = [...ALLOWED_IMAGE_TYPES];
 
     // Check if extension is allowed

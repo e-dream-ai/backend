@@ -22,10 +22,14 @@ export const env = cleanEnv(process.env, {
   AWS_COGNITO_APP_CLIENT_ID: str(),
 
   /**
-   * S3
+   * Cloudflare R2 Storage
    */
-  AWS_BUCKET_NAME: str(),
-  AWS_BUCKET_URL: str(),
+  R2_REGION: str(),
+  R2_ACCOUNT_ID: str(),
+  R2_ACCESS_KEY_ID: str(),
+  R2_SECRET_ACCESS_KEY: str(),
+  R2_BUCKET_NAME: str(),
+  R2_BUCKET_URL: str(),
 
   /**
    * SES

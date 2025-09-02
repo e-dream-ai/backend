@@ -29,9 +29,9 @@ import {
   createMultipartUpload,
   generateKeyframePath,
   getUploadPartSignedUrl,
-} from "utils/s3.util";
+} from "utils/r2.util";
 import { CreateMultipartUploadFileRequest } from "types/keyframe.types";
-import { generateBucketObjectURL } from "utils/aws/bucket.util";
+import { generateBucketObjectURL } from "utils/cloudflare/bucket.util";
 import { keyframeRepository, userRepository } from "database/repositories";
 
 /**
@@ -196,12 +196,12 @@ export const handleInitKeyframeImageUpload = async (
       return handleForbidden(req as RequestType, res);
     }
     /**
-     * keyframe owner uuid to generate s3 file path
+     * keyframe owner uuid to generate r2 file path
      */
     const userIdentifier = getUserIdentifier(keyframe.user);
 
     /**
-     * filePath s3 generation
+     * filePath r2 generation
      */
     const filePath = generateKeyframePath({
       userIdentifier,
@@ -276,12 +276,12 @@ export const handleCompleteKeyframeImageUpload = async (
     }
 
     /**
-     * keyframe owner uuid to generate s3 file path
+     * keyframe owner uuid to generate r2 file path
      */
     const userIdentifier = getUserIdentifier(keyframe.user);
 
     /**
-     * filePath s3 generation, updates database values if needed
+     * filePath r2 generation, updates database values if needed
      */
 
     const filePath = generateKeyframePath({

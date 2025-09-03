@@ -1,10 +1,4 @@
-import {
-  Dream,
-  Playlist,
-  PlaylistItem,
-  PlaylistKeyframe,
-  User,
-} from "entities";
+import { Dream, Playlist, PlaylistItem, PlaylistKeyframe } from "entities";
 import {
   FindOptionsSelect,
   FindOptionsRelations,
@@ -14,6 +8,7 @@ import {
 import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
 import { DreamStatusType } from "types/dream.types";
+import { playlistKeyframeRepository } from "database/repositories";
 
 type GetPlaylistFilterOptions = {
   // userId from the user that is requesting the playlist
@@ -54,13 +49,6 @@ export const getPlaylistSelectedColumns = ({
   featureRank?: boolean;
   status?: boolean;
 } = {}): FindOptionsSelect<Playlist> => {
-  const keyframeUserSelectOptions: FindOptionsSelect<User> = {
-    id: true,
-    uuid: true,
-    name: true,
-    avatar: true,
-  };
-
   return {
     id: true,
     uuid: true,
@@ -76,19 +64,6 @@ export const getPlaylistSelectedColumns = ({
     featureRank,
     user: getUserSelectedColumns({ userEmail }),
     displayedOwner: getUserSelectedColumns({ userEmail }),
-    playlistKeyframes: {
-      id: true,
-      updated_at: true,
-      keyframe: {
-        id: true,
-        uuid: true,
-        name: true,
-        image: true,
-        dreams: false,
-        user: keyframeUserSelectOptions,
-        displayedOwner: keyframeUserSelectOptions,
-      },
-    },
   };
 };
 
@@ -97,15 +72,6 @@ export const getPlaylistFindOptionsRelations =
     return {
       user: true,
       displayedOwner: true,
-      // Avoid getting items from entity is causing performance issues when items increase
-      // try use `getPlaylistItemsQueryBuilder` instead
-      // items: true,
-      playlistKeyframes: {
-        keyframe: {
-          user: true,
-          displayedOwner: true,
-        },
-      },
     };
   };
 
@@ -169,6 +135,28 @@ export const findOnePlaylist = async ({
   // Get playlist items using query builder
   playlist.items = await getPlaylistItemsQueryBuilder(playlist.id, filter);
   // Call computeThumbnail explicitly after getting the items
+  playlist.computeThumbnail();
+  return playlist;
+};
+
+/**
+ * findOnePlaylist without fetching items
+ */
+export const findOnePlaylistWithoutItems = async ({
+  where,
+  select,
+}: {
+  where: FindOptionsWhere<Playlist> | FindOptionsWhere<Playlist>[];
+  select: FindOptionsSelect<Playlist>;
+}): Promise<Playlist | null> => {
+  const playlist = await playlistRepository.findOne({
+    where: where,
+    select: select,
+    relations: getPlaylistFindOptionsRelations(),
+  });
+
+  if (!playlist) return null;
+
   playlist.computeThumbnail();
   return playlist;
 };
@@ -254,6 +242,146 @@ export const getPlaylistItemsQueryBuilder = (
   }
 
   return queryBuilder.getMany();
+};
+
+/**
+ * Gets paginated playlist items
+ */
+export const getPaginatedPlaylistItems = async ({
+  playlistId,
+  filter,
+  take = 30,
+  skip = 0,
+}: {
+  playlistId: number;
+  filter: GetPlaylistFilterOptions;
+  take?: number;
+  skip?: number;
+}) => {
+  const isAdmin = filter.isAdmin;
+  const userId = filter.userId;
+
+  // Define the user fields to select (excluding email)
+  const createUserFieldSelections = (alias: string) => {
+    return [`${alias}.id`, `${alias}.uuid`, `${alias}.name`, `${alias}.avatar`];
+  };
+
+  let queryBuilder = playlistItemRepository
+    .createQueryBuilder("item")
+    .where("item.playlistId = :playlistId", { playlistId })
+    // Ensure playlist items aren't deleted
+    .andWhere("item.deleted_at IS NULL")
+    // Dream item and its relations
+    .leftJoinAndSelect("item.dreamItem", "dreamItem")
+    .leftJoin("dreamItem.user", "dreamItemUser")
+    .addSelect(createUserFieldSelections("dreamItemUser"))
+    .leftJoin("dreamItem.displayedOwner", "dreamItemDisplayedOwner")
+    .addSelect(createUserFieldSelections("dreamItemDisplayedOwner"))
+    .leftJoinAndSelect("dreamItem.startKeyframe", "startKeyframe")
+    .leftJoinAndSelect("dreamItem.endKeyframe", "endKeyframe")
+    // Playlist item and its relations
+    .leftJoinAndSelect("item.playlistItem", "playlistItem")
+    .leftJoin("playlistItem.user", "playlistItemUser")
+    .addSelect(createUserFieldSelections("playlistItemUser"))
+    .leftJoin("playlistItem.displayedOwner", "playlistItemDisplayedOwner")
+    .addSelect(createUserFieldSelections("playlistItemDisplayedOwner"))
+    // Nested items within playlist items
+    .leftJoinAndSelect("playlistItem.items", "nestedItems")
+    .leftJoinAndSelect("nestedItems.dreamItem", "nestedDreamItem")
+    .leftJoinAndSelect("nestedItems.playlistItem", "nestedPlaylistItem");
+
+  // Apply filtering for nsfw
+  if (filter?.nsfw === false) {
+    queryBuilder = queryBuilder
+      .andWhere("(dreamItem.nsfw = false OR dreamItem.nsfw IS NULL)")
+      .andWhere("(playlistItem.nsfw = false OR playlistItem.nsfw IS NULL)");
+  }
+
+  // Apply filtering for hidden content if user is not admin and not owner
+  if (!isAdmin) {
+    queryBuilder = queryBuilder
+      .andWhere(
+        "(dreamItem.hidden = false OR dreamItem.hidden IS NULL OR dreamItem.userId = :userId)",
+        { userId },
+      )
+      .andWhere(
+        "(playlistItem.hidden = false OR playlistItem.hidden IS NULL OR playlistItem.userId = :userId)",
+        { userId },
+      );
+  }
+
+  // Order by item order
+  queryBuilder = queryBuilder.orderBy("item.order", "ASC");
+
+  // Apply pagination
+  queryBuilder = queryBuilder.skip(skip).take(take);
+
+  const [items, totalCount] = await queryBuilder.getManyAndCount();
+
+  return {
+    items,
+    totalCount,
+  };
+};
+
+/**
+ * Gets paginated playlist keyframes
+ */
+export const getPaginatedPlaylistKeyframes = async ({
+  playlistId,
+  take = 30,
+  skip = 0,
+}: {
+  playlistId: number;
+  take?: number;
+  skip?: number;
+}) => {
+  const [keyframes, totalCount] = await playlistKeyframeRepository.findAndCount(
+    {
+      where: {
+        playlist: { id: playlistId },
+      },
+      select: {
+        id: true,
+        order: true,
+        updated_at: true,
+        keyframe: {
+          id: true,
+          uuid: true,
+          name: true,
+          image: true,
+          user: {
+            id: true,
+            uuid: true,
+            name: true,
+            avatar: true,
+          },
+          displayedOwner: {
+            id: true,
+            uuid: true,
+            name: true,
+            avatar: true,
+          },
+        },
+      },
+      relations: {
+        keyframe: {
+          user: true,
+          displayedOwner: true,
+        },
+      },
+      order: {
+        order: "ASC",
+      },
+      take,
+      skip,
+    },
+  );
+
+  return {
+    keyframes,
+    totalCount,
+  };
 };
 
 export const refreshPlaylistUpdatedAtTimestamp = (id: number) =>

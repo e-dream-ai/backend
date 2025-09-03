@@ -58,3 +58,13 @@ export type RemovePlaylistKeyframeRequest = {
   uuid: string;
   playlistKeyframeId: number;
 };
+
+export type GetPlaylistItemsQuery = {
+  take?: number;
+  skip?: number;
+};
+
+export type GetPlaylistKeyframesQuery = {
+  take?: number;
+  skip?: number;
+};

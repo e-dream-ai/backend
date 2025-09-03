@@ -151,3 +151,40 @@ export const computeAllUsersDefaultPlaylist = async () => {
     }
   }
 };
+
+/**
+ * Removes a deleted dream UUID from all default playlists
+ * This should be called when a dream is deleted to maintain data consistency
+ * @param dreamUuid - UUID of the deleted dream
+ * @returns void
+ */
+export const removeDeletedDreamFromDefaultPlaylists = async (
+  dreamUuid: string,
+) => {
+  try {
+    // Find all default playlists that contain this dream UUID
+    const defaultPlaylists = await defaultPlaylistRepository.find();
+
+    const playlistsToUpdate: DefaultPlaylist[] = [];
+
+    for (const playlist of defaultPlaylists) {
+      if (playlist.data && playlist.data.includes(dreamUuid)) {
+        playlist.data = playlist.data.filter((uuid) => uuid !== dreamUuid);
+        playlistsToUpdate.push(playlist);
+      }
+    }
+
+    if (playlistsToUpdate.length > 0) {
+      await defaultPlaylistRepository.save(playlistsToUpdate);
+      console.log(
+        `Removed dream ${dreamUuid} from ${playlistsToUpdate.length} default playlists`,
+      );
+    }
+  } catch (error) {
+    console.error(
+      `Error removing deleted dream ${dreamUuid} from default playlists:`,
+      error,
+    );
+    // Don't throw the error to avoid disrupting the main deletion flow
+  }
+};

@@ -1,6 +1,6 @@
 import appDataSource from "database/app-data-source";
 import { Dream, Playlist, PlaylistItem } from "entities";
-import { In } from "typeorm";
+import { In, IsNull } from "typeorm";
 import {
   ClientDream,
   ClientPlaylist,
@@ -90,14 +90,17 @@ export const populateDefautPlaylist = async (
   }
 
   const dreams = await dreamRepository.find({
-    where: { uuid: In(uuids) },
+    where: {
+      uuid: In(uuids),
+      deleted_at: IsNull(),
+    },
     relations: { user: true, playlistItems: true },
     select: ["uuid", "updated_at"],
   });
 
-  const orderedDreams = uuids.map(
-    (uuid) => dreams.find((d) => uuid == d.uuid)!,
-  );
+  const orderedDreams = uuids
+    .map((uuid) => dreams.find((d) => uuid === d.uuid))
+    .filter((dream): dream is Dream => dream !== undefined);
 
   const clientDreams: PartialClientDream[] = orderedDreams.map((dream) => ({
     uuid: dream.uuid,

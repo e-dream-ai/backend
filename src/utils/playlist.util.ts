@@ -4,7 +4,6 @@ import {
   FindOptionsRelations,
   FindOptionsWhere,
   In,
-  IsNull,
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
@@ -512,10 +511,7 @@ export const populateDefautPlaylist = async (
   }
 
   const dreams = await dreamRepository.find({
-    where: {
-      uuid: In(uuids),
-      deleted_at: IsNull(),
-    },
+    where: { uuid: In(uuids) },
     relations: { user: true, startKeyframe: true, endKeyframe: true },
     select: {
       id: true,

@@ -1436,13 +1436,6 @@ export const handleDeleteDream = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    setImmediate(async () => {
-      const { removeDeletedDreamFromDefaultPlaylists } = await import(
-        "utils/default-playlist.util"
-      );
-      await removeDeletedDreamFromDefaultPlaylists(uuid);
-    });
-
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;

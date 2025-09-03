@@ -37,6 +37,8 @@ import {
   AddPlaylistKeyframeRequest,
   CreatePlaylistRequest,
   GetPlaylistQuery,
+  GetPlaylistItemsQuery,
+  GetPlaylistKeyframesQuery,
   OrderPlaylistRequest,
   PlaylistItemType,
   PlaylistParamsRequest,
@@ -51,6 +53,9 @@ import {
   deletePlaylistItemAndResetOrder,
   deletePlaylistKeyframeAndResetOrder,
   findOnePlaylist,
+  findOnePlaylistWithoutItems,
+  getPaginatedPlaylistItems,
+  getPaginatedPlaylistKeyframes,
   getPlaylistSelectedColumns,
   populateDefautPlaylist,
   refreshPlaylistUpdatedAtTimestamp,
@@ -82,14 +87,9 @@ export const handleGetPlaylist = async (
   const user = res.locals.user!;
   const isUserAdmin = isAdmin(user);
   try {
-    const playlist = await findOnePlaylist({
+    const playlist = await findOnePlaylistWithoutItems({
       where: { uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      filter: {
-        userId: user.id,
-        isAdmin: isUserAdmin,
-        nsfw: user?.nsfw,
-      },
     });
 
     if (!playlist) {
@@ -106,6 +106,11 @@ export const handleGetPlaylist = async (
 
     // If is hidden and is not allowed to view return not found
     if (playlist.hidden && !isAllowed) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    // Check NSFW content access
+    if (playlist.nsfw && !user?.nsfw && !isOwner && !isUserAdmin) {
       return handleNotFound(req as RequestType, res);
     }
 
@@ -175,6 +180,158 @@ export const handleGetDefaultPlaylist = async (
       jsonResponse({
         success: true,
         data: { dreams },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles get playlist items with pagination
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - paginated playlist items
+ * BAD_REQUEST 400 - error getting playlist items
+ *
+ */
+export const handleGetPlaylistItems = async (
+  req: RequestType<unknown, GetPlaylistItemsQuery, PlaylistParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
+
+  const take = Math.min(
+    Number(req.query.take) || PAGINATION.TAKE,
+    PAGINATION.MAX_TAKE,
+  );
+  const skip = Number(req.query.skip) || PAGINATION.SKIP;
+
+  try {
+    // First verify the playlist exists and user has access
+    const playlist = await playlistRepository.findOne({
+      where: { uuid },
+      select: { id: true, user: { id: true }, hidden: true },
+      relations: { user: true },
+    });
+
+    if (!playlist) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isOwner = playlist.user.id === user.id;
+    const isAllowed = canExecuteAction({
+      isOwner,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    // If is hidden and is not allowed to view return not found
+    if (playlist.hidden && !isAllowed) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    // Get paginated items
+    const result = await getPaginatedPlaylistItems({
+      playlistId: playlist.id,
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
+      take,
+      skip,
+    });
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          items: result.items,
+          totalCount: result.totalCount,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles get playlist keyframes with pagination
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - paginated playlist keyframes
+ * BAD_REQUEST 400 - error getting playlist keyframes
+ *
+ */
+export const handleGetPlaylistKeyframes = async (
+  req: RequestType<unknown, GetPlaylistKeyframesQuery, PlaylistParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
+
+  const take = Math.min(
+    Number(req.query.take) || PAGINATION.TAKE,
+    PAGINATION.MAX_TAKE,
+  );
+  const skip = Number(req.query.skip) || PAGINATION.SKIP;
+
+  try {
+    // First verify the playlist exists and user has access
+    const playlist = await playlistRepository.findOne({
+      where: { uuid },
+      select: { id: true, user: { id: true }, hidden: true, nsfw: true },
+      relations: { user: true },
+    });
+
+    if (!playlist) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isOwner = playlist.user.id === user.id;
+    const isAllowed = canExecuteAction({
+      isOwner,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    // If is hidden and is not allowed to view return not found
+    if (playlist.hidden && !isAllowed) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    // Check NSFW content access
+    if (playlist.nsfw && !user?.nsfw && !isOwner && !isUserAdmin) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    // Get paginated keyframes
+    const result = await getPaginatedPlaylistKeyframes({
+      playlistId: playlist.id,
+      take,
+      skip,
+    });
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          keyframes: result.keyframes,
+          totalCount: result.totalCount,
+        },
       }),
     );
   } catch (err) {

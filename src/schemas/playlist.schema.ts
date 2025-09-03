@@ -4,6 +4,8 @@ import {
   AddPlaylistKeyframeRequest,
   CreatePlaylistRequest,
   GetPlaylistQuery,
+  GetPlaylistItemsQuery,
+  GetPlaylistKeyframesQuery,
   OrderPlaylist,
   OrderPlaylistRequest,
   PlaylistItemType,
@@ -104,5 +106,25 @@ export const removePlaylistKeyframeSchema: RequestValidationSchema = {
   params: Joi.object<RemovePlaylistKeyframeRequest>().keys({
     uuid: Joi.string().uuid().required(),
     playlistKeyframeId: Joi.number().integer().positive().required(),
+  }),
+};
+
+export const getPlaylistItemsSchema: RequestValidationSchema = {
+  query: Joi.object<GetPlaylistItemsQuery>().keys({
+    take: Joi.number().integer().min(1).max(5000),
+    skip: Joi.number().integer().min(0),
+  }),
+  params: Joi.object<PlaylistParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const getPlaylistKeyframesSchema: RequestValidationSchema = {
+  query: Joi.object<GetPlaylistKeyframesQuery>().keys({
+    take: Joi.number().integer().min(1).max(5000),
+    skip: Joi.number().integer().min(0),
+  }),
+  params: Joi.object<PlaylistParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
   }),
 };

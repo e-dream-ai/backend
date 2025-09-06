@@ -31,8 +31,11 @@ import {
   getUploadPartSignedUrl,
 } from "utils/r2.util";
 import { CreateMultipartUploadFileRequest } from "types/keyframe.types";
-import { generateBucketObjectURL } from "utils/cloudflare/bucket.util";
 import { keyframeRepository, userRepository } from "database/repositories";
+import {
+  transformKeyframesWithSignedUrls,
+  transformKeyframeWithSignedUrls,
+} from "utils/transform.util";
 
 /**
  * Handles get keyframe
@@ -60,9 +63,15 @@ export const handleGetKeyframe = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { keyframe } }));
+    // Transform keyframe to include signed URLs
+    const transformedKeyframe = await transformKeyframeWithSignedUrls(keyframe);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { keyframe: transformedKeyframe },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -105,9 +114,16 @@ export const handleGetKeyframes = async (
       skip,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { keyframes, count } }));
+    // Transform keyframes to include signed URLs
+    const transformedKeyframes =
+      await transformKeyframesWithSignedUrls(keyframes);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { keyframes: transformedKeyframes, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -291,7 +307,7 @@ export const handleCompleteKeyframeImageUpload = async (
     });
 
     await keyframeRepository.update(keyframe.id, {
-      image: generateBucketObjectURL(filePath!),
+      image: filePath!,
     });
 
     /**

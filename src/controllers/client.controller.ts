@@ -33,6 +33,10 @@ import {
   jsonResponse,
 } from "utils/responses.util";
 import {
+  transformDreamsWithSignedUrls,
+  transformPlaylistWithSignedUrls,
+} from "utils/transform.util";
+import {
   getUserDownvotedDreams,
   isAdmin,
   reduceUserQuota,
@@ -169,7 +173,10 @@ export const handleGetPlaylist = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    const clientPlaylist: ClientPlaylist = formatClientPlaylist(playlist);
+    const transformedPlaylist = await transformPlaylistWithSignedUrls(playlist);
+
+    const clientPlaylist: ClientPlaylist =
+      formatClientPlaylist(transformedPlaylist);
 
     return res
       .status(httpStatus.OK)
@@ -258,7 +265,10 @@ export const handleGetDreams = async (
       }),
     });
 
-    const clientDreams: ClientDream[] = dreams?.map((dream) =>
+    // Transform dreams to include signed URLs
+    const transformedDreams = await transformDreamsWithSignedUrls(dreams);
+
+    const clientDreams: ClientDream[] = transformedDreams?.map((dream) =>
       formatClientDream(dream),
     );
 
@@ -307,7 +317,10 @@ export const handleDreamsRequest = async (
       }),
     });
 
-    const clientDreams: ClientDream[] = dreams?.map((dream) =>
+    // Transform dreams to include signed URLs
+    const transformedDreams = await transformDreamsWithSignedUrls(dreams);
+
+    const clientDreams: ClientDream[] = transformedDreams?.map((dream) =>
       formatClientDream(dream),
     );
 

@@ -67,6 +67,11 @@ import {
   syncWorkOSUser,
 } from "utils/user.util";
 import { workos, workOSCookieConfig } from "utils/workos.util";
+import {
+  transformUserWithSignedUrls,
+  transformDreamWithSignedUrls,
+  transformPlaylistWithSignedUrls,
+} from "utils/transform.util";
 import env from "shared/env";
 import {
   // GenericServerException,
@@ -312,11 +317,14 @@ export const handleLogin = async (
      */
     await setUserLastLoginAt(user);
 
+    // Transform user to include signed URLs
+    const transformedUser = await transformUserWithSignedUrls(user);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
         message: AUTH_MESSAGES.USER_LOGGED_IN,
-        data: { ...user, token },
+        data: { ...transformedUser, token },
       }),
     );
   } catch (error) {
@@ -450,9 +458,14 @@ export const handleUser = async (
   req: RequestType<UserLoginCredentials>,
   res: ResponseType,
 ) => {
+  const user = res.locals.user!;
+
+  // Transform user to include signed URLs
+  const transformedUser = await transformUserWithSignedUrls(user);
+
   return res
     .status(httpStatus.OK)
-    .json(jsonResponse({ success: true, data: { user: res.locals.user } }));
+    .json(jsonResponse({ success: true, data: { user: transformedUser } }));
 };
 
 /**
@@ -471,9 +484,15 @@ export const handleCurrentUserDream = async (
   res: ResponseType,
 ) => {
   const currentDream = res.locals.user?.currentDream;
+
+  // Transform dream to include signed URLs if it exists
+  const transformedDream = currentDream
+    ? await transformDreamWithSignedUrls(currentDream)
+    : null;
+
   return res
     .status(httpStatus.OK)
-    .json(jsonResponse({ success: true, data: { dream: currentDream } }));
+    .json(jsonResponse({ success: true, data: { dream: transformedDream } }));
 };
 
 /**
@@ -508,9 +527,16 @@ export const handleCurrentUserPlaylist = async (
     });
   }
 
+  // Transform playlist to include signed URLs if it exists
+  const transformedPlaylist = playlist
+    ? await transformPlaylistWithSignedUrls(playlist)
+    : null;
+
   return res
     .status(httpStatus.OK)
-    .json(jsonResponse({ success: true, data: { playlist } }));
+    .json(
+      jsonResponse({ success: true, data: { playlist: transformedPlaylist } }),
+    );
 };
 
 /**

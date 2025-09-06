@@ -72,6 +72,10 @@ import {
 import { truncateString } from "utils/string.util";
 import { getUserIdentifier, isAdmin } from "utils/user.util";
 import { framesToSeconds } from "utils/video.utils";
+import {
+  transformDreamWithSignedUrls,
+  transformDreamsWithSignedUrls,
+} from "utils/transform.util";
 
 /**
  * Handles get dreams
@@ -108,9 +112,14 @@ export const handleGetDreams = async (
       skip,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dreams: dreams, count } }));
+    const transformedDreams = await transformDreamsWithSignedUrls(dreams);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { dreams: transformedDreams, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -487,11 +496,11 @@ export const handleCompleteMultipartUpload = async (
       });
 
       /**
-       * if dream file is the original then updates name, original_video url and status
+       * if dream file is the original then updates name, original_video object key and status
        */
       await dreamRepository.update(dream.id, {
         name,
-        original_video: generateBucketObjectURL(filePath!),
+        original_video: filePath!,
         status: DreamStatusType.QUEUE,
       });
     } else if (type === DreamFileType.DREAM && processed) {
@@ -503,10 +512,10 @@ export const handleCompleteMultipartUpload = async (
       });
 
       /**
-       * if dream file is the processed then updates video url
+       * if dream file is the processed then updates video object key
        */
       await dreamRepository.update(dream.id, {
-        video: generateBucketObjectURL(filePath!),
+        video: filePath!,
       });
     }
 
@@ -741,9 +750,11 @@ export const handleGetDream = async (
       delete dream.featureRank;
     }
 
+    const transformedDream = await transformDreamWithSignedUrls(dream);
+
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: dream } }));
+      .json(jsonResponse({ success: true, data: { dream: transformedDream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -782,9 +793,14 @@ export const handleGetMyDreams = async (
       skip,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dreams, count } }));
+    const transformedDreams = await transformDreamsWithSignedUrls(dreams);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { dreams: transformedDreams, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -935,11 +951,9 @@ export const handleSetDreamStatusProcessed = async (
       (frame) =>
         ({
           frameNumber: Number(frame),
-          url: generateBucketObjectURL(
-            `${getUserIdentifier(user)}/${dreamUUID}/filmstrip/frame-${frame}.${
-              FILE_EXTENSIONS.JPG
-            }`,
-          ),
+          url: `${getUserIdentifier(
+            user,
+          )}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
         }) as Frame,
     );
 
@@ -1255,7 +1269,7 @@ export const handleUpdateThumbnailDream = async (
 
     const updatedDream = await dreamRepository.save({
       ...dream,
-      thumbnail: thumbnailBuffer ? generateBucketObjectURL(filePath) : null,
+      thumbnail: thumbnailBuffer ? filePath : null,
     });
 
     return res

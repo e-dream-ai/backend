@@ -191,3 +191,68 @@ export const generateKeyframePath = ({
   extension: string;
 }) =>
   `${userIdentifier}/keyframes/${keyframeUUID}/${keyframeUUID}.${extension}`;
+
+/**
+ * Generates signed URL from object key, returns null if object key is null/empty
+ * @param {string | null} objectKey - object key on R2
+ * @returns {Promise<string | null>} signed url or null
+ */
+export const generateSignedUrlFromObjectKey = async (
+  objectKey: string | null | undefined,
+): Promise<string | null> => {
+  if (!objectKey || typeof objectKey !== "string") {
+    return null;
+  }
+
+  try {
+    return await generateSignedUrl(objectKey);
+  } catch (error) {
+    console.error(
+      `Failed to generate signed URL for object key: ${objectKey}`,
+      error,
+    );
+    return null;
+  }
+};
+
+/**
+ * Generates signed URLs for filmstrip frames
+ * @param {string[] | Frame[] | null} filmstrip - filmstrip data
+ * @returns {Promise<Frame[] | null>} filmstrip with signed URLs
+ */
+export const generateFilmstripSignedUrls = async (
+  filmstrip: string[] | Frame[] | null | undefined,
+): Promise<Frame[] | null> => {
+  if (!filmstrip || !Array.isArray(filmstrip)) {
+    return null;
+  }
+
+  const signedFrames: Frame[] = [];
+
+  for (const frame of filmstrip) {
+    if (typeof frame === "string") {
+      const signedUrl = await generateSignedUrlFromObjectKey(frame);
+      if (signedUrl) {
+        signedFrames.push({
+          frameNumber: signedFrames.length + 1, // Fallback frame number
+          url: signedUrl,
+        });
+      }
+    } else if (frame && typeof frame === "object" && "url" in frame) {
+      const signedUrl = await generateSignedUrlFromObjectKey(frame.url);
+      if (signedUrl) {
+        signedFrames.push({
+          frameNumber: frame.frameNumber,
+          url: signedUrl,
+        });
+      }
+    }
+  }
+
+  return signedFrames.length > 0 ? signedFrames : null;
+};
+
+export type Frame = {
+  frameNumber: number;
+  url: string;
+};

@@ -46,7 +46,6 @@ import {
   RemovePlaylistKeyframeRequest,
   UpdatePlaylistRequest,
 } from "types/playlist.types";
-import { generateBucketObjectURL } from "utils/cloudflare/bucket.util";
 import { computeDefaultPlaylistFromUserId } from "utils/default-playlist.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
@@ -67,6 +66,12 @@ import {
   handleInternalServerError,
 } from "utils/responses.util";
 import { getUserIdentifier, isAdmin } from "utils/user.util";
+import {
+  transformPlaylistsWithSignedUrls,
+  transformPlaylistWithSignedUrls,
+  transformPlaylistItemsWithSignedUrls,
+  transformPlaylistKeyframesWithSignedUrls,
+} from "utils/transform.util";
 
 /**
  * Handles get playlist
@@ -122,9 +127,15 @@ export const handleGetPlaylist = async (
       delete playlist.featureRank;
     }
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { playlist } }));
+    // Transform playlist to include signed URLs
+    const transformedPlaylist = await transformPlaylistWithSignedUrls(playlist);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { playlist: transformedPlaylist },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -249,11 +260,16 @@ export const handleGetPlaylistItems = async (
       skip,
     });
 
+    // Transform playlist items to include signed URLs
+    const transformedItems = await transformPlaylistItemsWithSignedUrls(
+      result.items,
+    );
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
         data: {
-          items: result.items,
+          items: transformedItems,
           totalCount: result.totalCount,
         },
       }),
@@ -325,11 +341,16 @@ export const handleGetPlaylistKeyframes = async (
       skip,
     });
 
+    // Transform playlist keyframes to include signed URLs
+    const transformedKeyframes = await transformPlaylistKeyframesWithSignedUrls(
+      result.keyframes,
+    );
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
         data: {
-          keyframes: result.keyframes,
+          keyframes: transformedKeyframes,
           totalCount: result.totalCount,
         },
       }),
@@ -415,9 +436,16 @@ export const handleGetPlaylists = async (
       skip,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { playlists, count } }));
+    // Transform playlists to include signed URLs
+    const transformedPlaylists =
+      await transformPlaylistsWithSignedUrls(playlists);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { playlists: transformedPlaylists, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -646,9 +674,7 @@ export const handleUpdateThumbnailPlaylist = async (
       await r2Client.send(command);
     }
 
-    const newThumbnail = thumbnailBuffer
-      ? generateBucketObjectURL(filePath)
-      : null;
+    const newThumbnail = thumbnailBuffer ? filePath : null;
 
     await playlistRepository.update(
       { id: playlist.id },
@@ -657,9 +683,14 @@ export const handleUpdateThumbnailPlaylist = async (
 
     playlist.thumbnail = newThumbnail;
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { playlist } }));
+    const transformedPlaylist = await transformPlaylistWithSignedUrls(playlist);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { playlist: transformedPlaylist },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

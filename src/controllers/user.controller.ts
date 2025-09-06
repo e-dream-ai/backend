@@ -24,7 +24,6 @@ import {
   UpdateUserRoleRequest,
   UserParamsRequest,
 } from "types/user.types";
-import { generateBucketObjectURL } from "utils/cloudflare/bucket.util";
 import { decrypt } from "utils/crypto.util";
 import { getVotedDreams } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
@@ -47,6 +46,10 @@ import {
   isAdmin,
 } from "utils/user.util";
 import { workos } from "utils/workos.util";
+import {
+  transformUsersWithSignedUrls,
+  transformUserWithSignedUrls,
+} from "utils/transform.util";
 
 /**
  * Handles get roles
@@ -127,9 +130,14 @@ export const handleGetUsers = async (
       skip,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { users, count } }));
+    const transformedUsers = await transformUsersWithSignedUrls(users);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { users: transformedUsers, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -170,13 +178,16 @@ export const handleGetUser = async (
       userRole: user?.role?.name,
     });
 
+    // Transform user to include signed URLs first
+    const transformedUser = await transformUserWithSignedUrls(foundUser);
+
     /**
      * remove user email if is not admin or owner
      */
     const responseUser = {
-      ...foundUser,
-      email: isAllowedView ? foundUser.email : undefined,
-      signupInvite: isAllowedView ? foundUser.signupInvite : undefined,
+      ...transformedUser,
+      email: isAllowedView ? transformedUser.email : undefined,
+      signupInvite: isAllowedView ? transformedUser.signupInvite : undefined,
     };
 
     return res.status(httpStatus.OK).json(
@@ -250,10 +261,13 @@ export const handleGetAuthenticatedUser = async (
   try {
     const user = res.locals.user!;
 
+    // Transform user to include signed URLs
+    const transformedUser = await transformUserWithSignedUrls(user);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { user },
+        data: { user: transformedUser },
       }),
     );
   } catch (err) {
@@ -512,7 +526,7 @@ export const handleUpdateUserAvatar = async (
 
     const updatedUser = await userRepository.save({
       ...user,
-      avatar: avatarBuffer ? generateBucketObjectURL(filePath) : null,
+      avatar: avatarBuffer ? filePath : null,
     });
 
     return res

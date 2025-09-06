@@ -42,7 +42,6 @@ import {
 } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { VoteType } from "types/vote.types";
-import { generateBucketObjectURL } from "utils/cloudflare/bucket.util";
 import {
   createFeedItem,
   findDreamPlaylistItems,
@@ -475,10 +474,10 @@ export const handleCompleteMultipartUpload = async (
       });
 
       /**
-       * updates thumbnail url on database
+       * updates thumbnail object key on database
        */
       await dreamRepository.update(dream.id, {
-        thumbnail: generateBucketObjectURL(filePath),
+        thumbnail: filePath,
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({

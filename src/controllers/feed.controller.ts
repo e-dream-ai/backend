@@ -14,6 +14,7 @@ import {
 } from "utils/feed.util";
 import { handleInternalServerError, jsonResponse } from "utils/responses.util";
 import { isAdmin } from "utils/user.util";
+import { transformFeedItemsWithSignedUrls } from "utils/transform.util";
 
 /**
  * Handles get ranked feed
@@ -68,10 +69,13 @@ export const handleGetRankedFeed = async (
 
     const feed = await formatFeedResponse(rawFeed);
 
+    // Transform feed items to include signed URLs
+    const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { feed, count },
+        data: { feed: transformedFeed, count },
       }),
     );
   } catch (err) {
@@ -136,10 +140,13 @@ export const handleGetFeed = async (
 
     const feed = await formatFeedResponse(rawFeed);
 
+    // Transform feed items to include signed URLs
+    const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { feed, count },
+        data: { feed: transformedFeed, count },
       }),
     );
   } catch (err) {
@@ -196,10 +203,13 @@ export const handleGetMyDreams = async (
 
     const feed = await formatFeedResponse(rawFeed);
 
+    // Transform feed items to include signed URLs
+    const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { feed, count },
+        data: { feed: transformedFeed, count },
       }),
     );
   } catch (err) {

@@ -518,6 +518,7 @@ export const handleUpdateUserAvatar = async (
         Bucket: bucketName,
         Key: filePath,
         Body: avatarBuffer,
+        ContentType: fileMymeType || "image/jpeg",
         CacheControl: "no-store",
         Expires: new Date(),
       });

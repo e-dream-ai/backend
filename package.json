@@ -29,6 +29,7 @@
     "script": "ts-node -r tsconfig-paths/register src/script/$script",
     "migrate:s3-to-r2": "ts-node -r tsconfig-paths/register src/script/migrate-s3-to-r2.ts",
     "extract-object-keys": "ts-node -r tsconfig-paths/register src/script/extract-object-keys.ts",
+    "fix-image-content-types": "ts-node -r tsconfig-paths/register src/script/fix-image-content-types.ts",
     "cron:default-playlist": "NODE_PATH=dist node dist/script/default-playlist.js",
     "husky-install": "husky install",
     "lint-staged": "npx lint-staged"

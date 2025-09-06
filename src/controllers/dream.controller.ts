@@ -1260,6 +1260,7 @@ export const handleUpdateThumbnailDream = async (
         Bucket: bucketName,
         Key: filePath,
         Body: thumbnailBuffer,
+        ContentType: fileMymeType || "image/jpeg",
         CacheControl: "no-cache",
         Expires: new Date(),
       });

@@ -11,6 +11,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import env from "shared/env";
 import { EXPIRATION_TIME } from "constants/cloudflare/r2.constants";
+import { getMimeTypeFromExtension } from "constants/file.constants";
 
 const BUCKET_NAME = env.R2_BUCKET_NAME;
 
@@ -39,9 +40,12 @@ export const generateSignedUrl = async (objectKey: string) => {
  * @returns {string} ID for the initiated multipart upload
  */
 export const createMultipartUpload = async (objectKey: string) => {
+  const contentType = getMimeTypeFromPath(objectKey);
+
   const command = new CreateMultipartUploadCommand({
     Bucket: BUCKET_NAME,
     Key: objectKey,
+    ContentType: contentType,
   });
 
   const response = await r2Client.send(command);
@@ -130,14 +134,21 @@ export const generatePresignedPost = async (objectKey: string) => {
   const MIN_UPLOAD_SIZE = 1024 * 1024 * 5;
   const MAX_UPLOAD_SIZE = 1024 * 1024 * 1024 * 50;
 
+  // Get MIME type from file path
+  const contentType = getMimeTypeFromPath(objectKey);
+
   const { url, fields } = await createPresignedPost(r2Client, {
     Bucket: BUCKET_NAME,
     Key: objectKey,
-    Conditions: [["content-length-range", MIN_UPLOAD_SIZE, MAX_UPLOAD_SIZE]],
+    Conditions: [
+      ["content-length-range", MIN_UPLOAD_SIZE, MAX_UPLOAD_SIZE],
+      ["eq", "$Content-Type", contentType],
+    ],
     Fields: {
       key: objectKey,
+      "Content-Type": contentType,
     },
-    Expires: EXPIRATION_TIME, //Seconds before the presigned post expires. 3600 by default.
+    Expires: EXPIRATION_TIME,
   });
 
   return { url, fields };
@@ -255,4 +266,23 @@ export const generateFilmstripSignedUrls = async (
 export type Frame = {
   frameNumber: number;
   url: string;
+};
+
+/**
+ * Helper function to extract file extension from object key or file path
+ * @param {string} filePath - file path or object key
+ * @returns {string} file extension without dot
+ */
+export const extractFileExtension = (filePath: string): string => {
+  return filePath.split(".").pop()?.toLowerCase() || "";
+};
+
+/**
+ * Helper function to get MIME type from file path
+ * @param {string} filePath - file path or object key
+ * @returns {string} MIME type
+ */
+export const getMimeTypeFromPath = (filePath: string): string => {
+  const extension = extractFileExtension(filePath);
+  return getMimeTypeFromExtension(extension);
 };

@@ -33,6 +33,7 @@ import {
   jsonResponse,
 } from "utils/responses.util";
 import {
+  transformDreamWithSignedUrls,
   transformDreamsWithSignedUrls,
   transformPlaylistWithSignedUrls,
 } from "utils/transform.util";
@@ -223,7 +224,9 @@ export const handleGetDownloadUrl = async (
 
     await reduceUserQuota(user!, dream?.processedVideoSize ?? 0);
 
-    const url = dream.video;
+    // Transform dream to include presigned URLs
+    const transformedDream = await transformDreamWithSignedUrls(dream);
+    const url = transformedDream.video;
 
     return res
       .status(httpStatus.OK)

@@ -225,7 +225,7 @@ export const generateSignedUrlFromObjectKey = async (
   }
 
   try {
-    const url = await generateSignedUrl(objectKey);
+    const url = `${env.R2_BUCKET_URL}/${objectKey}`;
     urlCache.set(objectKey, url);
     return url;
   } catch (error) {

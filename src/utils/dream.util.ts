@@ -134,6 +134,7 @@ export const getDreamSelectedColumns = ({
   playlistItems,
   startKeyframe,
   endKeyframe,
+  filmstrip = true,
 }: {
   originalVideo?: boolean;
   featureRank?: boolean;
@@ -141,6 +142,7 @@ export const getDreamSelectedColumns = ({
   playlistItems?: boolean;
   startKeyframe?: boolean;
   endKeyframe?: boolean;
+  filmstrip?: boolean;
 } = {}): FindOptionsSelect<Dream> => {
   return {
     id: true,
@@ -157,7 +159,7 @@ export const getDreamSelectedColumns = ({
     processedVideoFPS: true,
     nsfw: true,
     hidden: true,
-    filmstrip: true,
+    filmstrip,
     description: true,
     sourceUrl: true,
     ccbyLicense: true,

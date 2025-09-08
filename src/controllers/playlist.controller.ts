@@ -218,10 +218,7 @@ export const handleGetPlaylistItems = async (
   const user = res.locals.user!;
   const isUserAdmin = isAdmin(user);
 
-  const take = Math.min(
-    Number(req.query.take) || PAGINATION.TAKE,
-    PAGINATION.MAX_TAKE,
-  );
+  const take = Math.min(Number(req.query.take) || PAGINATION.TAKE, 5000);
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
 
   try {
@@ -299,10 +296,7 @@ export const handleGetPlaylistKeyframes = async (
   const user = res.locals.user!;
   const isUserAdmin = isAdmin(user);
 
-  const take = Math.min(
-    Number(req.query.take) || PAGINATION.TAKE,
-    PAGINATION.MAX_TAKE,
-  );
+  const take = Math.min(Number(req.query.take) || PAGINATION.TAKE, 5000);
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
 
   try {
@@ -410,10 +404,7 @@ export const handleGetPlaylists = async (
   req: RequestType<unknown, GetPlaylistQuery>,
   res: ResponseType,
 ) => {
-  const take = Math.min(
-    Number(req.query.take) || PAGINATION.TAKE,
-    PAGINATION.MAX_TAKE,
-  );
+  const take = Math.min(Number(req.query.take) || PAGINATION.TAKE, 5000);
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const userUUID: string = req.query.userUUID!;
 

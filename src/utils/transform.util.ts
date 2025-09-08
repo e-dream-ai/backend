@@ -1,10 +1,8 @@
 import { Dream, User, Playlist, Keyframe } from "entities";
 import { FeedItem } from "entities/FeedItem.entity";
 import { PlaylistItem, PlaylistKeyframe } from "entities";
-import {
-  generateSignedUrlFromObjectKey,
-  generateFilmstripSignedUrls,
-} from "./r2.util";
+import { generateSignedUrlFromObjectKey } from "./r2.util";
+import type { Frame } from "./r2.util";
 
 // Simple LRU cache for signed URLs to reduce redundant API calls
 class SignedUrlCache {
@@ -72,6 +70,49 @@ const generateSignedUrlFromObjectKeyCached = async (
 };
 
 /**
+ * Generates signed URLs for filmstrip frames with caching and throttled concurrency
+ * @param {string[] | Frame[] | null} filmstrip - filmstrip data
+ * @param {number} concurrency - max concurrent URL generations (default: 25)
+ * @returns {Promise<Frame[] | null>} filmstrip with signed URLs
+ */
+const generateFilmstripSignedUrlsWithCache = async (
+  filmstrip: string[] | Frame[] | null | undefined,
+  concurrency: number = 25,
+): Promise<Frame[] | null> => {
+  if (!filmstrip || !Array.isArray(filmstrip)) return null;
+
+  const results: Frame[] = [];
+  for (let i = 0; i < filmstrip.length; i += concurrency) {
+    const chunk = filmstrip
+      .slice(i, i + concurrency)
+      .map(async (frame, index) => {
+        const absoluteIndex = i + index;
+        if (typeof frame === "string") {
+          const signedUrl = await generateSignedUrlFromObjectKeyCached(frame);
+          return signedUrl
+            ? { frameNumber: absoluteIndex + 1, url: signedUrl }
+            : null;
+        } else if (frame && typeof frame === "object" && "url" in frame) {
+          const signedUrl = await generateSignedUrlFromObjectKeyCached(
+            frame.url,
+          );
+          return signedUrl
+            ? { frameNumber: frame.frameNumber, url: signedUrl }
+            : null;
+        }
+        return null;
+      });
+
+    const partial = (await Promise.all(chunk)).filter(
+      (f): f is Frame => f !== null,
+    );
+    results.push(...partial);
+  }
+
+  return results.length > 0 ? results : null;
+};
+
+/**
  * Memory usage monitoring utility
  */
 export const logMemoryUsage = (context: string): void => {
@@ -112,9 +153,11 @@ export const transformDreamWithSignedUrls = async (
     );
   }
 
-  // Transform filmstrip URLs
+  // Transform filmstrip URLs (cached + throttled)
   if (dream.filmstrip) {
-    const signedFilmstrip = await generateFilmstripSignedUrls(dream.filmstrip);
+    const signedFilmstrip = await generateFilmstripSignedUrlsWithCache(
+      dream.filmstrip,
+    );
     dream.filmstrip = signedFilmstrip || [];
   }
 

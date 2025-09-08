@@ -105,7 +105,10 @@ export const handleGetDreams = async (
     const [dreams, count] = await dreamRepository.findAndCount({
       where: { user: { uuid: userUUID }, status },
       relations: { user: true, displayedOwner: true },
-      select: getDreamSelectedColumns({ originalVideo: isBrowser }),
+      select: getDreamSelectedColumns({
+        originalVideo: isBrowser,
+        filmstrip: false,
+      }),
       order: { created_at: "DESC" },
       take,
       skip,

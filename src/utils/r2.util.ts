@@ -18,7 +18,12 @@ const BUCKET_NAME = env.R2_BUCKET_NAME;
 
 const PROCESSED_VIDEO_SUFFIX = "processed";
 
-const urlCache = new NodeCache({ stdTTL: 1500 });
+const urlCache = new NodeCache({
+  stdTTL: 600,
+  checkperiod: 120,
+  useClones: false,
+  maxKeys: 2000,
+});
 
 /**
  *

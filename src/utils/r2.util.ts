@@ -12,10 +12,13 @@ import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import env from "shared/env";
 import { EXPIRATION_TIME } from "constants/cloudflare/r2.constants";
 import { getMimeTypeFromExtension } from "constants/file.constants";
+import NodeCache from "node-cache";
 
 const BUCKET_NAME = env.R2_BUCKET_NAME;
 
 const PROCESSED_VIDEO_SUFFIX = "processed";
+
+const urlCache = new NodeCache({ stdTTL: 1500 });
 
 /**
  *
@@ -215,8 +218,16 @@ export const generateSignedUrlFromObjectKey = async (
     return null;
   }
 
+  // Check cache first
+  const cached = urlCache.get(objectKey);
+  if (cached) {
+    return cached as string;
+  }
+
   try {
-    return await generateSignedUrl(objectKey);
+    const url = await generateSignedUrl(objectKey);
+    urlCache.set(objectKey, url);
+    return url;
   } catch (error) {
     console.error(
       `Failed to generate signed URL for object key: ${objectKey}`,
@@ -238,27 +249,30 @@ export const generateFilmstripSignedUrls = async (
     return null;
   }
 
-  const signedFrames: Frame[] = [];
-
-  for (const frame of filmstrip) {
+  const signedFramesPromises = filmstrip.map(async (frame, index) => {
     if (typeof frame === "string") {
       const signedUrl = await generateSignedUrlFromObjectKey(frame);
-      if (signedUrl) {
-        signedFrames.push({
-          frameNumber: signedFrames.length + 1, // Fallback frame number
+      return signedUrl
+        ? {
+          frameNumber: index + 1,
           url: signedUrl,
-        });
-      }
+        }
+        : null;
     } else if (frame && typeof frame === "object" && "url" in frame) {
       const signedUrl = await generateSignedUrlFromObjectKey(frame.url);
-      if (signedUrl) {
-        signedFrames.push({
+      return signedUrl
+        ? {
           frameNumber: frame.frameNumber,
           url: signedUrl,
-        });
-      }
+        }
+        : null;
     }
-  }
+    return null;
+  });
+
+  const signedFrames = (await Promise.all(signedFramesPromises)).filter(
+    (frame): frame is Frame => frame !== null,
+  );
 
   return signedFrames.length > 0 ? signedFrames : null;
 };

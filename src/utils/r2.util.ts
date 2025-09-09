@@ -1,5 +1,4 @@
 import {
-  GetObjectCommand,
   CreateMultipartUploadCommand,
   UploadPartCommand,
   CompleteMultipartUploadCommand,
@@ -12,35 +11,10 @@ import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import env from "shared/env";
 import { EXPIRATION_TIME } from "constants/cloudflare/r2.constants";
 import { getMimeTypeFromExtension } from "constants/file.constants";
-import NodeCache from "node-cache";
 
 const BUCKET_NAME = env.R2_BUCKET_NAME;
 
 const PROCESSED_VIDEO_SUFFIX = "processed";
-
-const urlCache = new NodeCache({
-  stdTTL: 600,
-  checkperiod: 120,
-  useClones: false,
-  maxKeys: 2000,
-});
-
-/**
- *
- * @param {string} objectKey - object key on R2
- * @returns {string} signed url to upload file
- */
-export const generateSignedUrl = async (objectKey: string) => {
-  const command = new GetObjectCommand({
-    Bucket: BUCKET_NAME,
-    Key: objectKey,
-  });
-
-  const url = await getSignedUrl(r2Client, command, {
-    expiresIn: EXPIRATION_TIME,
-  });
-  return url;
-};
 
 /**
  *
@@ -210,82 +184,6 @@ export const generateKeyframePath = ({
   extension: string;
 }) =>
   `${userIdentifier}/keyframes/${keyframeUUID}/${keyframeUUID}.${extension}`;
-
-/**
- * Generates signed URL from object key, returns null if object key is null/empty
- * @param {string | null} objectKey - object key on R2
- * @returns {Promise<string | null>} signed url or null
- */
-export const generateSignedUrlFromObjectKey = async (
-  objectKey: string | null | undefined,
-): Promise<string | null> => {
-  if (!objectKey || typeof objectKey !== "string") {
-    return null;
-  }
-
-  // Check cache first
-  const cached = urlCache.get(objectKey);
-  if (cached) {
-    return cached as string;
-  }
-
-  try {
-    const url = await generateSignedUrl(objectKey);
-    urlCache.set(objectKey, url);
-    return url;
-  } catch (error) {
-    console.error(
-      `Failed to generate signed URL for object key: ${objectKey}`,
-      error,
-    );
-    return null;
-  }
-};
-
-/**
- * Generates signed URLs for filmstrip frames
- * @param {string[] | Frame[] | null} filmstrip - filmstrip data
- * @returns {Promise<Frame[] | null>} filmstrip with signed URLs
- */
-export const generateFilmstripSignedUrls = async (
-  filmstrip: string[] | Frame[] | null | undefined,
-): Promise<Frame[] | null> => {
-  if (!filmstrip || !Array.isArray(filmstrip)) {
-    return null;
-  }
-
-  const signedFramesPromises = filmstrip.map(async (frame, index) => {
-    if (typeof frame === "string") {
-      const signedUrl = await generateSignedUrlFromObjectKey(frame);
-      return signedUrl
-        ? {
-          frameNumber: index + 1,
-          url: signedUrl,
-        }
-        : null;
-    } else if (frame && typeof frame === "object" && "url" in frame) {
-      const signedUrl = await generateSignedUrlFromObjectKey(frame.url);
-      return signedUrl
-        ? {
-          frameNumber: frame.frameNumber,
-          url: signedUrl,
-        }
-        : null;
-    }
-    return null;
-  });
-
-  const signedFrames = (await Promise.all(signedFramesPromises)).filter(
-    (frame): frame is Frame => frame !== null,
-  );
-
-  return signedFrames.length > 0 ? signedFrames : null;
-};
-
-export type Frame = {
-  frameNumber: number;
-  url: string;
-};
 
 /**
  * Helper function to extract file extension from object key or file path

@@ -67,11 +67,6 @@ import {
   syncWorkOSUser,
 } from "utils/user.util";
 import { workos, workOSCookieConfig } from "utils/workos.util";
-import {
-  transformUserWithSignedUrls,
-  transformDreamWithSignedUrls,
-  transformPlaylistWithSignedUrls,
-} from "utils/transform.util";
 import env from "shared/env";
 import {
   // GenericServerException,
@@ -82,6 +77,11 @@ import {
   findOnePlaylist,
   getPlaylistSelectedColumns,
 } from "utils/playlist.util";
+import {
+  transformUserWithSignedUrls,
+  transformDreamWithSignedUrls,
+  transformPlaylistWithSignedUrls,
+} from "utils/transform.util";
 import { roleRepository, userRepository } from "database/repositories";
 
 export const handleLoginWithCode = async (

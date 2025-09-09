@@ -265,6 +265,7 @@ export const handleGetDreams = async (
       select: getDreamSelectedColumns({
         originalVideo: true,
         featureRank: true,
+        filmstrip: false,
       }),
     });
 

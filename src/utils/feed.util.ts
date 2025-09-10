@@ -89,12 +89,12 @@ export const getFeedFindOptionsWhere = (
     ...(onlyHidden
       ? []
       : [
-          {
-            ...baseConditions,
-            hidden: false,
-            ...(ranked && { featureRank: MoreThanOrEqual(1) }),
-          },
-        ]),
+        {
+          ...baseConditions,
+          hidden: false,
+          ...(ranked && { featureRank: MoreThanOrEqual(1) }),
+        },
+      ]),
   ];
 
   return [
@@ -174,10 +174,12 @@ export const getFeedFindOptionsRelations =
 /**
  * Groups feed dreams by playlist, avoiding duplicates for dreams in multiple playlists
  * @param feedItems Array of feed items containing dreams and playlists
+ * @param excludedPlaylistUUIDs Set of playlist UUIDs to exclude from virtual playlist creation
  * @returns Map of playlist UUIDs data with associated dreams
  */
 export const groupFeedDreamItemsByPlaylist = (
   feedItems: FeedItem[] = [],
+  excludedPlaylistUUIDs: Set<string> = new Set(),
 ): Map<string, import("types/feed.types").VirtualPlaylist> => {
   // Initialize map to store playlist UUID → playlist data with dreams
   const playlistsMap = new Map<
@@ -240,6 +242,11 @@ export const groupFeedDreamItemsByPlaylist = (
   );
 
   sortedCandidates.forEach(([playlistUUID, candidate]) => {
+    // Skip if this playlist is in the excluded list
+    if (excludedPlaylistUUIDs.has(playlistUUID)) {
+      return;
+    }
+
     // Only include dreams that haven't been assigned to other virtual playlists
     const availableDreams = candidate.dreams.filter(
       (dream) => !assignedDreams.has(dream.uuid),

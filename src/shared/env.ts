@@ -62,6 +62,12 @@ export const env = cleanEnv(process.env, {
   PROCESS_VIDEO_SERVER_URL: str(),
 
   /**
+   * Presign Service
+   */
+  PRESIGN_SERVICE_URL: str(),
+  PRESIGN_SERVICE_API_KEY: str(),
+
+  /**
    * TYPEORM
    */
   TYPEORM_CONNECTION: str(),

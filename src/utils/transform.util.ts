@@ -1,542 +1,678 @@
-import { Dream, User, Playlist, Keyframe } from "entities";
+import { presignClient } from "clients/presign.client";
+import { Dream } from "entities/Dream.entity";
+import { Keyframe } from "entities/Keyframe.entity";
+import { Playlist } from "entities/Playlist.entity";
 import { FeedItem } from "entities/FeedItem.entity";
-import { PlaylistItem, PlaylistKeyframe } from "entities";
-import { generateSignedUrlFromObjectKey } from "./r2.util";
-import type { Frame } from "./r2.util";
+import { User } from "entities/User.entity";
+import { PlaylistItem } from "entities/PlaylistItem.entity";
+import { PlaylistKeyframe } from "entities/PlaylistKeyframe";
+import { Frame } from "types/dream.types";
 
-// Simple LRU cache for signed URLs to reduce redundant API calls
-class SignedUrlCache {
-  private cache = new Map<string, { url: string; timestamp: number }>();
-  private readonly maxSize: number;
-  private readonly ttl: number; // Time to live in milliseconds
+interface FieldMapping {
+  field: string;
+  isFilmstrip?: boolean;
+  isNested?: boolean;
+  nestedPath?: string;
+}
 
-  constructor(maxSize: number = 1000, ttlMinutes: number = 15) {
-    this.maxSize = maxSize;
-    this.ttl = ttlMinutes * 60 * 1000;
-  }
+interface EntityConfig {
+  readonly fields: readonly FieldMapping[];
+  readonly nestedEntities?: readonly {
+    readonly path: string;
+    readonly entityType: keyof typeof ENTITY_CONFIGS;
+  }[];
+}
 
-  get(key: string): string | null {
-    const entry = this.cache.get(key);
-    if (!entry) return null;
+const ENTITY_CONFIGS = {
+  dream: {
+    fields: [
+      { field: "video" },
+      { field: "original_video" },
+      { field: "thumbnail" },
+      { field: "filmstrip", isFilmstrip: true },
+    ],
+    nestedEntities: [
+      { path: "user", entityType: "user" as const },
+      { path: "displayedOwner", entityType: "user" as const },
+    ],
+  },
+  keyframe: {
+    fields: [{ field: "image" }],
+    nestedEntities: [
+      { path: "user", entityType: "user" as const },
+      { path: "displayedOwner", entityType: "user" as const },
+    ],
+  },
+  user: {
+    fields: [{ field: "avatar" }],
+  },
+  playlist: {
+    fields: [{ field: "thumbnail" }],
+    nestedEntities: [
+      { path: "user", entityType: "user" as const },
+      { path: "displayedOwner", entityType: "user" as const },
+    ],
+  },
+  playlistKeyframe: {
+    fields: [],
+    nestedEntities: [{ path: "keyframe", entityType: "keyframe" as const }],
+  },
+} as const;
 
-    // Check if expired
-    if (Date.now() - entry.timestamp > this.ttl) {
-      this.cache.delete(key);
-      return null;
-    }
+class UnifiedTransformer {
+  collectKeysFromEntity(
+    entity: unknown,
+    config: EntityConfig,
+    visited = new Set<unknown>(),
+  ): string[] {
+    if (!entity || visited.has(entity)) return [];
+    visited.add(entity);
 
-    return entry.url;
-  }
+    const keys: string[] = [];
 
-  set(key: string, url: string): void {
-    // Remove oldest entry if at capacity
-    if (this.cache.size >= this.maxSize) {
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey !== undefined) {
-        this.cache.delete(firstKey);
+    if (typeof entity !== "object" || entity === null) return [];
+
+    const entityObj = entity as Record<string, unknown>;
+
+    for (const mapping of config.fields) {
+      const value = entityObj[mapping.field];
+
+      if (mapping.isFilmstrip && Array.isArray(value)) {
+        value.forEach((frame) => {
+          if (
+            typeof frame === "object" &&
+            frame !== null &&
+            "url" in frame &&
+            typeof frame.url === "string"
+          ) {
+            keys.push(frame.url);
+          }
+        });
+      } else if (value && typeof value === "string") {
+        keys.push(value);
       }
     }
 
-    this.cache.set(key, { url, timestamp: Date.now() });
+    if (config.nestedEntities) {
+      for (const nested of config.nestedEntities) {
+        const nestedEntity = entityObj[nested.path];
+        if (nestedEntity) {
+          const nestedConfig = ENTITY_CONFIGS[nested.entityType];
+          keys.push(
+            ...this.collectKeysFromEntity(nestedEntity, nestedConfig, visited),
+          );
+        }
+      }
+    }
+
+    return keys;
   }
 
-  clear(): void {
-    this.cache.clear();
+  applySignedUrlsToEntity(
+    entity: unknown,
+    config: EntityConfig,
+    signedUrls: Record<string, string>,
+    visited = new Set<unknown>(),
+  ): unknown {
+    if (!entity || visited.has(entity)) return entity;
+    visited.add(entity);
+
+    if (typeof entity !== "object" || entity === null) return entity;
+
+    const transformed = { ...entity } as Record<string, unknown>;
+
+    for (const mapping of config.fields) {
+      const value = transformed[mapping.field];
+
+      if (mapping.isFilmstrip && Array.isArray(value)) {
+        transformed[mapping.field] = value.map((frame) => {
+          if (
+            typeof frame === "object" &&
+            frame !== null &&
+            "url" in frame &&
+            typeof frame.url === "string"
+          ) {
+            return {
+              ...frame,
+              url: signedUrls[frame.url] || frame.url,
+            } as Frame;
+          }
+          return frame;
+        });
+      } else if (value && typeof value === "string" && signedUrls[value]) {
+        transformed[mapping.field] = signedUrls[value];
+      }
+    }
+
+    if (config.nestedEntities) {
+      for (const nested of config.nestedEntities) {
+        const nestedEntity = transformed[nested.path];
+        if (nestedEntity) {
+          const nestedConfig = ENTITY_CONFIGS[nested.entityType];
+          transformed[nested.path] = this.applySignedUrlsToEntity(
+            nestedEntity,
+            nestedConfig,
+            signedUrls,
+            visited,
+          );
+        }
+      }
+    }
+
+    return transformed;
   }
 
-  size(): number {
-    return this.cache.size;
+  async transformEntity<T>(
+    entity: T,
+    entityType: keyof typeof ENTITY_CONFIGS,
+  ): Promise<T> {
+    const config = ENTITY_CONFIGS[entityType];
+    const keysToSign = this.collectKeysFromEntity(entity, config);
+
+    if (keysToSign.length === 0) {
+      return entity;
+    }
+
+    try {
+      const signedUrls = await presignClient.generatePresignedUrls(keysToSign);
+      return this.applySignedUrlsToEntity(entity, config, signedUrls) as T;
+    } catch (error) {
+      console.error(
+        `Failed to transform ${entityType} with signed URLs:`,
+        error,
+      );
+      return entity;
+    }
+  }
+
+  async transformEntities<T>(
+    entities: T[],
+    entityType: keyof typeof ENTITY_CONFIGS,
+  ): Promise<T[]> {
+    if (entities.length === 0) {
+      return entities;
+    }
+
+    const config = ENTITY_CONFIGS[entityType];
+    const keysToSign = new Set<string>();
+
+    entities.forEach((entity) => {
+      this.collectKeysFromEntity(entity, config).forEach((key) =>
+        keysToSign.add(key),
+      );
+    });
+
+    if (keysToSign.size === 0) {
+      return entities;
+    }
+
+    try {
+      const signedUrls = await presignClient.generatePresignedUrls(
+        Array.from(keysToSign),
+      );
+
+      return entities.map((entity) =>
+        this.applySignedUrlsToEntity(entity, config, signedUrls),
+      ) as T[];
+    } catch (error) {
+      console.error(
+        `Failed to transform ${entityType}s with signed URLs:`,
+        error,
+      );
+      return entities;
+    }
   }
 }
 
-const signedUrlCache = new SignedUrlCache();
+const transformer = new UnifiedTransformer();
 
-/**
- * Cached wrapper for generateSignedUrlFromObjectKey
- */
-const generateSignedUrlFromObjectKeyCached = async (
-  objectKey: string,
-): Promise<string | null> => {
-  const cached = signedUrlCache.get(objectKey);
-  if (cached !== null) {
-    return cached;
+export class TransformSession {
+  private allKeys = new Set<string>();
+  private readonly MAX_BATCH_SIZE = 500;
+
+  addEntityKeys<T>(entity: T, entityType: keyof typeof ENTITY_CONFIGS): void {
+    const config = ENTITY_CONFIGS[entityType];
+    const keys = transformer.collectKeysFromEntity(entity, config);
+    keys.forEach((key) => this.allKeys.add(key));
   }
 
-  const signedUrl = await generateSignedUrlFromObjectKey(objectKey);
-  if (signedUrl !== null) {
-    signedUrlCache.set(objectKey, signedUrl);
+  addEntitiesKeys<T>(
+    entities: T[],
+    entityType: keyof typeof ENTITY_CONFIGS,
+  ): void {
+    entities.forEach((entity) => this.addEntityKeys(entity, entityType));
   }
-  return signedUrl;
-};
 
-/**
- * Generates signed URLs for filmstrip frames with caching and throttled concurrency
- * @param {string[] | Frame[] | null} filmstrip - filmstrip data
- * @param {number} concurrency - max concurrent URL generations (default: 25)
- * @returns {Promise<Frame[] | null>} filmstrip with signed URLs
- */
-const generateFilmstripSignedUrlsWithCache = async (
-  filmstrip: string[] | Frame[] | null | undefined,
-  concurrency: number = 25,
-): Promise<Frame[] | null> => {
-  if (!filmstrip || !Array.isArray(filmstrip)) return null;
+  addComplexEntityKeys(
+    entity: FeedItem | PlaylistItem,
+    entityType: "feedItem" | "playlistItem",
+  ): void {
+    if (entityType === "feedItem") {
+      this.addFeedItemKeys(entity as FeedItem);
+    } else if (entityType === "playlistItem") {
+      this.addPlaylistItemKeys(entity as PlaylistItem);
+    }
+  }
 
-  const results: Frame[] = [];
-  for (let i = 0; i < filmstrip.length; i += concurrency) {
-    const chunk = filmstrip
-      .slice(i, i + concurrency)
-      .map(async (frame, index) => {
-        const absoluteIndex = i + index;
-        if (typeof frame === "string") {
-          const signedUrl = await generateSignedUrlFromObjectKeyCached(frame);
-          return signedUrl
-            ? { frameNumber: absoluteIndex + 1, url: signedUrl }
-            : null;
-        } else if (frame && typeof frame === "object" && "url" in frame) {
-          const signedUrl = await generateSignedUrlFromObjectKeyCached(
-            frame.url,
-          );
-          return signedUrl
-            ? { frameNumber: frame.frameNumber, url: signedUrl }
-            : null;
-        }
-        return null;
-      });
+  private addFeedItemKeys(feedItem: FeedItem): void {
+    if (feedItem.dreamItem) {
+      this.addEntityKeys(feedItem.dreamItem, "dream");
+    }
+    if (feedItem.playlistItem) {
+      this.addEntityKeys(feedItem.playlistItem, "playlist");
+    }
+    if (feedItem.user) {
+      this.addEntityKeys(feedItem.user, "user");
+    }
+  }
 
-    const partial = (await Promise.all(chunk)).filter(
-      (f): f is Frame => f !== null,
+  private addPlaylistItemKeys(playlistItem: PlaylistItem): void {
+    if (playlistItem.dreamItem) {
+      this.addEntityKeys(playlistItem.dreamItem, "dream");
+    }
+    if (playlistItem.playlistItem) {
+      this.addEntityKeys(playlistItem.playlistItem, "playlist");
+    }
+  }
+
+  async executeBatch(): Promise<Record<string, string>> {
+    const keysToSign = Array.from(this.allKeys);
+
+    if (keysToSign.length === 0) {
+      return {};
+    }
+
+    const batches = this.chunkArray(keysToSign, this.MAX_BATCH_SIZE);
+    const errors: Error[] = [];
+    const signedUrls: Record<string, string> = {};
+
+    for (const batch of batches) {
+      try {
+        const batchUrls = await presignClient.generatePresignedUrls(batch);
+        Object.assign(signedUrls, batchUrls);
+      } catch (error) {
+        console.error(
+          `Failed to presign batch of ${batch.length} keys:`,
+          error,
+        );
+        errors.push(error as Error);
+      }
+    }
+
+    if (errors.length === batches.length) {
+      throw errors[0];
+    }
+
+    if (errors.length > 0) {
+      console.warn(
+        `${errors.length} out of ${batches.length} presign batches failed. ` +
+          `${Object.keys(signedUrls).length} URLs were successfully signed.`,
+      );
+    }
+
+    return signedUrls;
+  }
+
+  private chunkArray<T>(array: T[], chunkSize: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
+
+  applyToEntity<T>(
+    entity: T,
+    entityType: keyof typeof ENTITY_CONFIGS,
+    signedUrls: Record<string, string>,
+  ): T {
+    const config = ENTITY_CONFIGS[entityType];
+    return transformer.applySignedUrlsToEntity(entity, config, signedUrls) as T;
+  }
+
+  applyToEntities<T>(
+    entities: T[],
+    entityType: keyof typeof ENTITY_CONFIGS,
+    signedUrls: Record<string, string>,
+  ): T[] {
+    return entities.map((entity) =>
+      this.applyToEntity(entity, entityType, signedUrls),
     );
-    results.push(...partial);
   }
 
-  return results.length > 0 ? results : null;
-};
+  applyToComplexEntity<T>(
+    entity: T,
+    entityType: "feedItem" | "playlistItem",
+    signedUrls: Record<string, string>,
+  ): T {
+    if (entityType === "feedItem") {
+      return this.applyToFeedItem(entity as FeedItem, signedUrls) as T;
+    } else if (entityType === "playlistItem") {
+      return this.applyToPlaylistItem(entity as PlaylistItem, signedUrls) as T;
+    }
+    return entity;
+  }
 
-/**
- * Memory usage monitoring utility
- */
-export const logMemoryUsage = (context: string): void => {
-  const usage = process.memoryUsage();
-  console.log(`[${context}] Memory Usage:`, {
-    rss: `${Math.round((usage.rss / 1024 / 1024) * 100) / 100} MB`,
-    heapTotal: `${Math.round((usage.heapTotal / 1024 / 1024) * 100) / 100} MB`,
-    heapUsed: `${Math.round((usage.heapUsed / 1024 / 1024) * 100) / 100} MB`,
-    external: `${Math.round((usage.external / 1024 / 1024) * 100) / 100} MB`,
-    cacheSize: signedUrlCache.size(),
-  });
-};
+  private applyToFeedItem(
+    feedItem: FeedItem,
+    signedUrls: Record<string, string>,
+  ): FeedItem {
+    const transformed = { ...feedItem };
 
-/**
- * Transforms a Dream entity by converting object keys to signed URLs
- * @param dream - Dream entity with object keys
- * @returns Dream entity with signed URLs
- */
+    if (feedItem.dreamItem) {
+      transformed.dreamItem = this.applyToEntity(
+        feedItem.dreamItem,
+        "dream",
+        signedUrls,
+      );
+    }
+    if (feedItem.playlistItem) {
+      transformed.playlistItem = this.applyToEntity(
+        feedItem.playlistItem,
+        "playlist",
+        signedUrls,
+      );
+      transformed.playlistItem.computeThumbnail =
+        this.createComputeThumbnailMethod();
+    }
+    if (feedItem.user) {
+      transformed.user = this.applyToEntity(feedItem.user, "user", signedUrls);
+      transformed.user.setQuota = function () {
+        this.quota = 0;
+      };
+    }
+
+    return transformed;
+  }
+
+  private applyToPlaylistItem(
+    playlistItem: PlaylistItem,
+    signedUrls: Record<string, string>,
+  ): PlaylistItem {
+    const transformed = { ...playlistItem };
+
+    if (playlistItem.dreamItem) {
+      transformed.dreamItem = this.applyToEntity(
+        playlistItem.dreamItem,
+        "dream",
+        signedUrls,
+      );
+    }
+    if (playlistItem.playlistItem) {
+      transformed.playlistItem = this.applyToEntity(
+        playlistItem.playlistItem,
+        "playlist",
+        signedUrls,
+      );
+      transformed.playlistItem.computeThumbnail =
+        this.createComputeThumbnailMethod();
+    }
+
+    return transformed;
+  }
+
+  private createComputeThumbnailMethod() {
+    return function (this: Playlist & { items?: PlaylistItem[] }) {
+      if (this.thumbnail) {
+        return;
+      }
+
+      const itemWithThumbnail = this?.items?.find(
+        (item: PlaylistItem) =>
+          Boolean(item?.dreamItem?.thumbnail) ||
+          Boolean(item?.playlistItem?.thumbnail),
+      );
+
+      const newThumbnail =
+        itemWithThumbnail?.dreamItem?.thumbnail ??
+        itemWithThumbnail?.playlistItem?.thumbnail;
+
+      if (newThumbnail) {
+        this.thumbnail = newThumbnail;
+      }
+    };
+  }
+}
+
+export async function transformMultipleEntityTypes(operations: {
+  dreams?: Dream[];
+  keyframes?: Keyframe[];
+  users?: User[];
+  playlists?: Playlist[];
+  feedItems?: FeedItem[];
+  playlistItems?: PlaylistItem[];
+}): Promise<{
+  dreams?: Dream[];
+  keyframes?: Keyframe[];
+  users?: User[];
+  playlists?: Playlist[];
+  feedItems?: FeedItem[];
+  playlistItems?: PlaylistItem[];
+}> {
+  const session = new TransformSession();
+
+  if (operations.dreams) {
+    session.addEntitiesKeys(operations.dreams, "dream");
+  }
+
+  if (operations.keyframes) {
+    session.addEntitiesKeys(operations.keyframes, "keyframe");
+  }
+
+  if (operations.users) {
+    session.addEntitiesKeys(operations.users, "user");
+  }
+
+  if (operations.playlists) {
+    session.addEntitiesKeys(operations.playlists, "playlist");
+    operations.playlists.forEach((playlist) => {
+      if (playlist.playlistItems) {
+        playlist.playlistItems.forEach((item) => {
+          session.addComplexEntityKeys(item, "playlistItem");
+        });
+      }
+    });
+  }
+
+  if (operations.feedItems) {
+    operations.feedItems.forEach((feedItem) => {
+      session.addComplexEntityKeys(feedItem, "feedItem");
+    });
+  }
+
+  if (operations.playlistItems) {
+    operations.playlistItems.forEach((item) => {
+      session.addComplexEntityKeys(item, "playlistItem");
+    });
+  }
+
+  const signedUrls = await session.executeBatch();
+
+  const result: typeof operations = {};
+
+  if (operations.dreams) {
+    result.dreams = session.applyToEntities(
+      operations.dreams,
+      "dream",
+      signedUrls,
+    );
+  }
+
+  if (operations.keyframes) {
+    result.keyframes = session.applyToEntities(
+      operations.keyframes,
+      "keyframe",
+      signedUrls,
+    );
+  }
+
+  if (operations.users) {
+    result.users = session.applyToEntities(
+      operations.users,
+      "user",
+      signedUrls,
+    );
+  }
+
+  if (operations.playlists) {
+    result.playlists = operations.playlists.map((playlist) => {
+      const transformedPlaylist = session.applyToEntity(
+        playlist,
+        "playlist",
+        signedUrls,
+      );
+
+      if (transformedPlaylist.playlistItems) {
+        transformedPlaylist.playlistItems =
+          transformedPlaylist.playlistItems.map((item) =>
+            session.applyToComplexEntity(item, "playlistItem", signedUrls),
+          );
+      }
+
+      return transformedPlaylist;
+    });
+  }
+
+  if (operations.feedItems) {
+    result.feedItems = operations.feedItems.map((feedItem) =>
+      session.applyToComplexEntity(feedItem, "feedItem", signedUrls),
+    );
+  }
+
+  if (operations.playlistItems) {
+    result.playlistItems = operations.playlistItems.map((item) =>
+      session.applyToComplexEntity(item, "playlistItem", signedUrls),
+    );
+  }
+
+  return result;
+}
+
 export const transformDreamWithSignedUrls = async (
   dream: Dream,
 ): Promise<Dream> => {
-  // Transform video URL
-  if (dream.video) {
-    dream.video = await generateSignedUrlFromObjectKeyCached(dream.video);
-  }
-
-  // Transform original video URL
-  if (dream.original_video) {
-    dream.original_video = await generateSignedUrlFromObjectKeyCached(
-      dream.original_video,
-    );
-  }
-
-  // Transform thumbnail URL
-  if (dream.thumbnail) {
-    dream.thumbnail = await generateSignedUrlFromObjectKeyCached(
-      dream.thumbnail,
-    );
-  }
-
-  // Transform filmstrip URLs (cached + throttled)
-  if (dream.filmstrip) {
-    const signedFilmstrip = await generateFilmstripSignedUrlsWithCache(
-      dream.filmstrip,
-    );
-    dream.filmstrip = signedFilmstrip || [];
-  }
-
-  // Transform nested user entities
-  if (dream.user) {
-    dream.user = await transformUserWithSignedUrls(dream.user);
-  }
-
-  if (dream.displayedOwner) {
-    dream.displayedOwner = await transformUserWithSignedUrls(
-      dream.displayedOwner,
-    );
-  }
-
-  // Transform nested keyframes
-  if (dream.startKeyframe) {
-    dream.startKeyframe = await transformKeyframeWithSignedUrls(
-      dream.startKeyframe,
-    );
-  }
-
-  if (dream.endKeyframe) {
-    dream.endKeyframe = await transformKeyframeWithSignedUrls(
-      dream.endKeyframe,
-    );
-  }
-
-  return dream;
+  return transformer.transformEntity(dream, "dream");
 };
 
-/**
- * Transforms a User entity by converting object keys to signed URLs
- * @param user - User entity with object keys
- * @returns User entity with signed URLs
- */
-export const transformUserWithSignedUrls = async (
-  user: User,
-): Promise<User> => {
-  // Transform avatar URL
-  if (user.avatar) {
-    user.avatar = await generateSignedUrlFromObjectKeyCached(user.avatar);
-  }
-
-  return user;
+export const transformDreamsWithSignedUrls = async (
+  dreams: Dream[],
+): Promise<Dream[]> => {
+  return transformer.transformEntities(dreams, "dream");
 };
 
-/**
- * Transforms a Playlist entity by converting object keys to signed URLs
- * @param playlist - Playlist entity with object keys
- * @returns Playlist entity with signed URLs
- */
-export const transformPlaylistWithSignedUrls = async (
-  playlist: Playlist,
-): Promise<Playlist> => {
-  // Transform thumbnail URL
-  if (playlist.thumbnail) {
-    playlist.thumbnail = await generateSignedUrlFromObjectKeyCached(
-      playlist.thumbnail,
-    );
-  }
-
-  // Transform nested user entities
-  if (playlist.user) {
-    playlist.user = await transformUserWithSignedUrls(playlist.user);
-  }
-
-  if (playlist.displayedOwner) {
-    playlist.displayedOwner = await transformUserWithSignedUrls(
-      playlist.displayedOwner,
-    );
-  }
-
-  // Transform nested dream and playlist items
-  if (playlist.items) {
-    playlist.items = await Promise.all(
-      playlist.items.map(async (item) => {
-        if (item.dreamItem) {
-          item.dreamItem = await transformDreamWithSignedUrls(item.dreamItem);
-        }
-
-        if (item.playlistItem) {
-          item.playlistItem = await transformPlaylistWithSignedUrls(
-            item.playlistItem,
-          );
-        }
-
-        return item;
-      }),
-    );
-  }
-
-  return playlist;
-};
-
-/**
- * Transforms a Keyframe entity by converting object keys to signed URLs
- * @param keyframe - Keyframe entity with object keys
- * @returns Keyframe entity with signed URLs
- */
 export const transformKeyframeWithSignedUrls = async (
   keyframe: Keyframe,
 ): Promise<Keyframe> => {
-  // Transform image URL
-  if (keyframe.image) {
-    keyframe.image = await generateSignedUrlFromObjectKeyCached(keyframe.image);
-  }
-
-  // Transform nested user entities
-  if (keyframe.user) {
-    keyframe.user = await transformUserWithSignedUrls(keyframe.user);
-  }
-
-  if (keyframe.displayedOwner) {
-    keyframe.displayedOwner = await transformUserWithSignedUrls(
-      keyframe.displayedOwner,
-    );
-  }
-
-  return keyframe;
+  return transformer.transformEntity(keyframe, "keyframe");
 };
 
-/**
- * Transforms an array of Dream entities by converting object keys to signed URLs
- * @param dreams - Array of Dream entities with object keys
- * @param batchSize - Number of items to process concurrently (default: 50)
- * @returns Array of Dream entities with signed URLs
- */
-export const transformDreamsWithSignedUrls = async (
-  dreams: Dream[],
-  batchSize: number = 50,
-): Promise<Dream[]> => {
-  logMemoryUsage(`transformDreams start - ${dreams.length} items`);
-  const results: Dream[] = [];
-
-  // Process in batches to limit memory usage and concurrent operations
-  for (let i = 0; i < dreams.length; i += batchSize) {
-    const batch = dreams.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((dream) => transformDreamWithSignedUrls(dream)),
-    );
-    results.push(...batchResults);
-
-    // Log progress for large datasets
-    if (dreams.length > 100 && (i + batchSize) % 200 === 0) {
-      logMemoryUsage(`transformDreams batch ${Math.floor(i / batchSize) + 1}`);
-    }
-
-    // Optional: Force garbage collection if available (for debugging)
-    if (global.gc && process.env.NODE_ENV === "development") {
-      global.gc();
-    }
-  }
-
-  logMemoryUsage(`transformDreams complete - ${results.length} items`);
-  return results;
-};
-
-/**
- * Transforms an array of User entities by converting object keys to signed URLs
- * @param users - Array of User entities with object keys
- * @param batchSize - Number of items to process concurrently (default: 50)
- * @returns Array of User entities with signed URLs
- */
-export const transformUsersWithSignedUrls = async (
-  users: User[],
-  batchSize: number = 50,
-): Promise<User[]> => {
-  const results: User[] = [];
-
-  // Process in batches to limit memory usage and concurrent operations
-  for (let i = 0; i < users.length; i += batchSize) {
-    const batch = users.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((user) => transformUserWithSignedUrls(user)),
-    );
-    results.push(...batchResults);
-  }
-
-  return results;
-};
-
-/**
- * Transforms an array of Playlist entities by converting object keys to signed URLs
- * @param playlists - Array of Playlist entities with object keys
- * @param batchSize - Number of items to process concurrently (default: 50)
- * @returns Array of Playlist entities with signed URLs
- */
-export const transformPlaylistsWithSignedUrls = async (
-  playlists: Playlist[],
-  batchSize: number = 50,
-): Promise<Playlist[]> => {
-  const results: Playlist[] = [];
-
-  // Process in batches to limit memory usage and concurrent operations
-  for (let i = 0; i < playlists.length; i += batchSize) {
-    const batch = playlists.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((playlist) => transformPlaylistWithSignedUrls(playlist)),
-    );
-    results.push(...batchResults);
-  }
-
-  return results;
-};
-
-/**
- * Transforms an array of Keyframe entities by converting object keys to signed URLs
- * @param keyframes - Array of Keyframe entities with object keys
- * @param batchSize - Number of items to process concurrently (default: 50)
- * @returns Array of Keyframe entities with signed URLs
- */
 export const transformKeyframesWithSignedUrls = async (
   keyframes: Keyframe[],
-  batchSize: number = 50,
 ): Promise<Keyframe[]> => {
-  const results: Keyframe[] = [];
-
-  // Process in batches to limit memory usage and concurrent operations
-  for (let i = 0; i < keyframes.length; i += batchSize) {
-    const batch = keyframes.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((keyframe) => transformKeyframeWithSignedUrls(keyframe)),
-    );
-    results.push(...batchResults);
-  }
-
-  return results;
+  return transformer.transformEntities(keyframes, "keyframe");
 };
 
-/**
- * Transforms a FeedItem entity by converting object keys to signed URLs
- * @param feedItem - FeedItem entity with object keys
- * @returns FeedItem entity with signed URLs
- */
-export const transformFeedItemWithSignedUrls = async (
-  feedItem: FeedItem,
-): Promise<FeedItem> => {
-  // Transform dream item if it exists
-  if (feedItem.dreamItem) {
-    feedItem.dreamItem = await transformDreamWithSignedUrls(feedItem.dreamItem);
+export const transformUserWithSignedUrls = async (
+  user: User,
+): Promise<User> => {
+  return transformer.transformEntity(user, "user");
+};
+
+export const transformUsersWithSignedUrls = async (
+  users: User[],
+): Promise<User[]> => {
+  return transformer.transformEntities(users, "user");
+};
+
+export const transformPlaylistWithSignedUrls = async (
+  playlist: Playlist,
+): Promise<Playlist> => {
+  const session = new TransformSession();
+
+  session.addEntityKeys(playlist, "playlist");
+  if (playlist.playlistItems) {
+    playlist.playlistItems.forEach((item) => {
+      session.addComplexEntityKeys(item, "playlistItem");
+    });
   }
 
-  // Transform playlist item if it exists
-  if (feedItem.playlistItem) {
-    feedItem.playlistItem = await transformPlaylistWithSignedUrls(
-      feedItem.playlistItem,
+  const signedUrls = await session.executeBatch();
+
+  const transformedPlaylist = session.applyToEntity(
+    playlist,
+    "playlist",
+    signedUrls,
+  );
+
+  if (transformedPlaylist.playlistItems) {
+    transformedPlaylist.playlistItems = transformedPlaylist.playlistItems.map(
+      (item) => session.applyToComplexEntity(item, "playlistItem", signedUrls),
     );
   }
 
-  // Transform user if it exists
-  if (feedItem.user) {
-    feedItem.user = await transformUserWithSignedUrls(feedItem.user);
-  }
-
-  return feedItem;
+  return transformedPlaylist;
 };
 
-/**
- * Transforms an array of FeedItem entities by converting object keys to signed URLs
- * @param feedItems - Array of FeedItem entities with object keys
- * @param batchSize - Number of items to process concurrently (default: 50)
- * @returns Array of FeedItem entities with signed URLs
- */
 export const transformFeedItemsWithSignedUrls = async (
   feedItems: FeedItem[],
-  batchSize: number = 50,
 ): Promise<FeedItem[]> => {
-  logMemoryUsage(`transformFeedItems start - ${feedItems.length} items`);
-  const results: FeedItem[] = [];
-
-  // Process in batches to limit memory usage and concurrent operations
-  for (let i = 0; i < feedItems.length; i += batchSize) {
-    const batch = feedItems.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((feedItem) => transformFeedItemWithSignedUrls(feedItem)),
-    );
-    results.push(...batchResults);
-
-    // Log progress for large datasets
-    if (feedItems.length > 100 && (i + batchSize) % 200 === 0) {
-      logMemoryUsage(
-        `transformFeedItems batch ${Math.floor(i / batchSize) + 1}`,
-      );
-    }
+  if (feedItems.length === 0) {
+    return feedItems;
   }
 
-  logMemoryUsage(`transformFeedItems complete - ${results.length} items`);
-  return results;
+  const session = new TransformSession();
+
+  feedItems.forEach((feedItem) => {
+    session.addComplexEntityKeys(feedItem, "feedItem");
+  });
+
+  const signedUrls = await session.executeBatch();
+
+  return feedItems.map((feedItem) =>
+    session.applyToComplexEntity(feedItem, "feedItem", signedUrls),
+  );
 };
 
-/**
- * Transforms a PlaylistItem entity by converting object keys to signed URLs
- * @param playlistItem - PlaylistItem entity with object keys
- * @returns PlaylistItem entity with signed URLs
- */
-export const transformPlaylistItemWithSignedUrls = async (
-  playlistItem: PlaylistItem,
-): Promise<PlaylistItem> => {
-  // Transform dream item if it exists
-  if (playlistItem.dreamItem) {
-    playlistItem.dreamItem = await transformDreamWithSignedUrls(
-      playlistItem.dreamItem,
-    );
+export const transformPlaylistsWithSignedUrls = async (
+  playlists: Playlist[],
+): Promise<Playlist[]> => {
+  if (playlists.length === 0) {
+    return playlists;
   }
 
-  // Transform playlist item if it exists
-  if (playlistItem.playlistItem) {
-    playlistItem.playlistItem = await transformPlaylistWithSignedUrls(
-      playlistItem.playlistItem,
-    );
-  }
-
-  return playlistItem;
+  return Promise.all(
+    playlists.map((playlist) => transformPlaylistWithSignedUrls(playlist)),
+  );
 };
 
-/**
- * Transforms an array of PlaylistItem entities by converting object keys to signed URLs
- * @param playlistItems - Array of PlaylistItem entities with object keys
- * @param batchSize - Number of items to process concurrently (default: 50)
- * @returns Array of PlaylistItem entities with signed URLs
- */
 export const transformPlaylistItemsWithSignedUrls = async (
   playlistItems: PlaylistItem[],
-  batchSize: number = 50,
 ): Promise<PlaylistItem[]> => {
-  const results: PlaylistItem[] = [];
-
-  // Process in batches to limit memory usage and concurrent operations
-  for (let i = 0; i < playlistItems.length; i += batchSize) {
-    const batch = playlistItems.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((item) => transformPlaylistItemWithSignedUrls(item)),
-    );
-    results.push(...batchResults);
+  if (playlistItems.length === 0) {
+    return playlistItems;
   }
 
-  return results;
+  const session = new TransformSession();
+
+  playlistItems.forEach((item) => {
+    session.addComplexEntityKeys(item, "playlistItem");
+  });
+
+  const signedUrls = await session.executeBatch();
+
+  return playlistItems.map((item) =>
+    session.applyToComplexEntity(item, "playlistItem", signedUrls),
+  );
 };
 
-/**
- * Transforms a PlaylistKeyframe entity by converting object keys to signed URLs
- * @param playlistKeyframe - PlaylistKeyframe entity with object keys
- * @returns PlaylistKeyframe entity with signed URLs
- */
-export const transformPlaylistKeyframeWithSignedUrls = async (
-  playlistKeyframe: PlaylistKeyframe,
-): Promise<PlaylistKeyframe> => {
-  // Transform keyframe if it exists
-  if (playlistKeyframe.keyframe) {
-    playlistKeyframe.keyframe = await transformKeyframeWithSignedUrls(
-      playlistKeyframe.keyframe,
-    );
-  }
-
-  return playlistKeyframe;
-};
-
-/**
- * Transforms an array of PlaylistKeyframe entities by converting object keys to signed URLs
- * @param playlistKeyframes - Array of PlaylistKeyframe entities with object keys
- * @param batchSize - Number of items to process concurrently (default: 50)
- * @returns Array of PlaylistKeyframe entities with signed URLs
- */
 export const transformPlaylistKeyframesWithSignedUrls = async (
+  keyframes: Keyframe[],
+): Promise<Keyframe[]> => {
+  return transformer.transformEntities(keyframes, "keyframe");
+};
+
+export const transformPlaylistKeyframeEntitiesWithSignedUrls = async (
   playlistKeyframes: PlaylistKeyframe[],
-  batchSize: number = 50,
 ): Promise<PlaylistKeyframe[]> => {
-  const results: PlaylistKeyframe[] = [];
-
-  // Process in batches to limit memory usage and concurrent operations
-  for (let i = 0; i < playlistKeyframes.length; i += batchSize) {
-    const batch = playlistKeyframes.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((keyframe) =>
-        transformPlaylistKeyframeWithSignedUrls(keyframe),
-      ),
-    );
-    results.push(...batchResults);
-  }
-
-  return results;
+  return transformer.transformEntities(playlistKeyframes, "playlistKeyframe");
 };

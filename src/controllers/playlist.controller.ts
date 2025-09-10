@@ -70,7 +70,7 @@ import {
   transformPlaylistsWithSignedUrls,
   transformPlaylistWithSignedUrls,
   transformPlaylistItemsWithSignedUrls,
-  transformPlaylistKeyframesWithSignedUrls,
+  transformPlaylistKeyframeEntitiesWithSignedUrls,
 } from "utils/transform.util";
 
 /**
@@ -335,10 +335,8 @@ export const handleGetPlaylistKeyframes = async (
       skip,
     });
 
-    // Transform playlist keyframes to include signed URLs
-    const transformedKeyframes = await transformPlaylistKeyframesWithSignedUrls(
-      result.keyframes,
-    );
+    const transformedKeyframes =
+      await transformPlaylistKeyframeEntitiesWithSignedUrls(result.keyframes);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

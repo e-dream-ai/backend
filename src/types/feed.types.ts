@@ -8,6 +8,7 @@ export type GetFeedRequest = {
   userUUID?: string;
   type?: FeedItemType;
   onlyHidden?: string;
+  excludedPlaylistUUIDs?: string;
 };
 
 export type VirtualPlaylist = {

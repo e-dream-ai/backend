@@ -53,6 +53,7 @@ import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { refreshPlaylistUpdatedAtTimestampFromPlaylistItems } from "utils/playlist.util";
 import { isBrowserRequest } from "utils/request.util";
+import { emitDreamProcessed } from "services/socket.service";
 import {
   jsonResponse,
   handleInternalServerError,
@@ -987,6 +988,11 @@ export const handleSetDreamStatusProcessed = async (
     await refreshPlaylistUpdatedAtTimestampFromPlaylistItems(
       updatedDream.playlistItems?.map((pi) => pi.id),
     );
+
+    /**
+     * Emit socket event to notify user that dream processing is complete
+     */
+    emitDreamProcessed(user.id, dreamUUID, updatedDream);
 
     /**
      * get jobs queue on video service

@@ -247,16 +247,6 @@ export const handleGetGroupedFeed = async (
   const onlyHidden = req.query.onlyHidden === "true";
   const isUserAdmin = isAdmin(user);
 
-  // Parse excluded playlist UUIDs from comma-separated string
-  const excludedPlaylistUUIDs = new Set<string>();
-  if (req.query.excludedPlaylistUUIDs) {
-    const excludedUUIDs = String(req.query.excludedPlaylistUUIDs)
-      .split(",")
-      .map((uuid) => uuid.trim())
-      .filter(Boolean);
-    excludedUUIDs.forEach((uuid) => excludedPlaylistUUIDs.add(uuid));
-  }
-
   try {
     // Base query options
     const baseOptions: FindOptionsWhere<FeedItem> = {
@@ -287,11 +277,8 @@ export const handleGetGroupedFeed = async (
     // Transform feed items to include signed URLs
     const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
 
-    // Group dreams by playlist for virtual playlists, excluding already seen playlists
-    const groups = groupFeedDreamItemsByPlaylist(
-      transformedFeed,
-      excludedPlaylistUUIDs,
-    );
+    const groups = groupFeedDreamItemsByPlaylist(transformedFeed);
+
     const dreamUUIDs = new Set<string>();
 
     const virtualPlaylists = Array.from(groups.entries()).map(([, pl]) => pl);

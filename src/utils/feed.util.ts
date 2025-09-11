@@ -11,6 +11,7 @@ import {
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
+import { VirtualPlaylist } from "types/feed.types";
 
 type FeedItemFindOptions = {
   // Filters NSFW content
@@ -174,18 +175,12 @@ export const getFeedFindOptionsRelations =
 /**
  * Groups feed dreams by playlist, avoiding duplicates for dreams in multiple playlists
  * @param feedItems Array of feed items containing dreams and playlists
- * @param excludedPlaylistUUIDs Set of playlist UUIDs to exclude from virtual playlist creation
  * @returns Map of playlist UUIDs data with associated dreams
  */
 export const groupFeedDreamItemsByPlaylist = (
   feedItems: FeedItem[] = [],
-  excludedPlaylistUUIDs: Set<string> = new Set(),
-): Map<string, import("types/feed.types").VirtualPlaylist> => {
-  // Initialize map to store playlist UUID → playlist data with dreams
-  const playlistsMap = new Map<
-    string,
-    import("types/feed.types").VirtualPlaylist
-  >();
+): Map<string, VirtualPlaylist> => {
+  const playlistsMap = new Map<string, VirtualPlaylist>();
   // Track which dreams have been assigned to virtual playlists to avoid duplicates
   const assignedDreams = new Set<string>();
 
@@ -193,7 +188,7 @@ export const groupFeedDreamItemsByPlaylist = (
   const playlistCandidates = new Map<
     string,
     {
-      playlist: import("types/feed.types").VirtualPlaylist;
+      playlist: VirtualPlaylist;
       dreams: Dream[];
     }
   >();
@@ -242,11 +237,6 @@ export const groupFeedDreamItemsByPlaylist = (
   );
 
   sortedCandidates.forEach(([playlistUUID, candidate]) => {
-    // Skip if this playlist is in the excluded list
-    if (excludedPlaylistUUIDs.has(playlistUUID)) {
-      return;
-    }
-
     // Only include dreams that haven't been assigned to other virtual playlists
     const availableDreams = candidate.dreams.filter(
       (dream) => !assignedDreams.has(dream.uuid),

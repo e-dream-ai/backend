@@ -48,3 +48,39 @@ export type RemoteControlEvent = {
   frameNumber?: number;
   isWebClientEvent?: boolean;
 };
+
+/**
+ * Base type for socket event data
+ */
+export type SocketEventData = Record<string, unknown>;
+
+/**
+ * Dream processed event data structure
+ */
+export type DreamProcessedEventData = {
+  dreamUUID: string;
+  dream?: {
+    id: number;
+    uuid: string;
+    name?: string | null;
+    status: string;
+    video?: string | null;
+    thumbnail?: string | null;
+    activityLevel?: number;
+    featureRank?: number;
+    upvotes: number;
+    downvotes: number;
+    nsfw: boolean;
+    hidden: boolean;
+    ccbyLicense: boolean;
+    description?: string | null;
+    sourceUrl?: string | null;
+    md5?: string | null;
+    processedVideoSize?: number | null;
+    processedVideoFrames?: number | null;
+    processedVideoFPS?: number | null;
+    frontendUrl: string;
+    created_at: Date;
+    updated_at: Date;
+  };
+};

@@ -16,6 +16,7 @@ import Bugsnag from "@bugsnag/js";
 import { ALLOWED_HEADERS, ALLOWED_METHODS } from "constants/socket.constants";
 import { handleCustomOrigin } from "utils/api.util";
 import { redisClient } from "clients/redis.client";
+import { setSocketInstance } from "services/socket.service";
 
 export type ServerResources = {
   app: express.Application;
@@ -97,6 +98,9 @@ function configureApp(app: express.Application, io: Server) {
 
   // Set up Socket.IO namespaces and handlers
   const remoteControlNamespace = io.of("remote-control");
+
+  // Initialize global socket service
+  setSocketInstance(io);
 
   // Set up connection handler to test
   remoteControlNamespace.on("connection", (socket) => {

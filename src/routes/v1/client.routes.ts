@@ -370,6 +370,50 @@ clientRouter.get(
 
 /**
  * @swagger
+ * /client/quota:
+ *  get:
+ *    tags:
+ *      - client
+ *    summary: Gets user quota
+ *    description: Gets user quota
+ *    responses:
+ *      '200':
+ *        description: Gets user quota
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        quota:
+ *                          type: number
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+clientRouter.get(
+  "/quota",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  clientController.handleQuota,
+);
+
+/**
+ * @swagger
  * /client/telemetry:
  *  post:
  *    tags:

@@ -379,6 +379,36 @@ export const handleGetUserDislikes = async (
 };
 
 /**
+ * Handles get user quota
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - quota data
+ * BAD_REQUEST 400 - error getting quota
+ *
+ */
+export const handleQuota = async (req: RequestType, res: ResponseType) => {
+  const user = res.locals.user!;
+  const quota: number = Number(user?.quota ?? 0);
+
+  try {
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          quota,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
  * Handles get dreams with a post request
  *
  * @param {RequestType} req - Request object

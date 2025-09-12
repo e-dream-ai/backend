@@ -21,6 +21,11 @@ interface EntityConfig {
     readonly path: string;
     readonly entityType: keyof typeof ENTITY_CONFIGS;
   }[];
+  readonly arrayEntities?: readonly {
+    readonly path: string;
+    readonly nestedPath?: string;
+    readonly entityType: keyof typeof ENTITY_CONFIGS;
+  }[];
 }
 
 const ENTITY_CONFIGS = {
@@ -34,6 +39,13 @@ const ENTITY_CONFIGS = {
     nestedEntities: [
       { path: "user", entityType: "user" as const },
       { path: "displayedOwner", entityType: "user" as const },
+    ],
+    arrayEntities: [
+      {
+        path: "playlistItems",
+        nestedPath: "playlist",
+        entityType: "playlist" as const,
+      },
     ],
   },
   keyframe: {
@@ -105,6 +117,31 @@ class UnifiedTransformer {
       }
     }
 
+    if (config.arrayEntities) {
+      for (const arrayConfig of config.arrayEntities) {
+        const arrayValue = entityObj[arrayConfig.path];
+        if (Array.isArray(arrayValue)) {
+          for (const item of arrayValue) {
+            if (item && typeof item === "object") {
+              const targetEntity = arrayConfig.nestedPath
+                ? (item as Record<string, unknown>)[arrayConfig.nestedPath]
+                : item;
+              if (targetEntity) {
+                const nestedConfig = ENTITY_CONFIGS[arrayConfig.entityType];
+                keys.push(
+                  ...this.collectKeysFromEntity(
+                    targetEntity,
+                    nestedConfig,
+                    visited,
+                  ),
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+
     return keys;
   }
 
@@ -155,6 +192,38 @@ class UnifiedTransformer {
             signedUrls,
             visited,
           );
+        }
+      }
+    }
+
+    if (config.arrayEntities) {
+      for (const arrayConfig of config.arrayEntities) {
+        const arrayValue = transformed[arrayConfig.path];
+        if (Array.isArray(arrayValue)) {
+          transformed[arrayConfig.path] = arrayValue.map((item) => {
+            if (item && typeof item === "object") {
+              const itemCopy = { ...item } as Record<string, unknown>;
+              const targetEntity = arrayConfig.nestedPath
+                ? itemCopy[arrayConfig.nestedPath]
+                : itemCopy;
+              if (targetEntity) {
+                const nestedConfig = ENTITY_CONFIGS[arrayConfig.entityType];
+                const transformedEntity = this.applySignedUrlsToEntity(
+                  targetEntity,
+                  nestedConfig,
+                  signedUrls,
+                  visited,
+                );
+                if (arrayConfig.nestedPath) {
+                  itemCopy[arrayConfig.nestedPath] = transformedEntity;
+                  return itemCopy;
+                } else {
+                  return transformedEntity;
+                }
+              }
+            }
+            return item;
+          });
         }
       }
     }

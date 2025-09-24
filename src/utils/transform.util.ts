@@ -54,6 +54,11 @@ const ENTITY_CONFIGS = {
       { path: "user", entityType: "user" as const },
       { path: "displayedOwner", entityType: "user" as const },
     ],
+    arrayEntities: [
+      { path: "dreamsStartingWith", entityType: "dream" as const },
+      { path: "dreamsEndingWith", entityType: "dream" as const },
+      { path: "dreams", entityType: "dream" as const },
+    ],
   },
   user: {
     fields: [{ field: "avatar" }],

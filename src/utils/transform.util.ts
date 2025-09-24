@@ -154,14 +154,21 @@ class UnifiedTransformer {
     entity: unknown,
     config: EntityConfig,
     signedUrls: Record<string, string>,
-    visited = new Set<unknown>(),
+    cache: WeakMap<object, unknown> = new WeakMap<object, unknown>(),
   ): unknown {
-    if (!entity || visited.has(entity)) return entity;
-    visited.add(entity);
+    if (!entity || typeof entity !== "object") return entity;
 
-    if (typeof entity !== "object" || entity === null) return entity;
+    const entityObj = entity as object;
+    const cached = cache.get(entityObj);
+    if (cached) {
+      return cached;
+    }
 
-    const transformed = { ...entity } as Record<string, unknown>;
+    const transformed = { ...(entity as Record<string, unknown>) } as Record<
+      string,
+      unknown
+    >;
+    cache.set(entityObj, transformed);
 
     for (const mapping of config.fields) {
       const value = transformed[mapping.field];
@@ -195,7 +202,7 @@ class UnifiedTransformer {
             nestedEntity,
             nestedConfig,
             signedUrls,
-            visited,
+            cache,
           );
         }
       }
@@ -217,7 +224,7 @@ class UnifiedTransformer {
                   targetEntity,
                   nestedConfig,
                   signedUrls,
-                  visited,
+                  cache,
                 );
                 if (arrayConfig.nestedPath) {
                   itemCopy[arrayConfig.nestedPath] = transformedEntity;
@@ -249,7 +256,13 @@ class UnifiedTransformer {
 
     try {
       const signedUrls = await presignClient.generatePresignedUrls(keysToSign);
-      return this.applySignedUrlsToEntity(entity, config, signedUrls) as T;
+      const cache = new WeakMap<object, unknown>();
+      return this.applySignedUrlsToEntity(
+        entity,
+        config,
+        signedUrls,
+        cache,
+      ) as T;
     } catch (error) {
       console.error(
         `Failed to transform ${entityType} with signed URLs:`,
@@ -285,9 +298,10 @@ class UnifiedTransformer {
         Array.from(keysToSign),
       );
 
-      return entities.map((entity) =>
-        this.applySignedUrlsToEntity(entity, config, signedUrls),
-      ) as T[];
+      return entities.map((entity) => {
+        const cache = new WeakMap<object, unknown>();
+        return this.applySignedUrlsToEntity(entity, config, signedUrls, cache);
+      }) as T[];
     } catch (error) {
       console.error(
         `Failed to transform ${entityType}s with signed URLs:`,

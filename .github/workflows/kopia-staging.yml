@@ -31,6 +31,7 @@ jobs:
           curl -fsSL https://kopia.io/signing-key | sudo gpg --dearmor -o /usr/share/keyrings/kopia-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/kopia-keyring.gpg] https://packages.kopia.io/apt/ stable main" | sudo tee /etc/apt/sources.list.d/kopia.list
           sudo apt-get update && sudo apt-get install -y kopia
+          kopia --version
 
       - name: Configure rclone (source R2 STAGING)
         run: |
@@ -72,8 +73,11 @@ jobs:
         env:
           KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_STAGING }}
         run: |
+          export KOPIA_USERNAME=github-actions-staging
+          export KOPIA_HOSTNAME=github-actions
+
           kopia snapshot create /mnt/r2src-staging --parallel=16
-          kopia maintenance set --owner=github-actions-staging || true
+          kopia maintenance set --owner=${KOPIA_USERNAME} || true
           kopia maintenance run
 
       - name: Unmount (STAGING)

@@ -2,7 +2,7 @@ name: kopia-r2-incremental-staging
 
 on:
   schedule:
-    - cron: "0 2 * * *" # daily 02:00 UTC
+    - cron: "0 6 * * *" # daily 02:00 UTC
   workflow_dispatch: {}
 
 jobs:
@@ -74,12 +74,10 @@ jobs:
           KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_STAGING }}
         run: |
           export KOPIA_USERNAME=github-actions-staging
-          export KOPIA_HOSTNAME=github-actions
+          unset KOPIA_HOSTNAME
 
-          # Create incremental snapshot
           kopia snapshot create /mnt/r2src-staging --parallel=16
 
-          # Run maintenance (owner already set on EC2)
           kopia maintenance run
 
       - name: Unmount (STAGING)

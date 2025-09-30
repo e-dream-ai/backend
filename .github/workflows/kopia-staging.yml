@@ -69,17 +69,6 @@ jobs:
             --endpoint=${R2_ACCOUNT_ID_STAGING}.r2.cloudflarestorage.com \
             --region=auto
 
-      - name: Create incremental snapshot and maintenance (STAGING)
-        env:
-          KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_STAGING }}
-        run: |
-          export KOPIA_USERNAME=github-actions-staging
-          export KOPIA_HOSTNAME=github-actions
-
-          kopia snapshot create /mnt/r2src-staging --parallel=16
-          kopia maintenance set --owner=${KOPIA_USERNAME} || true
-          kopia maintenance run
-
       - name: Unmount (STAGING)
         if: always()
         run: sudo fusermount3 -u /mnt/r2src-staging || true

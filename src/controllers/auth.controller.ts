@@ -83,6 +83,7 @@ import {
   transformPlaylistWithSignedUrls,
 } from "utils/transform.util";
 import { roleRepository, userRepository } from "database/repositories";
+import { setUserCurrentPlaylist } from "utils/socket.util";
 
 export const handleLoginWithCode = async (
   req: RequestType<UserLoginWithCodeCredentials>,
@@ -228,6 +229,10 @@ export const handleSignUp = async (
     user.signupInvite = invite;
     user.role = invite?.signupRole || role!;
     await userRepository.save(user);
+
+    if ((invite?.code ?? "").toUpperCase() === "SHEEP") {
+      await setUserCurrentPlaylist(user, env.SHEEP_PLAYLIST_UUID);
+    }
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -1168,6 +1173,10 @@ export const handleSignUpV2 = async (
     const user = await syncWorkOSUser(workOSUser, { invite: invite });
 
     tracker.sendEventWithRequestContext(res, user.uuid, "USER_NEW_SIGNUP", {});
+
+    if ((invite?.code ?? "").toUpperCase() === "SHEEP") {
+      await setUserCurrentPlaylist(user, env.SHEEP_PLAYLIST_UUID);
+    }
 
     let pendingAuthenticationToken: string | undefined;
 

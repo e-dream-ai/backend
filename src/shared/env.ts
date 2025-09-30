@@ -166,6 +166,11 @@ export const env = cleanEnv(process.env, {
   DESIGNED_PLAYLIST_UUID: str(),
 
   /**
+   * SHEEP Invitation Playlist UUID
+   */
+  SHEEP_PLAYLIST_UUID: str(),
+
+  /**
    * Routes to log
    */
   LOG_ROUTES: str(),

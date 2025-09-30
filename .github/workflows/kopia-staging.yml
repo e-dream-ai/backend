@@ -69,6 +69,15 @@ jobs:
             --endpoint=${R2_ACCOUNT_ID_STAGING}.r2.cloudflarestorage.com \
             --region=auto
 
+      - name: Debug maintenance owner
+        env:
+          KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_STAGING }}
+        run: |
+          export KOPIA_USERNAME=github-actions-staging
+          unset KOPIA_HOSTNAME
+          echo "Intended CI identity: ${KOPIA_USERNAME}${KOPIA_HOSTNAME:+@${KOPIA_HOSTNAME}}"
+          kopia maintenance info || true
+
       - name: Create incremental snapshot and maintenance (STAGING)
         env:
           KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_STAGING }}

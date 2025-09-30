@@ -50,11 +50,11 @@ jobs:
           nohup rclone mount src-staging:${SRC_BUCKET_STAGING} /mnt/r2src-staging \
             --read-only \
             --vfs-cache-mode=full \
-            --vfs-cache-max-size=20G \
+            --vfs-cache-max-size=30G \
             --dir-cache-time=6h \
             --poll-interval=0 \
-            --transfers=16 --checkers=32 \
-            --buffer-size=8M \
+            --transfers=64 --checkers=128 \
+            --buffer-size=32M \
             --umask=022 > rclone-mount-staging.log 2>&1 &
           for i in {1..30}; do mountpoint -q /mnt/r2src-staging && break || sleep 2; done
           mountpoint -q /mnt/r2src-staging
@@ -69,8 +69,11 @@ jobs:
             --region=auto
 
       - name: Create incremental snapshot and maintenance (STAGING)
+        env:
+          KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_STAGING }}
         run: |
-          kopia snapshot create /mnt/r2src-staging --parallel=8
+          kopia snapshot create /mnt/r2src-staging --parallel=16
+          kopia repository set-parameters --maintenance-owner || true
           kopia maintenance run
 
       - name: Unmount (STAGING)

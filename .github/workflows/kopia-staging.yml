@@ -65,7 +65,7 @@ jobs:
         run: |
           kopia repository connect s3 \
             --bucket=${REPO_BUCKET_STAGING} \
-            --endpoint=https://${R2_ACCOUNT_ID_STAGING}.r2.cloudflarestorage.com \
+            --endpoint=${R2_ACCOUNT_ID_STAGING}.r2.cloudflarestorage.com \
             --region=auto
 
       - name: Create incremental snapshot and maintenance (STAGING)

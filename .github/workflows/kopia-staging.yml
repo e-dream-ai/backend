@@ -73,7 +73,7 @@ jobs:
           KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_STAGING }}
         run: |
           kopia snapshot create /mnt/r2src-staging --parallel=16
-          kopia repository set-parameters --maintenance-owner || true
+          kopia maintenance set --owner || true
           kopia maintenance run
 
       - name: Unmount (STAGING)

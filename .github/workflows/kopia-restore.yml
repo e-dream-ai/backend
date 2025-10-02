@@ -99,45 +99,45 @@ jobs:
           echo "snap=$SNAP" >> "$GITHUB_OUTPUT"
           echo "Using snapshot: $SNAP"
 
-          - name: Restore selected prefix to temp (subpath only)
-          run: |
-            set -e
-            mkdir -p /tmp/restore
-            SRC_INSIDE="${{ steps.sel.outputs.SNAP_ROOT }}"/"${{ github.event.inputs.restore_prefix }}"
-            echo "Restoring from snapshot path: ${SRC_INSIDE}"
+      - name: Restore selected prefix to temp (subpath only)
+        run: |
+          set -e
+          mkdir -p /tmp/restore
+          SRC_INSIDE="${{ steps.sel.outputs.SNAP_ROOT }}"/"${{ github.event.inputs.restore_prefix }}"
+          echo "Restoring from snapshot path: ${SRC_INSIDE}"
 
-            # Heuristic: if restore_prefix ends with '/', treat as directory; else try as file first.
-            RP="${{ github.event.inputs.restore_prefix }}"
-            if [ "${RP%/}" != "$RP" ]; then
+          # Heuristic: if restore_prefix ends with '/', treat as directory; else try as file first.
+          RP="${{ github.event.inputs.restore_prefix }}"
+          if [ "${RP%/}" != "$RP" ]; then
+            MODE="dir"
+          else
+            MODE="file"
+          fi
+
+          if [ "$MODE" = "file" ]; then
+            # Destination must be a file path for single-file restore
+            BASENAME=$(basename "$RP")
+            DEST_FILE="/tmp/restore/${BASENAME}"
+            echo "Detected file restore -> $DEST_FILE"
+            kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
+              "${SRC_INSIDE}" \
+              "${DEST_FILE}" || {
+              echo "File restore failed, trying as directory..."
               MODE="dir"
-            else
-              MODE="file"
-            fi
+            }
+          fi
 
-            if [ "$MODE" = "file" ]; then
-              # Destination must be a file path for single-file restore
-              BASENAME=$(basename "$RP")
-              DEST_FILE="/tmp/restore/${BASENAME}"
-              echo "Detected file restore -> $DEST_FILE"
-              kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
-                "${SRC_INSIDE}" \
-                "${DEST_FILE}" || {
-                echo "File restore failed, trying as directory..."
-                MODE="dir"
-              }
-            fi
+          if [ "$MODE" = "dir" ]; then
+            # Destination is a directory for folder restore
+            DEST_DIR="/tmp/restore/${RP%/}"
+            echo "Restoring directory to: ${DEST_DIR}/"
+            mkdir -p "${DEST_DIR}"
+            kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
+              "${SRC_INSIDE%/}" \
+              "${DEST_DIR}"
+          fi
 
-            if [ "$MODE" = "dir" ]; then
-              # Destination is a directory for folder restore
-              DEST_DIR="/tmp/restore/${RP%/}"
-              echo "Restoring directory to: ${DEST_DIR}/"
-              mkdir -p "${DEST_DIR}"
-              kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
-                "${SRC_INSIDE%/}" \
-                "${DEST_DIR}"
-            fi
-
-            echo "Restore completed to /tmp/restore"
+          echo "Restore completed to /tmp/restore"
 
       - name: Copy restored files to destination (preview or inplace)
         run: |

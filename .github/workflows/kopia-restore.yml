@@ -38,6 +38,7 @@ jobs:
               echo "KOPIA_PASSWORD=${{ secrets.KOPIA_PASSWORD_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "AWS_ACCESS_KEY_ID=${{ secrets.R2_REPO_ACCESS_KEY_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "AWS_SECRET_ACCESS_KEY=${{ secrets.R2_REPO_SECRET_KEY_ALPHA }}" >> "$GITHUB_OUTPUT"
+              # You said these creds have full access; keeping names as-is
               echo "DST_KEY=${{ secrets.R2_SRC_READ_KEY_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "DST_SECRET=${{ secrets.R2_SRC_READ_SECRET_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "SNAP_ROOT=/mnt/r2alpha" >> "$GITHUB_OUTPUT"
@@ -92,49 +93,55 @@ jobs:
       - name: Determine snapshot ID
         id: snap
         run: |
-          SNAP="${{ github.event.inputs.snapshot_id }}"
-          if [ -z "$SNAP" ]; then
-            SNAP=$(kopia snapshot list --json | jq -r '.[0].id')
+          set -euo pipefail
+          SNAP_IN="${{ github.event.inputs.snapshot_id }}"
+          if [ -n "$SNAP_IN" ]; then
+            SNAP="$SNAP_IN"
+            echo "Using provided snapshot: $SNAP"
+          else
+            echo "Fetching latest snapshot ID..."
+            SNAP="$(kopia snapshot list --json | jq -r '.[0].id')"
+            if [ -z "$SNAP" ] || [ "$SNAP" = "null" ]; then
+              echo "ERROR: No snapshots found"; exit 1
+            fi
+            echo "Using snapshot: $SNAP"
           fi
           echo "snap=$SNAP" >> "$GITHUB_OUTPUT"
-          echo "Using snapshot: $SNAP"
 
       - name: Restore selected prefix to temp (subpath only)
         run: |
           set -e
           mkdir -p /tmp/restore
-          SRC_INSIDE="${{ steps.sel.outputs.SNAP_ROOT }}"/"${{ github.event.inputs.restore_prefix }}"
-          echo "Restoring from snapshot path: ${SRC_INSIDE}"
 
-          # Heuristic: if restore_prefix ends with '/', treat as directory; else try as file first.
           RP="${{ github.event.inputs.restore_prefix }}"
+          SRC_INSIDE="${{ steps.sel.outputs.SNAP_ROOT }}"/"$RP"
+          echo "Restoring from snapshot path: $SRC_INSIDE"
+
           if [ "${RP%/}" != "$RP" ]; then
-            MODE="dir"
-          else
-            MODE="file"
-          fi
-
-          if [ "$MODE" = "file" ]; then
-            # Destination must be a file path for single-file restore
-            BASENAME=$(basename "$RP")
-            DEST_FILE="/tmp/restore/${BASENAME}"
-            echo "Detected file restore -> $DEST_FILE"
-            kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
-              "${SRC_INSIDE}" \
-              "${DEST_FILE}" || {
-              echo "File restore failed, trying as directory..."
-              MODE="dir"
-            }
-          fi
-
-          if [ "$MODE" = "dir" ]; then
-            # Destination is a directory for folder restore
+            # Directory restore (target must be a directory)
             DEST_DIR="/tmp/restore/${RP%/}"
-            echo "Restoring directory to: ${DEST_DIR}/"
-            mkdir -p "${DEST_DIR}"
+            echo "Directory restore -> $DEST_DIR/"
+            mkdir -p "$DEST_DIR"
             kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
               "${SRC_INSIDE%/}" \
-              "${DEST_DIR}"
+              "$DEST_DIR"
+          else
+            # File restore (target must be a file)
+            BASENAME="$(basename "$RP")"
+            DEST_FILE="/tmp/restore/${BASENAME}"
+            echo "File restore -> $DEST_FILE"
+            kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
+              "$SRC_INSIDE" \
+              "$DEST_FILE" || {
+              # Fallback: restore parent dir, then copy just the file
+              echo "File restore failed, restoring parent directory as fallback..."
+              PARENT="$(dirname "$RP")"
+              DEST_DIR="/tmp/restore/${PARENT%/}"
+              mkdir -p "$DEST_DIR"
+              kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
+                "${{ steps.sel.outputs.SNAP_ROOT }}"/"${PARENT%/}" \
+                "$DEST_DIR"
+            }
           fi
 
           echo "Restore completed to /tmp/restore"
@@ -143,11 +150,33 @@ jobs:
         run: |
           set -e
           MODE="${{ github.event.inputs.restore_mode }}"
+          RP="${{ github.event.inputs.restore_prefix }}"
           if [ "$MODE" = "preview" ]; then
             TS=$(date -u +%Y-%m-%dT%H%M%SZ)
-            DEST="dst:${{ steps.sel.outputs.DST_BUCKET }}/restores/${TS}/${{ github.event.inputs.restore_prefix }}/"
+            DEST_BASE="dst:${{ steps.sel.outputs.DST_BUCKET }}/restores/${TS}"
           else
-            DEST="dst:${{ steps.sel.outputs.DST_BUCKET }}/${{ github.event.inputs.restore_prefix }}/"
+            DEST_BASE="dst:${{ steps.sel.outputs.DST_BUCKET }}"
           fi
-          echo "Copying to: $DEST"
-          rclone copy /tmp/restore/ "$DEST" --checkers=64 --transfers=32 --progress
+
+          if [ "${RP%/}" != "$RP" ]; then
+            # Folder copy
+            SRC_DIR="/tmp/restore/${RP%/}/"
+            DEST_DIR="${DEST_BASE}/${RP%/}/"
+            echo "Copy folder: $SRC_DIR -> $DEST_DIR"
+            rclone copy "$SRC_DIR" "$DEST_DIR" --checkers=64 --transfers=32 --progress
+          else
+            # File copy (copy only the single file we restored or the one from fallback)
+            BASENAME="$(basename "$RP")"
+            # Prefer direct file path if present, else look in restored parent
+            if [ -f "/tmp/restore/${BASENAME}" ]; then
+              SRC_DIR="/tmp/restore"
+            else
+              PARENT="$(dirname "$RP")"
+              SRC_DIR="/tmp/restore/${PARENT%/}"
+            fi
+            DEST_DIR="${DEST_BASE}/$(dirname "$RP")/"
+            echo "Copy file: $SRC_DIR/$BASENAME -> $DEST_DIR"
+            rclone copy "$SRC_DIR/" "$DEST_DIR" \
+              --include "$BASENAME" \
+              --checkers=64 --transfers=32 --progress
+          fi

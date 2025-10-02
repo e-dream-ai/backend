@@ -56,7 +56,7 @@ jobs:
         run: |
           kopia repository connect s3 \
             --bucket=${{ steps.sel.outputs.REPO_BUCKET }} \
-            --endpoint=https://${{ steps.sel.outputs.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com \
+            --endpoint=${{ steps.sel.outputs.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com \
             --region=auto
 
       - name: List latest snapshots (ID, source, time)

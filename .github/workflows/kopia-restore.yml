@@ -167,7 +167,6 @@ jobs:
           else
             # File copy (copy only the single file we restored or the one from fallback)
             BASENAME="$(basename "$RP")"
-            # Prefer direct file path if present, else look in restored parent
             if [ -f "/tmp/restore/${BASENAME}" ]; then
               SRC_DIR="/tmp/restore"
             else

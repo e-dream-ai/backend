@@ -16,7 +16,7 @@ jobs:
       R2_ACCOUNT_ID_ALPHA: ${{ secrets.R2_ACCOUNT_ID }}
       REPO_BUCKET_ALPHA: edream-storage-dreams-alpha-backup
 
-      # Source R2 (read-only) – STAGING
+      # Source R2 (read-only) – ALPHA
       RCLONE_SRC_ACCESS_KEY_ID_ALPHA: ${{ secrets.R2_SRC_READ_KEY_ALPHA }}
       RCLONE_SRC_SECRET_ACCESS_KEY_ALPHA: ${{ secrets.R2_SRC_READ_SECRET_ALPHA }}
       SRC_BUCKET_ALPHA: edream-storage-dreams-alpha
@@ -33,22 +33,22 @@ jobs:
           sudo apt-get update && sudo apt-get install -y kopia
           kopia --version
 
-      - name: Configure rclone (source R2 STAGING)
+      - name: Configure rclone (source R2 ALPHA)
         run: |
           mkdir -p ~/.config/rclone
           cat > ~/.config/rclone/rclone.conf <<EOF
-          [src-staging]
+          [src-alpha]
           type = s3
           provider = Cloudflare
-          access_key_id = ${RCLONE_SRC_ACCESS_KEY_ID_STAGING}
-          secret_access_key = ${RCLONE_SRC_SECRET_ACCESS_KEY_STAGING}
-          endpoint = https://${R2_ACCOUNT_ID_STAGING}.r2.cloudflarestorage.com
+          access_key_id = ${RCLONE_SRC_ACCESS_KEY_ID_ALPHA}
+          secret_access_key = ${RCLONE_SRC_SECRET_ACCESS_KEY_ALPHA}
+          endpoint = https://${R2_ACCOUNT_ID_ALPHA}.r2.cloudflarestorage.com
           EOF
 
-      - name: Mount source bucket (read-only, STAGING)
+      - name: Mount source bucket (read-only, ALPHA)
         run: |
-          sudo mkdir -p /mnt/r2src-staging && sudo chown $USER:$USER /mnt/r2src-staging
-          nohup rclone mount src-staging:${SRC_BUCKET_STAGING} /mnt/r2src-staging \
+          sudo mkdir -p /mnt/r2src-alpha && sudo chown $USER:$USER /mnt/r2src-alpha
+          nohup rclone mount src-alpha:${SRC_BUCKET_ALPHA} /mnt/r2src-alpha \
             --read-only \
             --vfs-cache-mode=full \
             --vfs-cache-max-size=30G \
@@ -56,30 +56,30 @@ jobs:
             --poll-interval=0 \
             --transfers=64 --checkers=128 \
             --buffer-size=32M \
-            --umask=022 > rclone-mount-staging.log 2>&1 &
-          for i in {1..30}; do mountpoint -q /mnt/r2src-staging && break || sleep 2; done
-          mountpoint -q /mnt/r2src-staging
+            --umask=022 > rclone-mount-alpha.log 2>&1 &
+          for i in {1..30}; do mountpoint -q /mnt/r2src-alpha && break || sleep 2; done
+          mountpoint -q /mnt/r2src-alpha
 
-      - name: Connect Kopia repository (STAGING)
+      - name: Connect Kopia repository (ALPHA)
         env:
           KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_ALPHA }}
         run: |
           kopia repository connect s3 \
-            --bucket=${REPO_BUCKET_STAGING} \
-            --endpoint=${R2_ACCOUNT_ID_STAGING}.r2.cloudflarestorage.com \
+            --bucket=${REPO_BUCKET_ALPHA} \
+            --endpoint=${R2_ACCOUNT_ID_ALPHA}.r2.cloudflarestorage.com \
             --region=auto
 
-      - name: Create incremental snapshot and maintenance (STAGING)
+      - name: Create incremental snapshot and maintenance (ALPHA)
         env:
           KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_ALPHA }}
         run: |
-          export KOPIA_USERNAME=github-actions-staging
+          export KOPIA_USERNAME=github-actions-alpha
           unset KOPIA_HOSTNAME
 
-          kopia snapshot create /mnt/r2src-staging --parallel=16
+          kopia snapshot create /mnt/r2src-alpha --parallel=16
 
           kopia maintenance run --force
 
-      - name: Unmount (STAGING)
+      - name: Unmount (ALPHA)
         if: always()
-        run: sudo fusermount3 -u /mnt/r2src-staging || true
+        run: sudo fusermount3 -u /mnt/r2src-alpha || true

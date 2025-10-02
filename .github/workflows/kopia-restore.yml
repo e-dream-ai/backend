@@ -15,10 +15,16 @@ on:
         description: "Specific snapshot ID (leave empty for latest)"
         required: false
         default: ""
+      restore_mode:
+        description: "Where to put the restored files"
+        type: choice
+        required: true
+        options: [preview, inplace]
+        default: preview
 
 jobs:
   restore:
-    runs-on: ubuntu-latest
+    runs-on: container-builder
 
     steps:
       - name: Select environment
@@ -99,14 +105,20 @@ jobs:
           mkdir -p /tmp/restore
           INSIDE_PATH="${{ steps.sel.outputs.SNAP_ROOT }}"/"${{ github.event.inputs.restore_prefix }}"
           echo "Restoring from: ${INSIDE_PATH}"
+          # Positional path restore: <snap-id> "<inside-snapshot-path>" "<dest-dir>"
           kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
             "${INSIDE_PATH}" \
             /tmp/restore
 
-      - name: Copy restored files to fixed R2 location (restores/<TS>/...)
+      - name: Copy restored files to destination (preview or inplace)
         run: |
-          TS=$(date -u +%Y-%m-%dT%H%M%SZ)
-          DEST="dst:${{ steps.sel.outputs.DST_BUCKET }}/restores/${TS}/${{ github.event.inputs.restore_prefix }}/"
+          set -e
+          MODE="${{ github.event.inputs.restore_mode }}"
+          if [ "$MODE" = "preview" ]; then
+            TS=$(date -u +%Y-%m-%dT%H%M%SZ)
+            DEST="dst:${{ steps.sel.outputs.DST_BUCKET }}/restores/${TS}/${{ github.event.inputs.restore_prefix }}/"
+          else
+            DEST="dst:${{ steps.sel.outputs.DST_BUCKET }}/${{ github.event.inputs.restore_prefix }}/"
+          fi
           echo "Copying to: $DEST"
-          rclone copy /tmp/restore/ "$DEST" \
-            --checkers=64 --transfers=32 --progress
+          rclone copy /tmp/restore/ "$DEST" --checkers=64 --transfers=32 --progress

@@ -38,7 +38,6 @@ jobs:
               echo "KOPIA_PASSWORD=${{ secrets.KOPIA_PASSWORD_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "AWS_ACCESS_KEY_ID=${{ secrets.R2_REPO_ACCESS_KEY_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "AWS_SECRET_ACCESS_KEY=${{ secrets.R2_REPO_SECRET_KEY_ALPHA }}" >> "$GITHUB_OUTPUT"
-              # For writing back, use a write-capable key for the destination bucket
               echo "DST_KEY=${{ secrets.R2_DST_WRITE_KEY_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "DST_SECRET=${{ secrets.R2_DST_WRITE_SECRET_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "SNAP_ROOT=/mnt/r2alpha" >> "$GITHUB_OUTPUT"
@@ -59,12 +58,15 @@ jobs:
       - name: Install rclone
         run: curl -fsSL https://rclone.org/install.sh | sudo bash
 
-      - name: Install Kopia
+      - name: Install latest Kopia (static)
         run: |
-          sudo apt-get update && sudo apt-get install -y fuse3 jq
-          curl -fsSL https://kopia.io/signing-key | sudo gpg --dearmor -o /usr/share/keyrings/kopia-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/kopia-keyring.gpg] https://packages.kopia.io/apt/ stable main" | sudo tee /etc/apt/sources.list.d/kopia.list
-          sudo apt-get update && sudo apt-get install -y kopia
+          set -e
+          sudo apt-get update && sudo apt-get install -y jq curl
+          ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+          VER=$(curl -fsSL https://api.github.com/repos/kopia/kopia/releases/latest | jq -r .tag_name | sed 's/^v//')
+          curl -fsSL -o kopia.tar.gz "https://github.com/kopia/kopia/releases/download/v${VER}/kopia-linux-${ARCH}-v${VER}.tar.gz"
+          tar -xzf kopia.tar.gz
+          sudo mv "kopia-linux-${ARCH}-v${VER}/kopia" /usr/local/bin/kopia
           kopia --version
 
       - name: Configure rclone (destination)
@@ -100,23 +102,25 @@ jobs:
           echo "snap=$SNAP" >> "$GITHUB_OUTPUT"
           echo "Using snapshot: $SNAP"
 
-      - name: Restore selected prefix to temp
+      - name: Restore selected prefix to temp (subpath only)
         run: |
+          set -e
           mkdir -p /tmp/restore
           INSIDE_PATH="${{ steps.sel.outputs.SNAP_ROOT }}"/"${{ github.event.inputs.restore_prefix }}"
           echo "Restoring from: ${INSIDE_PATH}"
+          # Positional path restore: <snap-id> "<inside-snapshot-path>" "<dest-dir>"
           kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
-            --path "${INSIDE_PATH}" \
+            "${INSIDE_PATH}" \
             /tmp/restore
 
       - name: Copy restored files to destination (preview or inplace)
         run: |
+          set -e
           MODE="${{ github.event.inputs.restore_mode }}"
           if [ "$MODE" = "preview" ]; then
             TS=$(date -u +%Y-%m-%dT%H%M%SZ)
             DEST="dst:${{ steps.sel.outputs.DST_BUCKET }}/restores/${TS}/${{ github.event.inputs.restore_prefix }}/"
           else
-            # In-place: back to the original prefix
             DEST="dst:${{ steps.sel.outputs.DST_BUCKET }}/${{ github.event.inputs.restore_prefix }}/"
           fi
           echo "Copying to: $DEST"

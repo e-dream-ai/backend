@@ -38,7 +38,7 @@ jobs:
               echo "KOPIA_PASSWORD=${{ secrets.KOPIA_PASSWORD_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "AWS_ACCESS_KEY_ID=${{ secrets.R2_REPO_ACCESS_KEY_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "AWS_SECRET_ACCESS_KEY=${{ secrets.R2_REPO_SECRET_KEY_ALPHA }}" >> "$GITHUB_OUTPUT"
-              # You said these creds have full access; keeping names as-is
+              # you said these have full access; keeping names
               echo "DST_KEY=${{ secrets.R2_SRC_READ_KEY_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "DST_SECRET=${{ secrets.R2_SRC_READ_SECRET_ALPHA }}" >> "$GITHUB_OUTPUT"
               echo "SNAP_ROOT=/mnt/r2alpha" >> "$GITHUB_OUTPUT"
@@ -108,49 +108,48 @@ jobs:
           fi
           echo "snap=$SNAP" >> "$GITHUB_OUTPUT"
 
-      - name: Restore selected prefix to temp (subpath only)
+      - name: Restore selected prefix to temp (robust for S3/R2)
         run: |
           set -e
-          mkdir -p /tmp/restore
+          mkdir -p /tmp/restore-root
 
           RP="${{ github.event.inputs.restore_prefix }}"
-          SRC_INSIDE="${{ steps.sel.outputs.SNAP_ROOT }}"/"$RP"
-          echo "Restoring from snapshot path: $SRC_INSIDE"
+          SNAP_ROOT="${{ steps.sel.outputs.SNAP_ROOT }}"
+          SNAP_ID="${{ steps.snap.outputs.snap }}"
+
+          echo "Requested restore_prefix: $RP"
 
           if [ "${RP%/}" != "$RP" ]; then
-            # Directory restore (target must be a directory)
-            DEST_DIR="/tmp/restore/${RP%/}"
-            echo "Directory restore -> $DEST_DIR/"
+            # FOLDER -> restore that folder
+            SRC_INSIDE="${SNAP_ROOT}/${RP%/}"
+            DEST_DIR="/tmp/restore-root/${RP%/}"
+            echo "Folder restore: $SRC_INSIDE -> $DEST_DIR"
             mkdir -p "$DEST_DIR"
-            kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
-              "${SRC_INSIDE%/}" \
-              "$DEST_DIR"
+            kopia snapshot restore "$SNAP_ID" "$SRC_INSIDE" "$DEST_DIR"
+            echo "RESTORE_KIND=dir" >> "$GITHUB_ENV"
+            echo "RESTORED_DIR=$DEST_DIR" >> "$GITHUB_ENV"
           else
-            # File restore (target must be a file)
-            BASENAME="$(basename "$RP")"
-            DEST_FILE="/tmp/restore/${BASENAME}"
-            echo "File restore -> $DEST_FILE"
-            kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
-              "$SRC_INSIDE" \
-              "$DEST_FILE" || {
-              # Fallback: restore parent dir, then copy just the file
-              echo "File restore failed, restoring parent directory as fallback..."
-              PARENT="$(dirname "$RP")"
-              DEST_DIR="/tmp/restore/${PARENT%/}"
-              mkdir -p "$DEST_DIR"
-              kopia snapshot restore "${{ steps.snap.outputs.snap }}" \
-                "${{ steps.sel.outputs.SNAP_ROOT }}"/"${PARENT%/}" \
-                "$DEST_DIR"
-            }
+            # FILE -> restore parent folder, we will copy only the file later
+            PARENT="$(dirname "$RP")"
+            SRC_PARENT="${SNAP_ROOT}/${PARENT%/}"
+            DEST_PARENT="/tmp/restore-root/${PARENT%/}"
+            echo "File restore (parent-first): $SRC_PARENT -> $DEST_PARENT"
+            mkdir -p "$DEST_PARENT"
+            kopia snapshot restore "$SNAP_ID" "$SRC_PARENT" "$DEST_PARENT"
+            echo "RESTORE_KIND=file" >> "$GITHUB_ENV"
+            echo "RESTORED_PARENT=$DEST_PARENT" >> "$GITHUB_ENV"
+            echo "RESTORE_FILE=$(basename "$RP")" >> "$GITHUB_ENV"
+            echo "RESTORE_PREFIX_PARENT=$PARENT" >> "$GITHUB_ENV"
           fi
 
-          echo "Restore completed to /tmp/restore"
+          echo "Restore completed under /tmp/restore-root"
 
       - name: Copy restored files to destination (preview or inplace)
         run: |
           set -e
           MODE="${{ github.event.inputs.restore_mode }}"
           RP="${{ github.event.inputs.restore_prefix }}"
+
           if [ "$MODE" = "preview" ]; then
             TS=$(date -u +%Y-%m-%dT%H%M%SZ)
             DEST_BASE="dst:${{ steps.sel.outputs.DST_BUCKET }}/restores/${TS}"
@@ -158,24 +157,18 @@ jobs:
             DEST_BASE="dst:${{ steps.sel.outputs.DST_BUCKET }}"
           fi
 
-          if [ "${RP%/}" != "$RP" ]; then
-            # Folder copy
-            SRC_DIR="/tmp/restore/${RP%/}/"
+          if [ "${RESTORE_KIND}" = "dir" ]; then
+            SRC_DIR="${RESTORED_DIR%/}/"
             DEST_DIR="${DEST_BASE}/${RP%/}/"
             echo "Copy folder: $SRC_DIR -> $DEST_DIR"
             rclone copy "$SRC_DIR" "$DEST_DIR" --checkers=64 --transfers=32 --progress
           else
-            # File copy (copy only the single file we restored or the one from fallback)
-            BASENAME="$(basename "$RP")"
-            if [ -f "/tmp/restore/${BASENAME}" ]; then
-              SRC_DIR="/tmp/restore"
-            else
-              PARENT="$(dirname "$RP")"
-              SRC_DIR="/tmp/restore/${PARENT%/}"
-            fi
+            BASENAME="$RESTORE_FILE"
+            PARENT="${RESTORE_PREFIX_PARENT}"
+            SRC_DIR="${RESTORED_PARENT%/}/"
             DEST_DIR="${DEST_BASE}/$(dirname "$RP")/"
-            echo "Copy file: $SRC_DIR/$BASENAME -> $DEST_DIR"
-            rclone copy "$SRC_DIR/" "$DEST_DIR" \
+            echo "Copy file: $SRC_DIR$BASENAME -> $DEST_DIR"
+            rclone copy "$SRC_DIR" "$DEST_DIR" \
               --include "$BASENAME" \
               --checkers=64 --transfers=32 --progress
           fi

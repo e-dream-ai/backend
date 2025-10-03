@@ -63,4 +63,5 @@ jobs:
         run: |
           LIMIT="${{ github.event.inputs.limit }}"
           kopia snapshot list --json | \
-            jq -r '.[] | "\(.id)  \(.source.path)  \(.startTime)"' | head -n "${LIMIT}"
+            jq -r 'sort_by(.startTime) | reverse | .[] | "\(.id)  \(.source.path)  \(.startTime)"' | \
+            head -n "${LIMIT}"

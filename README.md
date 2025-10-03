@@ -309,3 +309,8 @@ Workflow: `kopia-restore`
   - Paste a specific snapshot ID to restore from.
   - Leave blank to restore from the latest snapshot by time.
 - **restore_mode**: `preview` or `inplace`.
+
+#### Preview vs inplace
+
+- **preview**: Copies restored data to `restores/<UTC-timestamp>/<restore_prefix>/` inside the destination bucket. This is non-destructive and lets you inspect the output without touching the original object paths.
+- **inplace**: Copies restored data back to the original path given by `restore_prefix` in the destination bucket. This may overwrite existing objects with the same keys and is intended for actual recovery.

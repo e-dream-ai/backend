@@ -110,9 +110,9 @@ jobs:
       - name: Mount snapshot and stage requested path
         run: |
           set -e
-          sudo apt-get update && sudo apt-get install -y fuse3 rsync
+          # Mount snapshot at /tmp/kopia-mount (no --readonly flag in Kopia CLI)
           mkdir -p /tmp/kopia-mount
-          nohup kopia mount --readonly --point /tmp/kopia-mount "${{ steps.snap.outputs.snap }}" \
+          nohup kopia mount "${{ steps.snap.outputs.snap }}" /tmp/kopia-mount \
             > /tmp/kopia-mount.log 2>&1 &
           for i in $(seq 1 30); do mountpoint -q /tmp/kopia-mount && break || sleep 1; done
           mountpoint -q /tmp/kopia-mount || { echo "Mount failed"; tail -n 200 /tmp/kopia-mount.log; exit 1; }
@@ -142,6 +142,7 @@ jobs:
             exit 1
           fi
 
+          # Unmount
           fusermount3 -u /tmp/kopia-mount || true
 
       - name: Copy restored files to destination (preview or inplace)

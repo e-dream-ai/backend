@@ -255,3 +255,57 @@ Run the script
 ```bash
 script=process-dream.ts pnpm run script
 ```
+
+## Backups with Kopia on Cloudflare R2
+
+This repository includes GitHub Actions workflows to create snapshot backups to Cloudflare R2 using Kopia, list available snapshots, and restore specific files/folders back into R2 (preview or in-place).
+
+### Workflows
+
+- **kopia-r2-incremental-alpha**
+- **kopia-r2-incremental-staging**
+- **kopia-list-snapshots**
+- **kopia-restore**
+
+### Buckets
+
+- **Source buckets (data):**
+  - Alpha: `edream-storage-dreams-alpha`
+  - Staging: `edream-storage-dreams-staging`
+- **Kopia repo buckets (destination for content-addressed repository):**
+  - Alpha: `edream-storage-dreams-alpha-backup`
+  - Staging: `edream-storage-dreams-staging-backup`
+
+### 1. Incremental backups (automatic/manual)
+
+Workflows: `kopia-r2-incremental-alpha`, `kopia-r2-incremental-staging`
+
+**How to run**
+
+- Automatic: workflows are set with a cron (daily at 06:00 UTC).
+- Manual: Actions → select `kopia-r2-incremental-<env>` → Run workflow.
+
+### 2. Listing snapshots
+
+Workflow: `kopia-list-snapshots`
+
+**How to run**
+
+- Actions → `kopia-list-snapshots` → Run workflow → pick env (`alpha`/`staging`).
+
+### 3. Restoring
+
+Workflow: `kopia-restore`
+
+**Inputs**
+
+- **env**: `alpha` or `staging`
+- **restore_prefix**: Path inside the snapshot to restore (relative to snapshot root).
+  - Examples:
+    - Single file at root: `c9ff5735-3119-47d2-899f-1feed193f3ef-_01_10_00033.mp4`
+    - Nested: `035a9088-5533-4435-a39f-545253c22970/4e7838fc-7075-483a-8c71-3153d8894efe/…_processed.mp4`
+    - Folder: `426ae4da-4bab-433d-ba72-a1806000aa86/`
+- **snapshot_id** (optional):
+  - Paste a specific snapshot ID to restore from.
+  - Leave blank to restore from the latest snapshot by time.
+- **restore_mode**: `preview` or `inplace`.

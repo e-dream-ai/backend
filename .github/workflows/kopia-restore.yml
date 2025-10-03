@@ -62,7 +62,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y fuse3 jq rsync
           curl -fsSL https://kopia.io/signing-key | sudo gpg --dearmor -o /usr/share/keyrings/kopia-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/kopia-keyring.gpg] https://packages.kopia.io/apt/ stable main" | sudo tee /etc/apt/sources.list.d/kopia.list
+          echo "deb [signed-by=/usr/share/keyrings/kopia-keyring.gpg] https://packages.kopia.io/apt/ stable main" | sudo tee /etc/apt/sources/list.d/kopia.list
           sudo apt-get update && sudo apt-get install -y kopia
           kopia --version
 
@@ -107,16 +107,33 @@ jobs:
           fi
           echo "snap=$SNAP" >> "$GITHUB_OUTPUT"
 
-      - name: Mount snapshot and stage requested path
+      - name: Mount snapshot (no-op if already mounted)
+        id: mnt
         run: |
           set -e
-          # Mount snapshot at /tmp/kopia-mount (no --readonly flag in Kopia CLI)
           mkdir -p /tmp/kopia-mount
           nohup kopia mount "${{ steps.snap.outputs.snap }}" /tmp/kopia-mount \
             > /tmp/kopia-mount.log 2>&1 &
           for i in $(seq 1 30); do mountpoint -q /tmp/kopia-mount && break || sleep 1; done
           mountpoint -q /tmp/kopia-mount || { echo "Mount failed"; tail -n 200 /tmp/kopia-mount.log; exit 1; }
 
+      - name: Debug list snapshot contents (2 levels)
+        run: |
+          set -e
+          if ! command -v tree >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y tree || true
+          fi
+          echo "Snapshot root up to 2 levels:"
+          if command -v tree >/dev/null 2>&1; then
+            tree -L 2 /tmp/kopia-mount | sed -n '1,500p'
+          else
+            echo "(tree not available, falling back to ls -al for root)"
+            ls -al /tmp/kopia-mount | sed -n '1,200p'
+          fi
+
+      - name: Stage requested path from mounted snapshot
+        run: |
+          set -e
           RP="${{ github.event.inputs.restore_prefix }}"
           SRC_MOUNT="/tmp/kopia-mount/${RP}"
 
@@ -137,12 +154,12 @@ jobs:
             echo "RESTORE_FILE=$(basename "$RP")" >> "$GITHUB_ENV"
           else
             echo "ERROR: Path not found in snapshot: $SRC_MOUNT"
+            echo "Snapshot root listing (ls -al):"
             ls -al /tmp/kopia-mount | sed -n '1,200p'
             fusermount3 -u /tmp/kopia-mount || true
             exit 1
           fi
 
-          # Unmount
           fusermount3 -u /tmp/kopia-mount || true
 
       - name: Copy restored files to destination (preview or inplace)

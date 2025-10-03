@@ -24,7 +24,7 @@ on:
 
 jobs:
   restore:
-    runs-on: container-builder
+    runs-on: ubuntu-latest
 
     steps:
       - name: Select environment

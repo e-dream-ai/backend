@@ -62,7 +62,6 @@ jobs:
         run: |
           set -e
           sudo apt-get update && sudo apt-get install -y fuse3 jq rsync curl gnupg
-          # Add Kopia APT repo correctly
           curl -fsSL https://kopia.io/signing-key | sudo gpg --dearmor -o /usr/share/keyrings/kopia-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/kopia-keyring.gpg] https://packages.kopia.io/apt/ stable main" \
             | sudo tee /etc/apt/sources.list.d/kopia.list >/dev/null
@@ -111,8 +110,7 @@ jobs:
           fi
           echo "snap=$SNAP" >> "$GITHUB_OUTPUT"
 
-      - name: Mount snapshot (no-op if already mounted)
-        id: mnt
+      - name: Mount snapshot
         run: |
           set -e
           mkdir -p /tmp/kopia-mount
@@ -120,20 +118,6 @@ jobs:
             > /tmp/kopia-mount.log 2>&1 &
           for i in $(seq 1 30); do mountpoint -q /tmp/kopia-mount && break || sleep 1; done
           mountpoint -q /tmp/kopia-mount || { echo "Mount failed"; tail -n 200 /tmp/kopia-mount.log; exit 1; }
-
-      - name: Debug list snapshot contents (2 levels)
-        run: |
-          set -e
-          if ! command -v tree >/dev/null 2>&1; then
-            sudo apt-get update && sudo apt-get install -y tree || true
-          fi
-          echo "Snapshot root up to 2 levels:"
-          if command -v tree >/dev/null 2>&1; then
-            tree -L 2 /tmp/kopia-mount | sed -n '1,500p'
-          else
-            echo "(tree not available, falling back to ls -al for root)"
-            ls -al /tmp/kopia-mount | sed -n '1,200p'
-          fi
 
       - name: Stage requested path from mounted snapshot
         run: |
@@ -158,8 +142,6 @@ jobs:
             echo "RESTORE_FILE=$(basename "$RP")" >> "$GITHUB_ENV"
           else
             echo "ERROR: Path not found in snapshot: $SRC_MOUNT"
-            echo "Snapshot root listing (ls -al):"
-            ls -al /tmp/kopia-mount | sed -n '1,200p'
             fusermount3 -u /tmp/kopia-mount || true
             exit 1
           fi
@@ -181,13 +163,11 @@ jobs:
           if [ "${RESTORE_KIND}" = "dir" ]; then
             SRC_DIR="${RESTORED_DIR%/}/"
             DEST_DIR="${DEST_BASE}/${RP%/}/"
-            echo "Copy folder: $SRC_DIR -> $DEST_DIR"
             rclone copy "$SRC_DIR" "$DEST_DIR" --checkers=64 --transfers=32 --progress
           else
             BASENAME="${RESTORE_FILE}"
             SRC_DIR="${RESTORED_PARENT%/}/"
             DEST_DIR="${DEST_BASE}/$(dirname "$RP")/"
-            echo "Copy file: $SRC_DIR$BASENAME -> $DEST_DIR"
             rclone copy "$SRC_DIR" "$DEST_DIR" \
               --include "$BASENAME" \
               --checkers=64 --transfers=32 --progress

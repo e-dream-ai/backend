@@ -128,6 +128,24 @@ export const handleGetPlaylist = async (
       delete playlist.featureRank;
     }
 
+    if (!playlist.thumbnail) {
+      const firstItem = await playlistItemRepository.findOne({
+        where: { playlist: { id: playlist.id } },
+        relations: {
+          dreamItem: true,
+          playlistItem: true,
+        },
+        order: { order: "ASC" },
+      });
+
+      const fallbackThumbnail =
+        firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+
+      if (fallbackThumbnail) {
+        playlist.thumbnail = fallbackThumbnail;
+      }
+    }
+
     // Transform playlist to include signed URLs
     const transformedPlaylist = await transformPlaylistWithSignedUrls(playlist);
 

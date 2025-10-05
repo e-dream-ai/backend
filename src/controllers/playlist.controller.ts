@@ -60,7 +60,6 @@ import {
   refreshPlaylistUpdatedAtTimestamp,
   computePlaylistTotalDurationSeconds,
 } from "utils/playlist.util";
-import { secondsToTimeFormat } from "utils/video.utils";
 import {
   handleNotFound,
   handleForbidden,
@@ -141,7 +140,6 @@ export const handleGetPlaylist = async (
         nsfw: user?.nsfw,
       },
     );
-    const totalDurationFormatted = secondsToTimeFormat(totalDurationSeconds);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -150,7 +148,6 @@ export const handleGetPlaylist = async (
           playlist: {
             ...transformedPlaylist,
             totalDurationSeconds,
-            totalDurationFormatted,
           },
         },
       }),

@@ -9,6 +9,7 @@ import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
 import { DreamStatusType } from "types/dream.types";
 import { playlistKeyframeRepository } from "database/repositories";
+import { framesToSeconds } from "./video.utils";
 
 type GetPlaylistFilterOptions = {
   // userId from the user that is requesting the playlist
@@ -261,7 +262,6 @@ export const getPaginatedPlaylistItems = async ({
   const isAdmin = filter.isAdmin;
   const userId = filter.userId;
 
-  // Define the user fields to select (excluding email)
   const createUserFieldSelections = (alias: string) => {
     return [`${alias}.id`, `${alias}.uuid`, `${alias}.name`, `${alias}.avatar`];
   };
@@ -290,14 +290,12 @@ export const getPaginatedPlaylistItems = async ({
     .leftJoinAndSelect("nestedItems.dreamItem", "nestedDreamItem")
     .leftJoinAndSelect("nestedItems.playlistItem", "nestedPlaylistItem");
 
-  // Apply filtering for nsfw
   if (filter?.nsfw === false) {
     queryBuilder = queryBuilder
       .andWhere("(dreamItem.nsfw = false OR dreamItem.nsfw IS NULL)")
       .andWhere("(playlistItem.nsfw = false OR playlistItem.nsfw IS NULL)");
   }
 
-  // Apply filtering for hidden content if user is not admin and not owner
   if (!isAdmin) {
     queryBuilder = queryBuilder
       .andWhere(
@@ -322,6 +320,87 @@ export const getPaginatedPlaylistItems = async ({
     items,
     totalCount,
   };
+};
+
+export const computePlaylistTotalDurationSeconds = async (
+  playlistId: number,
+  filter: GetPlaylistFilterOptions,
+  visitedPlaylistIds: Set<number> = new Set(),
+): Promise<number> => {
+  if (!playlistId) return 0;
+
+  let totalSeconds = 0;
+  const queue: number[] = [playlistId];
+
+  while (queue.length > 0) {
+    const batchIds: number[] = [];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      if (!visitedPlaylistIds.has(id)) {
+        visitedPlaylistIds.add(id);
+        batchIds.push(id);
+      }
+    }
+
+    if (!batchIds.length) break;
+
+    const qb = playlistItemRepository
+      .createQueryBuilder("item")
+      .where("item.playlistId IN (:...playlistIds)", { playlistIds: batchIds })
+      .andWhere("item.deleted_at IS NULL")
+      .leftJoin("item.dreamItem", "dreamItem")
+      .leftJoin("item.playlistItem", "childPlaylist")
+      .select([
+        "dreamItem.processedVideoFrames AS frames",
+        "dreamItem.activityLevel AS activity",
+        "dreamItem.status AS dreamStatus",
+        "dreamItem.nsfw AS dreamNsfw",
+        "dreamItem.hidden AS dreamHidden",
+        "dreamItem.userId AS dreamUserId",
+        "childPlaylist.id AS childPlaylistId",
+        "childPlaylist.nsfw AS childNsfw",
+        "childPlaylist.hidden AS childHidden",
+        "childPlaylist.userId AS childUserId",
+      ]);
+
+    if (filter?.nsfw === false) {
+      qb.andWhere(
+        "( (dreamItem.nsfw = false OR dreamItem.nsfw IS NULL) AND (childPlaylist.nsfw = false OR childPlaylist.nsfw IS NULL) )",
+      );
+    }
+
+    qb.andWhere(
+      "(dreamItem.status = :status OR childPlaylist.id IS NOT NULL)",
+      { status: DreamStatusType.PROCESSED },
+    );
+
+    if (!filter?.isAdmin) {
+      qb.andWhere(
+        "(dreamItem.hidden = false OR dreamItem.hidden IS NULL OR dreamItem.userId = :userId)",
+        { userId: filter.userId },
+      ).andWhere(
+        "(childPlaylist.hidden = false OR childPlaylist.hidden IS NULL OR childPlaylist.userId = :userId)",
+        { userId: filter.userId },
+      );
+    }
+
+    const rows = await qb.getRawMany<{
+      frames: number | null;
+      activity: number | null;
+      childPlaylistId: number | null;
+    }>();
+
+    for (const row of rows) {
+      if (row.frames && row.activity) {
+        totalSeconds += framesToSeconds(row.frames, row.activity);
+      }
+      if (row.childPlaylistId && !visitedPlaylistIds.has(row.childPlaylistId)) {
+        queue.push(row.childPlaylistId);
+      }
+    }
+  }
+
+  return totalSeconds;
 };
 
 /**

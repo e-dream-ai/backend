@@ -1,4 +1,4 @@
-import { Dream, FeedItem, Playlist, PlaylistItem } from "entities";
+import { Dream, FeedItem, Playlist } from "entities";
 import {
   FindOptionsRelations,
   FindOptionsSelect,
@@ -6,12 +6,11 @@ import {
   ILike,
   IsNull,
   MoreThanOrEqual,
-  Not,
   Raw,
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
-import appDataSource from "database/app-data-source";
 import { VirtualPlaylist } from "types/feed.types";
+import { getFirstVisiblePlaylistItem } from "./playlist.util";
 
 type FeedItemFindOptions = {
   // Filters NSFW content
@@ -31,8 +30,6 @@ type FeedItemFindOptions = {
 type FeedItemFindOptionsWhere =
   | FindOptionsWhere<Playlist | Dream>[]
   | FindOptionsWhere<Playlist | Dream>;
-
-const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 
 /**
  * Get where conditions that properly handle where query
@@ -266,8 +263,16 @@ export const groupFeedDreamItemsByPlaylist = (
   return playlistsMap;
 };
 
+type FeedVisibilityFilter = {
+  userId: number;
+  isAdmin?: boolean;
+  nsfw?: boolean;
+  onlyProcessedDreams?: boolean;
+};
+
 export const formatFeedResponse = async (
   feed: FeedItem[],
+  filter?: FeedVisibilityFilter,
 ): Promise<FeedItem[]> => {
   const processedItems = feed.map(async (item) => {
     /**
@@ -276,29 +281,20 @@ export const formatFeedResponse = async (
      */
     // Only query if playlistItem exists and has no thumbnail to fill it
     if (item.playlistItem?.id && !item.playlistItem.thumbnail) {
-      // Try to find an item with thumbnail
-      const foundPI = await playlistItemRepository.findOne({
-        where: {
-          dreamItem: {
-            thumbnail: Not(IsNull()),
-          },
-          playlist: {
-            id: item.playlistItem.id,
-          },
+      // Use the first visible item by order to keep consistency with playlist page
+      const firstItem = await getFirstVisiblePlaylistItem(
+        item.playlistItem.id,
+        filter ?? {
+          userId: 0,
+          isAdmin: false,
+          nsfw: true,
+          onlyProcessedDreams: true,
         },
-        relations: {
-          dreamItem: true,
-        },
-        select: {
-          dreamItem: {
-            thumbnail: true,
-          },
-        },
-      });
-
-      // If there's an item use its thumbnail
-      if (foundPI && foundPI.dreamItem) {
-        item.playlistItem.thumbnail = foundPI.dreamItem.thumbnail;
+      );
+      const fallbackThumbnail =
+        firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+      if (fallbackThumbnail) {
+        item.playlistItem.thumbnail = fallbackThumbnail;
       }
     }
 

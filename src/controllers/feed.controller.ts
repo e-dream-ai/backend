@@ -68,7 +68,12 @@ export const handleGetRankedFeed = async (
       skip,
     });
 
-    const feed = await formatFeedResponse(rawFeed);
+    const feed = await formatFeedResponse(rawFeed, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw,
+      onlyProcessedDreams: true,
+    });
 
     // Transform feed items to include signed URLs
     const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
@@ -139,7 +144,12 @@ export const handleGetFeed = async (
       skip,
     });
 
-    const feed = await formatFeedResponse(rawFeed);
+    const feed = await formatFeedResponse(rawFeed, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw,
+      onlyProcessedDreams: true,
+    });
 
     // Transform feed items to include signed URLs
     const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
@@ -202,7 +212,12 @@ export const handleGetMyDreams = async (
       skip,
     });
 
-    const feed = await formatFeedResponse(rawFeed);
+    const feed = await formatFeedResponse(rawFeed, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw,
+      onlyProcessedDreams: true,
+    });
 
     // Transform feed items to include signed URLs
     const transformedFeed = await transformFeedItemsWithSignedUrls(feed);

@@ -59,6 +59,7 @@ import {
   populateDefautPlaylist,
   refreshPlaylistUpdatedAtTimestamp,
   computePlaylistTotalDurationSeconds,
+  getFirstVisiblePlaylistItem,
 } from "utils/playlist.util";
 import {
   handleNotFound,
@@ -126,6 +127,22 @@ export const handleGetPlaylist = async (
      */
     if (!isAdmin(user)) {
       delete playlist.featureRank;
+    }
+
+    if (!playlist.thumbnail) {
+      const firstItem = await getFirstVisiblePlaylistItem(playlist.id, {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+        onlyProcessedDreams: true,
+      });
+
+      const fallbackThumbnail =
+        firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+
+      if (fallbackThumbnail) {
+        playlist.thumbnail = fallbackThumbnail;
+      }
     }
 
     // Transform playlist to include signed URLs
@@ -431,15 +448,27 @@ export const handleGetPlaylists = async (
       where: { user: { uuid: userUUID }, ...search },
       select: getPlaylistSelectedColumns(),
       order: { updated_at: "DESC" },
-      relations: {
-        items: {
-          playlistItem: true,
-          dreamItem: true,
-        },
-      },
+      relations: {},
       take,
       skip,
     });
+
+    const currentUser = res.locals.user;
+    const isUserAdmin = isAdmin(currentUser);
+    for (const pl of playlists) {
+      if (pl.thumbnail) continue;
+      const firstItem = await getFirstVisiblePlaylistItem(pl.id, {
+        userId: currentUser!.id,
+        isAdmin: isUserAdmin,
+        nsfw: currentUser?.nsfw,
+        onlyProcessedDreams: true,
+      });
+      const firstItemThumb =
+        firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+      if (firstItemThumb) {
+        pl.thumbnail = firstItemThumb;
+      }
+    }
 
     // Transform playlists to include signed URLs
     const transformedPlaylists =

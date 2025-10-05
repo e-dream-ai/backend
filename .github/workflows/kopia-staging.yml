@@ -2,7 +2,7 @@ name: kopia-r2-incremental-staging
 
 on:
   schedule:
-    - cron: "0 2 * * *" # daily 02:00 UTC
+    - cron: "0 6 * * *" # daily 02:00 UTC
   workflow_dispatch: {}
 
 jobs:
@@ -31,6 +31,7 @@ jobs:
           curl -fsSL https://kopia.io/signing-key | sudo gpg --dearmor -o /usr/share/keyrings/kopia-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/kopia-keyring.gpg] https://packages.kopia.io/apt/ stable main" | sudo tee /etc/apt/sources.list.d/kopia.list
           sudo apt-get update && sudo apt-get install -y kopia
+          kopia --version
 
       - name: Configure rclone (source R2 STAGING)
         run: |
@@ -50,11 +51,11 @@ jobs:
           nohup rclone mount src-staging:${SRC_BUCKET_STAGING} /mnt/r2src-staging \
             --read-only \
             --vfs-cache-mode=full \
-            --vfs-cache-max-size=20G \
+            --vfs-cache-max-size=30G \
             --dir-cache-time=6h \
             --poll-interval=0 \
-            --transfers=16 --checkers=32 \
-            --buffer-size=8M \
+            --transfers=64 --checkers=128 \
+            --buffer-size=32M \
             --umask=022 > rclone-mount-staging.log 2>&1 &
           for i in {1..30}; do mountpoint -q /mnt/r2src-staging && break || sleep 2; done
           mountpoint -q /mnt/r2src-staging
@@ -65,13 +66,19 @@ jobs:
         run: |
           kopia repository connect s3 \
             --bucket=${REPO_BUCKET_STAGING} \
-            --endpoint=https://${R2_ACCOUNT_ID_STAGING}.r2.cloudflarestorage.com \
+            --endpoint=${R2_ACCOUNT_ID_STAGING}.r2.cloudflarestorage.com \
             --region=auto
 
       - name: Create incremental snapshot and maintenance (STAGING)
+        env:
+          KOPIA_PASSWORD: ${{ env.KOPIA_PASSWORD_STAGING }}
         run: |
-          kopia snapshot create /mnt/r2src-staging --parallel=8
-          kopia maintenance run
+          export KOPIA_USERNAME=github-actions-staging
+          unset KOPIA_HOSTNAME
+
+          kopia snapshot create /mnt/r2src-staging --parallel=16
+
+          kopia maintenance run --force
 
       - name: Unmount (STAGING)
         if: always()

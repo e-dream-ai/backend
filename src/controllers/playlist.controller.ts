@@ -58,6 +58,7 @@ import {
   getPlaylistSelectedColumns,
   populateDefautPlaylist,
   refreshPlaylistUpdatedAtTimestamp,
+  computePlaylistTotalDurationSeconds,
 } from "utils/playlist.util";
 import {
   handleNotFound,
@@ -130,10 +131,25 @@ export const handleGetPlaylist = async (
     // Transform playlist to include signed URLs
     const transformedPlaylist = await transformPlaylistWithSignedUrls(playlist);
 
+    // Compute total duration across all playlist items (recursive, non-paginated)
+    const totalDurationSeconds = await computePlaylistTotalDurationSeconds(
+      playlist.id,
+      {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
+    );
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { playlist: transformedPlaylist },
+        data: {
+          playlist: {
+            ...transformedPlaylist,
+            totalDurationSeconds,
+          },
+        },
       }),
     );
   } catch (err) {

@@ -459,6 +459,31 @@ export const handleGetPlaylists = async (
       skip,
     });
 
+    for (const pl of playlists) {
+      if (!pl?.items || pl.items.length === 0) continue;
+      const firstItem = [...pl.items].sort((a, b) => a.order - b.order)[0];
+      const firstItemThumb =
+        firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+
+      if (!firstItemThumb) continue;
+
+      const childThumbs = new Set(
+        (pl.items || [])
+          .flatMap((it) => [
+            it?.dreamItem?.thumbnail,
+            it?.playlistItem?.thumbnail,
+          ])
+          .filter(Boolean) as string[],
+      );
+
+      if (
+        !pl.thumbnail ||
+        (childThumbs.has(pl.thumbnail) && pl.thumbnail !== firstItemThumb)
+      ) {
+        pl.thumbnail = firstItemThumb;
+      }
+    }
+
     // Transform playlists to include signed URLs
     const transformedPlaylists =
       await transformPlaylistsWithSignedUrls(playlists);

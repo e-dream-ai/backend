@@ -59,6 +59,7 @@ import {
   populateDefautPlaylist,
   refreshPlaylistUpdatedAtTimestamp,
   computePlaylistTotalDurationSeconds,
+  getFirstVisiblePlaylistItem,
 } from "utils/playlist.util";
 import {
   handleNotFound,
@@ -129,13 +130,11 @@ export const handleGetPlaylist = async (
     }
 
     if (!playlist.thumbnail) {
-      const firstItem = await playlistItemRepository.findOne({
-        where: { playlist: { id: playlist.id } },
-        relations: {
-          dreamItem: true,
-          playlistItem: true,
-        },
-        order: { order: "ASC" },
+      const firstItem = await getFirstVisiblePlaylistItem(playlist.id, {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+        onlyProcessedDreams: true,
       });
 
       const fallbackThumbnail =
@@ -449,37 +448,24 @@ export const handleGetPlaylists = async (
       where: { user: { uuid: userUUID }, ...search },
       select: getPlaylistSelectedColumns(),
       order: { updated_at: "DESC" },
-      relations: {
-        items: {
-          playlistItem: true,
-          dreamItem: true,
-        },
-      },
+      relations: {},
       take,
       skip,
     });
 
+    const currentUser = res.locals.user;
+    const isUserAdmin = isAdmin(currentUser);
     for (const pl of playlists) {
-      if (!pl?.items || pl.items.length === 0) continue;
-      const firstItem = [...pl.items].sort((a, b) => a.order - b.order)[0];
+      if (pl.thumbnail) continue;
+      const firstItem = await getFirstVisiblePlaylistItem(pl.id, {
+        userId: currentUser!.id,
+        isAdmin: isUserAdmin,
+        nsfw: currentUser?.nsfw,
+        onlyProcessedDreams: true,
+      });
       const firstItemThumb =
         firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
-
-      if (!firstItemThumb) continue;
-
-      const childThumbs = new Set(
-        (pl.items || [])
-          .flatMap((it) => [
-            it?.dreamItem?.thumbnail,
-            it?.playlistItem?.thumbnail,
-          ])
-          .filter(Boolean) as string[],
-      );
-
-      if (
-        !pl.thumbnail ||
-        (childThumbs.has(pl.thumbnail) && pl.thumbnail !== firstItemThumb)
-      ) {
+      if (firstItemThumb) {
         pl.thumbnail = firstItemThumb;
       }
     }

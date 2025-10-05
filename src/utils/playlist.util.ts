@@ -246,6 +246,59 @@ export const getPlaylistItemsQueryBuilder = (
 };
 
 /**
+ * Gets the first visible playlist item for a playlist using the same filtering
+ * rules as paginated items, ordered by item.order ASC.
+ */
+export const getFirstVisiblePlaylistItem = async (
+  playlistId: number,
+  filter: GetPlaylistFilterOptions,
+) => {
+  const isAdmin = filter.isAdmin;
+  const userId = filter.userId;
+
+  const createUserFieldSelections = (alias: string) => {
+    return [`${alias}.id`, `${alias}.uuid`, `${alias}.name`, `${alias}.avatar`];
+  };
+
+  let queryBuilder = playlistItemRepository
+    .createQueryBuilder("item")
+    .where("item.playlistId = :playlistId", { playlistId })
+    .andWhere("item.deleted_at IS NULL")
+    .leftJoinAndSelect("item.dreamItem", "dreamItem")
+    .leftJoin("dreamItem.user", "dreamItemUser")
+    .addSelect(createUserFieldSelections("dreamItemUser"))
+    .leftJoin("dreamItem.displayedOwner", "dreamItemDisplayedOwner")
+    .addSelect(createUserFieldSelections("dreamItemDisplayedOwner"))
+    .leftJoinAndSelect("item.playlistItem", "playlistItem")
+    .leftJoin("playlistItem.user", "playlistItemUser")
+    .addSelect(createUserFieldSelections("playlistItemUser"))
+    .leftJoin("playlistItem.displayedOwner", "playlistItemDisplayedOwner")
+    .addSelect(createUserFieldSelections("playlistItemDisplayedOwner"))
+    .orderBy("item.order", "ASC")
+    .take(1);
+
+  if (filter?.nsfw === false) {
+    queryBuilder = queryBuilder
+      .andWhere("(dreamItem.nsfw = false OR dreamItem.nsfw IS NULL)")
+      .andWhere("(playlistItem.nsfw = false OR playlistItem.nsfw IS NULL)");
+  }
+
+  if (!isAdmin) {
+    queryBuilder = queryBuilder
+      .andWhere(
+        "(dreamItem.hidden = false OR dreamItem.hidden IS NULL OR dreamItem.userId = :userId)",
+        { userId },
+      )
+      .andWhere(
+        "(playlistItem.hidden = false OR playlistItem.hidden IS NULL OR playlistItem.userId = :userId)",
+        { userId },
+      );
+  }
+
+  return await queryBuilder.getOne();
+};
+
+/**
  * Gets paginated playlist items
  */
 export const getPaginatedPlaylistItems = async ({

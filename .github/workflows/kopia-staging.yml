@@ -7,7 +7,7 @@ on:
 
 jobs:
   backup:
-    runs-on: container-builder
+    runs-on: backup-runner
     env:
       # Destination Kopia repository (R2) – STAGING
       KOPIA_PASSWORD_STAGING: ${{ secrets.KOPIA_PASSWORD_STAGING }}

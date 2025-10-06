@@ -7,7 +7,7 @@ on:
 
 jobs:
   backup:
-    runs-on: container-builder
+    runs-on: backup-runner
     env:
       # Destination Kopia repository (R2) – ALPHA
       KOPIA_PASSWORD_ALPHA: ${{ secrets.KOPIA_PASSWORD_ALPHA }}

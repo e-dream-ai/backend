@@ -51,7 +51,10 @@ import {
 } from "utils/dream.util";
 import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
-import { refreshPlaylistUpdatedAtTimestampFromPlaylistItems } from "utils/playlist.util";
+import {
+  refreshPlaylistUpdatedAtTimestampFromPlaylistItems,
+  getFirstVisiblePlaylistItem,
+} from "utils/playlist.util";
 import { isBrowserRequest } from "utils/request.util";
 import {
   jsonResponse,
@@ -713,6 +716,22 @@ export const handleGetDream = async (
       isUserAdmin,
     );
 
+    for (const pi of dream.playlistItems ?? []) {
+      if (pi.playlist && !pi.playlist.thumbnail) {
+        const firstItem = await getFirstVisiblePlaylistItem(pi.playlist.id, {
+          userId: user.id,
+          isAdmin: isUserAdmin,
+          nsfw: user?.nsfw,
+          onlyProcessedDreams: true,
+        });
+        const fallbackThumb =
+          firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+        if (fallbackThumb) {
+          pi.playlist.thumbnail = fallbackThumb;
+        }
+      }
+    }
+
     const isOwner = dream.user.id === user?.id;
 
     const isAllowed = canExecuteAction({
@@ -982,6 +1001,22 @@ export const handleSetDreamStatusProcessed = async (
       user.id,
       isUserAdmin,
     );
+
+    for (const pi of updatedDream.playlistItems ?? []) {
+      if (pi.playlist && !pi.playlist.thumbnail) {
+        const firstItem = await getFirstVisiblePlaylistItem(pi.playlist.id, {
+          userId: user.id,
+          isAdmin: isUserAdmin,
+          nsfw: user?.nsfw,
+          onlyProcessedDreams: true,
+        });
+        const fallbackThumb =
+          firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+        if (fallbackThumb) {
+          pi.playlist.thumbnail = fallbackThumb;
+        }
+      }
+    }
 
     await createFeedItem(updatedDream);
     await refreshPlaylistUpdatedAtTimestampFromPlaylistItems(

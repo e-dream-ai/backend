@@ -53,7 +53,7 @@ import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
   refreshPlaylistUpdatedAtTimestampFromPlaylistItems,
-  getFirstVisiblePlaylistItem,
+  computePlaylistThumbnailRecursive,
 } from "utils/playlist.util";
 import { isBrowserRequest } from "utils/request.util";
 import {
@@ -718,14 +718,15 @@ export const handleGetDream = async (
 
     for (const pi of dream.playlistItems ?? []) {
       if (pi.playlist && !pi.playlist.thumbnail) {
-        const firstItem = await getFirstVisiblePlaylistItem(pi.playlist.id, {
-          userId: user.id,
-          isAdmin: isUserAdmin,
-          nsfw: user?.nsfw,
-          onlyProcessedDreams: true,
-        });
-        const fallbackThumb =
-          firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+        const fallbackThumb = await computePlaylistThumbnailRecursive(
+          pi.playlist.id,
+          {
+            userId: user.id,
+            isAdmin: isUserAdmin,
+            nsfw: user?.nsfw,
+            onlyProcessedDreams: true,
+          },
+        );
         if (fallbackThumb) {
           pi.playlist.thumbnail = fallbackThumb;
         }
@@ -1004,14 +1005,15 @@ export const handleSetDreamStatusProcessed = async (
 
     for (const pi of updatedDream.playlistItems ?? []) {
       if (pi.playlist && !pi.playlist.thumbnail) {
-        const firstItem = await getFirstVisiblePlaylistItem(pi.playlist.id, {
-          userId: user.id,
-          isAdmin: isUserAdmin,
-          nsfw: user?.nsfw,
-          onlyProcessedDreams: true,
-        });
-        const fallbackThumb =
-          firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+        const fallbackThumb = await computePlaylistThumbnailRecursive(
+          pi.playlist.id,
+          {
+            userId: user.id,
+            isAdmin: isUserAdmin,
+            nsfw: user?.nsfw,
+            onlyProcessedDreams: true,
+          },
+        );
         if (fallbackThumb) {
           pi.playlist.thumbnail = fallbackThumb;
         }

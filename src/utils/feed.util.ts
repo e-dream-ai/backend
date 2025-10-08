@@ -10,7 +10,7 @@ import {
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import { VirtualPlaylist } from "types/feed.types";
-import { getFirstVisiblePlaylistItem } from "./playlist.util";
+import { computePlaylistThumbnailRecursive } from "./playlist.util";
 
 type FeedItemFindOptions = {
   // Filters NSFW content
@@ -281,8 +281,7 @@ export const formatFeedResponse = async (
      */
     // Only query if playlistItem exists and has no thumbnail to fill it
     if (item.playlistItem?.id && !item.playlistItem.thumbnail) {
-      // Use the first visible item by order to keep consistency with playlist page
-      const firstItem = await getFirstVisiblePlaylistItem(
+      const fallbackThumbnail = await computePlaylistThumbnailRecursive(
         item.playlistItem.id,
         filter ?? {
           userId: 0,
@@ -291,8 +290,6 @@ export const formatFeedResponse = async (
           onlyProcessedDreams: true,
         },
       );
-      const fallbackThumbnail =
-        firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
       if (fallbackThumbnail) {
         item.playlistItem.thumbnail = fallbackThumbnail;
       }

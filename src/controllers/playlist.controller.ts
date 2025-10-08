@@ -59,7 +59,8 @@ import {
   populateDefautPlaylist,
   refreshPlaylistUpdatedAtTimestamp,
   computePlaylistTotalDurationSeconds,
-  getFirstVisiblePlaylistItem,
+  computePlaylistThumbnailRecursive,
+  computePlaylistTotalDreamCount,
 } from "utils/playlist.util";
 import {
   handleNotFound,
@@ -130,15 +131,15 @@ export const handleGetPlaylist = async (
     }
 
     if (!playlist.thumbnail) {
-      const firstItem = await getFirstVisiblePlaylistItem(playlist.id, {
-        userId: user.id,
-        isAdmin: isUserAdmin,
-        nsfw: user?.nsfw,
-        onlyProcessedDreams: true,
-      });
-
-      const fallbackThumbnail =
-        firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
+      const fallbackThumbnail = await computePlaylistThumbnailRecursive(
+        playlist.id,
+        {
+          userId: user.id,
+          isAdmin: isUserAdmin,
+          nsfw: user?.nsfw,
+          onlyProcessedDreams: true,
+        },
+      );
 
       if (fallbackThumbnail) {
         playlist.thumbnail = fallbackThumbnail;
@@ -158,6 +159,13 @@ export const handleGetPlaylist = async (
       },
     );
 
+    const totalDreamCount = await computePlaylistTotalDreamCount(playlist.id, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw: user?.nsfw,
+      onlyProcessedDreams: true,
+    });
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
@@ -165,6 +173,7 @@ export const handleGetPlaylist = async (
           playlist: {
             ...transformedPlaylist,
             totalDurationSeconds,
+            totalDreamCount,
           },
         },
       }),
@@ -289,6 +298,23 @@ export const handleGetPlaylistItems = async (
       take,
       skip,
     });
+
+    for (const item of result.items) {
+      if (item.playlistItem && !item.playlistItem.thumbnail) {
+        const fallbackThumbnail = await computePlaylistThumbnailRecursive(
+          item.playlistItem.id,
+          {
+            userId: user.id,
+            isAdmin: isUserAdmin,
+            nsfw: user?.nsfw,
+            onlyProcessedDreams: true,
+          },
+        );
+        if (fallbackThumbnail) {
+          item.playlistItem.thumbnail = fallbackThumbnail;
+        }
+      }
+    }
 
     // Transform playlist items to include signed URLs
     const transformedItems = await transformPlaylistItemsWithSignedUrls(
@@ -457,16 +483,14 @@ export const handleGetPlaylists = async (
     const isUserAdmin = isAdmin(currentUser);
     for (const pl of playlists) {
       if (pl.thumbnail) continue;
-      const firstItem = await getFirstVisiblePlaylistItem(pl.id, {
+      const fallbackThumbnail = await computePlaylistThumbnailRecursive(pl.id, {
         userId: currentUser!.id,
         isAdmin: isUserAdmin,
         nsfw: currentUser?.nsfw,
         onlyProcessedDreams: true,
       });
-      const firstItemThumb =
-        firstItem?.dreamItem?.thumbnail ?? firstItem?.playlistItem?.thumbnail;
-      if (firstItemThumb) {
-        pl.thumbnail = firstItemThumb;
+      if (fallbackThumbnail) {
+        pl.thumbnail = fallbackThumbnail;
       }
     }
 

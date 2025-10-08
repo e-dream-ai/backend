@@ -460,8 +460,6 @@ export class TransformSession {
         "playlist",
         signedUrls,
       );
-      transformed.playlistItem.computeThumbnail =
-        this.createComputeThumbnailMethod();
     }
     if (feedItem.user) {
       transformed.user = this.applyToEntity(feedItem.user, "user", signedUrls);
@@ -492,33 +490,9 @@ export class TransformSession {
         "playlist",
         signedUrls,
       );
-      transformed.playlistItem.computeThumbnail =
-        this.createComputeThumbnailMethod();
     }
 
     return transformed;
-  }
-
-  private createComputeThumbnailMethod() {
-    return function (this: Playlist & { items?: PlaylistItem[] }) {
-      if (this.thumbnail) {
-        return;
-      }
-
-      const itemWithThumbnail = this?.items?.find(
-        (item: PlaylistItem) =>
-          Boolean(item?.dreamItem?.thumbnail) ||
-          Boolean(item?.playlistItem?.thumbnail),
-      );
-
-      const newThumbnail =
-        itemWithThumbnail?.dreamItem?.thumbnail ??
-        itemWithThumbnail?.playlistItem?.thumbnail;
-
-      if (newThumbnail) {
-        this.thumbnail = newThumbnail;
-      }
-    };
   }
 }
 

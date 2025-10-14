@@ -9,6 +9,7 @@ import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
 import keyframeRouter from "routes/v1/keyframe.routes";
 import featureRouter from "./feature.routes";
+import healthRouter from "./health.routes";
 import userRouter from "routes/v1/user.routes";
 import clientRouter from "routes/v1/client.routes";
 import inviteRouter from "routes/v1/invite.routes";
@@ -481,6 +482,9 @@ export const registerRoutes = (app: express.Application) => {
       message: `e-dream.ai is running api at version ${version}`,
     });
   });
+
+  // health
+  app.use("/api/v1/health", healthRouter);
 
   // register feature router
   app.use("/api/v1/feature", featureRouter);

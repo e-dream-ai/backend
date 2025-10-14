@@ -78,14 +78,12 @@ describe("shared/env", () => {
     expect(env.LOGGING).toBe(true);
     expect(Array.isArray(env.API_KEYS)).toBe(true);
     expect(typeof env.FRONTEND_URL).toBe("string");
-    expect((env.FRONTEND_URL as unknown as string).startsWith("https://")).toBe(
-      true,
-    );
+    expect((env.FRONTEND_URL as string).startsWith("https://")).toBe(true);
   });
 
   it("throws when required variable missing", async () => {
     await jest.isolateModulesAsync(async () => {
-      process.env = {} as unknown as NodeJS.ProcessEnv;
+      process.env = {} as NodeJS.ProcessEnv;
       const ce = jest.spyOn(console, "error").mockImplementation(() => {});
       const cw = jest.spyOn(console, "warn").mockImplementation(() => {});
       const exitSpy = (

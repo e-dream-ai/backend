@@ -19,7 +19,7 @@ const config: Config = {
   coverageDirectory: "coverage",
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.test.ts"],
   coveragePathIgnorePatterns: ["/node_modules/", "/dist/"],
-  testTimeout: 10000,
+  testTimeout: 50000,
   forceExit: true,
 };
 

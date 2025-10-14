@@ -2,8 +2,68 @@ name: test
 
 on:
   - push
-  - pull_request
   - workflow_dispatch
+
+env:
+  npm_package_version: "1.0.0"
+  NODE_ENV: test
+  PORT: "8080"
+  LOGGING: "false"
+  LOGGING_LEVEL: silent
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_COGNITO_USER_POOL_ID: pool
+  AWS_COGNITO_APP_CLIENT_ID: client
+  R2_REGION: auto
+  R2_ACCOUNT_ID: acc
+  R2_ACCESS_KEY_ID: test
+  R2_SECRET_ACCESS_KEY: test
+  R2_BUCKET_NAME: test-bucket
+  R2_BUCKET_URL: https://bucket.example.com
+  AWS_SES_EMAIL_IDENTITY: noreply@example.com
+  OPS_EMAIL: ops@example.com
+  HEROKU_API_URL: https://api.heroku.com
+  VIDEO_SERVICE_APP_ID_OR_NAME: app
+  REDISCLOUD_URL: redis://user:pass@localhost:6379
+  REDIS_HOST: localhost
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: pass
+  PROCESS_VIDEO_SERVER_URL: https://video.example.com
+  PRESIGN_SERVICE_URL: https://presign.example.com
+  PRESIGN_SERVICE_API_KEY: test
+  TYPEORM_CONNECTION: postgres
+  TYPEORM_DATABASE: testdb
+  TYPEORM_DRIVER_EXTRA: "{}"
+  TYPEORM_ENTITIES: src/entities
+  TYPEORM_HOST: localhost
+  TYPEORM_LOGGING: "false"
+  TYPEORM_MIGRATIONS: src/migrations
+  TYPEORM_MIGRATIONS_RUN: "false"
+  TYPEORM_PASSWORD: pass
+  TYPEORM_PORT: "5432"
+  TYPEORM_SYNCHRONIZE: "false"
+  TYPEORM_USERNAME: user
+  TYPEORM_SSL: "{}"
+  FRONTEND_URL: https://frontend.example.com
+  API_KEYS: "[]"
+  VIDEO_INGESTION_API_KEY: test
+  SESSION_SECRET: secret
+  CIPHER_KEY: cipher
+  HEROKU_APIKEY: test
+  WORKOS_CLIENT_ID: wcid
+  WORKOS_API_KEY: wapikey
+  WORKOS_CALLBACK_URL: https://workos.example.com/callback
+  WORKOS_COOKIE_PASSWORD: cookiepass
+  WORKOS_AUTH_URL: https://workos.example.com/auth
+  WORKOS_ORGANIZATION_ID: org
+  WORKOS_WEBHOOK_SECRET: whsec
+  BACKEND_DOMAIN: api.example.com
+  GA_MEASUREMENT_ID: gaid
+  GA_API_SECRET: gasec
+  DESIGNED_PLAYLIST_UUID: p1
+  SHEEP_PLAYLIST_UUID: p2
+  LOG_ROUTES: "*"
 
 permissions:
   contents: read

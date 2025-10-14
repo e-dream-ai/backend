@@ -69,8 +69,8 @@ importers:
         specifier: ^1.7.0
         version: 1.7.3
       ioredis:
-        specifier: ^5.4.1
-        version: 5.4.1
+        specifier: ^5.8.1
+        version: 5.8.1
       jest:
         specifier: ^30.2.0
         version: 30.2.0(@types/node@16.18.68)(ts-node@10.9.2(@types/node@16.18.68)(typescript@4.9.5))
@@ -133,7 +133,7 @@ importers:
         version: 5.0.0(express@4.18.2)
       typeorm:
         specifier: 0.3.17
-        version: 0.3.17(ioredis@5.4.1)(pg@8.11.3)(ts-node@10.9.2(@types/node@16.18.68)(typescript@4.9.5))
+        version: 0.3.17(ioredis@5.8.1)(pg@8.11.3)(ts-node@10.9.2(@types/node@16.18.68)(typescript@4.9.5))
       utility-types:
         specifier: ^3.10.0
         version: 3.10.0
@@ -1114,8 +1114,8 @@ packages:
     resolution: {integrity: sha512-dvuCeX5fC9dXgJn9t+X5atfmgQAzUOWqS1254Gh0m6i8wKd10ebXkfNKiRK+1GWi/yTvvLDHpoxLr0xxxeslWw==}
     deprecated: Use @eslint/object-schema instead
 
-  '@ioredis/commands@1.2.0':
-    resolution: {integrity: sha512-Sx1pU8EM64o2BrqNpEO1CNLtKQwyhuXuqyfH7oGKCk+1a33d2r5saW8zNwm3j6BTExtjrv2BxTgzzkMwts6vGg==}
+  '@ioredis/commands@1.4.0':
+    resolution: {integrity: sha512-aFT2yemJJo+TZCmieA7qnYGQooOS7QfNmYrzGtsYd3g9j5iDP8AimYYAesf79ohjbLG12XxC4nG5DyEnC88AsQ==}
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -3238,8 +3238,8 @@ packages:
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
 
-  ioredis@5.4.1:
-    resolution: {integrity: sha512-2YZsvl7jopIa1gaePkeMtd9rAcSjOOjPtpcLlOeusyO+XH2SK5ZcT+UCrElPP+WVIInh2TzeI4XW9ENaSLVVHA==}
+  ioredis@5.8.1:
+    resolution: {integrity: sha512-Qho8TgIamqEPdgiMadJwzRMW3TudIg6vpg4YONokGDudy4eqRIJtDbVX72pfLBcWxvbn3qm/40TyGUObdW4tLQ==}
     engines: {node: '>=12.22.0'}
 
   ipaddr.js@1.9.1:
@@ -6937,7 +6937,7 @@ snapshots:
 
   '@humanwhocodes/object-schema@2.0.1': {}
 
-  '@ioredis/commands@1.2.0': {}
+  '@ioredis/commands@1.4.0': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -9743,11 +9743,11 @@ snapshots:
 
   inherits@2.0.4: {}
 
-  ioredis@5.4.1:
+  ioredis@5.8.1:
     dependencies:
-      '@ioredis/commands': 1.2.0
+      '@ioredis/commands': 1.4.0
       cluster-key-slot: 1.1.2
-      debug: 4.3.4(supports-color@5.5.0)
+      debug: 4.4.3
       denque: 2.1.0
       lodash.defaults: 4.2.0
       lodash.isarguments: 3.1.0
@@ -11349,7 +11349,7 @@ snapshots:
 
   typedarray@0.0.6: {}
 
-  typeorm@0.3.17(ioredis@5.4.1)(pg@8.11.3)(ts-node@10.9.2(@types/node@16.18.68)(typescript@4.9.5)):
+  typeorm@0.3.17(ioredis@5.8.1)(pg@8.11.3)(ts-node@10.9.2(@types/node@16.18.68)(typescript@4.9.5)):
     dependencies:
       '@sqltools/formatter': 1.2.5
       app-root-path: 3.1.0
@@ -11367,7 +11367,7 @@ snapshots:
       uuid: 9.0.1
       yargs: 17.7.2
     optionalDependencies:
-      ioredis: 5.4.1
+      ioredis: 5.8.1
       pg: 8.11.3
       ts-node: 10.9.2(@types/node@16.18.68)(typescript@4.9.5)
     transitivePeerDependencies:

@@ -10,14 +10,14 @@ describe("/api/v1/health integration", () => {
         start: jest.fn(),
         getPlugin: jest.fn().mockReturnValue({
           requestHandler: jest.fn(
-            (req: unknown, res: unknown, next: (err?: unknown) => void) =>
+            (_req: unknown, _res: unknown, next: (err?: unknown) => void) =>
               next(),
           ),
           errorHandler: jest.fn(
             (
               err: unknown,
-              req: unknown,
-              res: unknown,
+              _req: unknown,
+              _res: unknown,
               next: (e?: unknown) => void,
             ) => next(err),
           ),
@@ -31,65 +31,67 @@ describe("/api/v1/health integration", () => {
     }));
 
     process.env = { ...realEnv };
-    process.env.npm_package_version = "1.0.0";
-    process.env.NODE_ENV = "test";
-    process.env.PORT = "8888";
-    process.env.LOGGING = "false";
-    process.env.LOGGING_LEVEL = "silent";
-    process.env.AWS_REGION = "us-east-1";
-    process.env.AWS_ACCESS_KEY_ID = "x";
-    process.env.AWS_SECRET_ACCESS_KEY = "y";
-    process.env.AWS_COGNITO_USER_POOL_ID = "pool";
-    process.env.AWS_COGNITO_APP_CLIENT_ID = "client";
-    process.env.R2_REGION = "auto";
-    process.env.R2_ACCOUNT_ID = "acc";
-    process.env.R2_ACCESS_KEY_ID = "x";
-    process.env.R2_SECRET_ACCESS_KEY = "y";
-    process.env.R2_BUCKET_NAME = "b";
-    process.env.R2_BUCKET_URL = "https://bucket";
-    process.env.AWS_SES_EMAIL_IDENTITY = "noreply@e.com";
-    process.env.OPS_EMAIL = "ops@e.com";
-    process.env.HEROKU_API_URL = "https://api.heroku.com";
-    process.env.VIDEO_SERVICE_APP_ID_OR_NAME = "app";
-    process.env.REDISCLOUD_URL = "redis://user:pass@localhost:6379";
-    process.env.REDIS_HOST = "localhost";
-    process.env.REDIS_PORT = "6379";
-    process.env.REDIS_PASSWORD = "pass";
-    process.env.PROCESS_VIDEO_SERVER_URL = "https://video";
-    process.env.PRESIGN_SERVICE_URL = "https://presign";
-    process.env.PRESIGN_SERVICE_API_KEY = "k";
-    process.env.TYPEORM_CONNECTION = "postgres";
-    process.env.TYPEORM_DATABASE = "db";
-    process.env.TYPEORM_DRIVER_EXTRA = "{}";
-    process.env.TYPEORM_ENTITIES = "src/entities";
-    process.env.TYPEORM_HOST = "localhost";
-    process.env.TYPEORM_LOGGING = "false";
-    process.env.TYPEORM_MIGRATIONS = "src/migrations";
-    process.env.TYPEORM_MIGRATIONS_RUN = "false";
-    process.env.TYPEORM_PASSWORD = "pass";
-    process.env.TYPEORM_PORT = "5432";
-    process.env.TYPEORM_SYNCHRONIZE = "false";
-    process.env.TYPEORM_USERNAME = "user";
-    process.env.TYPEORM_SSL = "{}";
-    process.env.FRONTEND_URL = "https://frontend";
-    process.env.API_KEYS = "[]";
-    process.env.VIDEO_INGESTION_API_KEY = "key";
-    process.env.SESSION_SECRET = "secret";
-    process.env.CIPHER_KEY = "cipher";
-    process.env.HEROKU_APIKEY = "hkey";
-    process.env.WORKOS_CLIENT_ID = "wcid";
-    process.env.WORKOS_API_KEY = "wapikey";
-    process.env.WORKOS_CALLBACK_URL = "https://wos/cb";
-    process.env.WORKOS_COOKIE_PASSWORD = "cookiepass";
-    process.env.WORKOS_AUTH_URL = "https://wos/auth";
-    process.env.WORKOS_ORGANIZATION_ID = "org";
-    process.env.WORKOS_WEBHOOK_SECRET = "whsec";
-    process.env.BACKEND_DOMAIN = "api.example.com";
-    process.env.GA_MEASUREMENT_ID = "gaid";
-    process.env.GA_API_SECRET = "gasec";
-    process.env.DESIGNED_PLAYLIST_UUID = "p1";
-    process.env.SHEEP_PLAYLIST_UUID = "p2";
-    process.env.LOG_ROUTES = "*";
+    Object.assign(process.env, {
+      npm_package_version: "1.0.0",
+      NODE_ENV: "test",
+      PORT: "8888",
+      LOGGING: "false",
+      LOGGING_LEVEL: "silent",
+      AWS_REGION: "us-east-1",
+      AWS_ACCESS_KEY_ID: "x",
+      AWS_SECRET_ACCESS_KEY: "y",
+      AWS_COGNITO_USER_POOL_ID: "pool",
+      AWS_COGNITO_APP_CLIENT_ID: "client",
+      R2_REGION: "auto",
+      R2_ACCOUNT_ID: "acc",
+      R2_ACCESS_KEY_ID: "x",
+      R2_SECRET_ACCESS_KEY: "y",
+      R2_BUCKET_NAME: "b",
+      R2_BUCKET_URL: "https://bucket",
+      AWS_SES_EMAIL_IDENTITY: "noreply@e.com",
+      OPS_EMAIL: "ops@e.com",
+      HEROKU_API_URL: "https://api.heroku.com",
+      VIDEO_SERVICE_APP_ID_OR_NAME: "app",
+      REDISCLOUD_URL: "redis://user:pass@localhost:6379",
+      REDIS_HOST: "localhost",
+      REDIS_PORT: "6379",
+      REDIS_PASSWORD: "pass",
+      PROCESS_VIDEO_SERVER_URL: "https://video",
+      PRESIGN_SERVICE_URL: "https://presign",
+      PRESIGN_SERVICE_API_KEY: "k",
+      TYPEORM_CONNECTION: "postgres",
+      TYPEORM_DATABASE: "db",
+      TYPEORM_DRIVER_EXTRA: "{}",
+      TYPEORM_ENTITIES: "src/entities",
+      TYPEORM_HOST: "localhost",
+      TYPEORM_LOGGING: "false",
+      TYPEORM_MIGRATIONS: "src/migrations",
+      TYPEORM_MIGRATIONS_RUN: "false",
+      TYPEORM_PASSWORD: "pass",
+      TYPEORM_PORT: "5432",
+      TYPEORM_SYNCHRONIZE: "false",
+      TYPEORM_USERNAME: "user",
+      TYPEORM_SSL: "{}",
+      FRONTEND_URL: "https://frontend",
+      API_KEYS: "[]",
+      VIDEO_INGESTION_API_KEY: "key",
+      SESSION_SECRET: "secret",
+      CIPHER_KEY: "cipher",
+      HEROKU_APIKEY: "hkey",
+      WORKOS_CLIENT_ID: "wcid",
+      WORKOS_API_KEY: "wapikey",
+      WORKOS_CALLBACK_URL: "https://wos/cb",
+      WORKOS_COOKIE_PASSWORD: "cookiepass",
+      WORKOS_AUTH_URL: "https://wos/auth",
+      WORKOS_ORGANIZATION_ID: "org",
+      WORKOS_WEBHOOK_SECRET: "whsec",
+      BACKEND_DOMAIN: "api.example.com",
+      GA_MEASUREMENT_ID: "gaid",
+      GA_API_SECRET: "gasec",
+      DESIGNED_PLAYLIST_UUID: "p1",
+      SHEEP_PLAYLIST_UUID: "p2",
+      LOG_ROUTES: "*",
+    });
 
     const mockRepository = {
       find: jest.fn(),
@@ -106,9 +108,7 @@ describe("/api/v1/health integration", () => {
         initialize: jest.fn().mockResolvedValue(undefined),
         destroy: jest.fn().mockResolvedValue(undefined),
         query: jest.fn().mockResolvedValue([{ "?column?": 1 }]),
-        manager: {
-          query: jest.fn().mockResolvedValue([{ "?column?": 1 }]),
-        },
+        manager: { query: jest.fn().mockResolvedValue([{ "?column?": 1 }]) },
         getRepository: jest.fn().mockReturnValue(mockRepository),
       },
     }));
@@ -156,12 +156,10 @@ describe("/api/v1/health integration", () => {
     const serverMod = await import("server");
     const resources = await serverMod.startServer();
     const res = await request(resources.server).get("/api/v1/health");
-
     expect(res.status).toBe(200);
     expect(res.body?.success).toBe(true);
     expect(res.body?.data?.db?.ok).toBe(true);
     expect(res.body?.data?.redis?.ok).toBe(true);
-
     await serverMod.shutdownServer(resources);
   });
 });

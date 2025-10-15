@@ -62,6 +62,30 @@ Run on dev mode
 pnpm run dev
 ```
 
+### Test
+
+We have unit tests, lint tests, and integration tests. Run them all:
+
+```bash
+cp .env.test .env
+pnpm run test
+```
+
+Or run subsets
+
+```bash
+pnpm run test:ci
+pnpm run test:unit
+pnpm run test:integration
+```
+
+Or run other code checks:
+
+```bash
+pnpm run lint
+pnpm run typecheck
+```
+
 ### Run with docker
 
 Copy env file

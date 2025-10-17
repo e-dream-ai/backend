@@ -11,7 +11,6 @@ import {
 import env from "shared/env";
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
-import { APP_LOGGER } from "shared/logger";
 import passport from "passport";
 import session from "express-session";
 import configurePassport from "clients/passport.client";
@@ -87,7 +86,7 @@ export const registerMiddlewares = (app: express.Application) => {
   app.use(memoryMonitorMiddleware);
 
   // pino-http express middleware
-  app.use(pinoHttp({ logger: APP_LOGGER }));
+  app.use(pinoHttp());
 
   app.use(
     session({

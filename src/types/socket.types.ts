@@ -47,4 +47,9 @@ export type RemoteControlEvent = {
   key?: string;
   frameNumber?: number;
   isWebClientEvent?: boolean;
+  // Desktop status metrics
+  currentTime?: number; // seconds
+  duration?: number; // seconds
+  fps?: number; // display fps
+  paused?: boolean; // desktop pause state
 };

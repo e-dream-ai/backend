@@ -10,4 +10,9 @@ export const remoteControlSchema = Joi.object<RemoteControlEvent>({
   key: Joi.string(),
   frameNumber: Joi.number().integer(),
   isWebClientEvent: Joi.boolean(),
+  // Desktop status metrics
+  currentTime: Joi.number(),
+  duration: Joi.number(),
+  fps: Joi.number(),
+  paused: Joi.boolean(),
 }).required();

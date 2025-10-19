@@ -291,6 +291,7 @@ export const handleNewControlEvent = ({
     /**
      * Emit boradcast {NEW_REMOTE_CONTROL_EVENT} event
      */
+    socket.emit(NEW_REMOTE_CONTROL_EVENT, data);
     socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
   };
 };

@@ -8,28 +8,6 @@ import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import { VoteType } from "types/vote.types";
 import { getRequestContext } from "utils/api.util";
 import {
-  PRESENCE_JOIN_EVENT,
-  PRESENCE_HEARTBEAT_EVENT,
-  ROLES_UPDATE_EVENT,
-} from "constants/roles.constants";
-import {
-  presenceHeartbeatSchema,
-  presenceJoinSchema,
-} from "schemas/roles.schema";
-import {
-  PresenceHeartbeatPayload,
-  PresenceJoinPayload,
-  RolesUpdatePayload,
-} from "types/roles.types";
-import {
-  electRoles,
-  registerDevice,
-  removeDeviceBySocket,
-  resolvePlayerSocketId,
-  updateHeartbeat,
-  getCurrentRoles,
-} from "utils/role-orchestrator";
-import {
   findOneDream,
   getDreamSelectedColumns,
   handleVoteDream,
@@ -100,76 +78,6 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    * Register goodbye handler
    */
   socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, user, roomId }));
-
-  socket.on(PRESENCE_JOIN_EVENT, async (payload: PresenceJoinPayload) => {
-    const { error } = presenceJoinSchema.validate(payload);
-    if (error) {
-      socket.emit("Validation error", { error: error.message });
-      return;
-    }
-    await registerDevice({
-      userId: String(user.id),
-      payload,
-      socketId: socket.id,
-    });
-    const roles = await electRoles({ userId: String(user.id) });
-    const playerSocketId = await resolvePlayerSocketId({
-      userId: String(user.id),
-      roles,
-    });
-    const deviceRoles = (deviceId: string): RolesUpdatePayload["roles"] => {
-      const isPlayer = roles.playerDeviceId === deviceId;
-      const isRemote = roles.remoteDeviceId === deviceId;
-      const rolesArr: Array<"player" | "remote"> = [];
-      if (isPlayer) rolesArr.push("player");
-      if (isRemote) rolesArr.push("remote");
-      if (!rolesArr.length) rolesArr.push("remote");
-      return rolesArr;
-    };
-    // broadcast roles to all devices in room
-    socket.nsp.to(roomId).emit(ROLES_UPDATE_EVENT, {
-      version: roles.version,
-      playerDeviceId: roles.playerDeviceId,
-      remoteDeviceId: roles.remoteDeviceId,
-      playerSocketId,
-    });
-    // also send per-device roles to this socket
-    socket.emit(ROLES_UPDATE_EVENT, {
-      version: roles.version,
-      roles: deviceRoles(payload.deviceId),
-      playerSocketId,
-    } as RolesUpdatePayload);
-  });
-
-  socket.on(
-    PRESENCE_HEARTBEAT_EVENT,
-    async (payload: PresenceHeartbeatPayload) => {
-      const { error } = presenceHeartbeatSchema.validate(payload);
-      if (error) return;
-      await updateHeartbeat({
-        userId: String(user.id),
-        deviceId: payload.deviceId,
-      });
-    },
-  );
-
-  socket.on("disconnect", async () => {
-    await removeDeviceBySocket({
-      userId: String(user.id),
-      socketId: socket.id,
-    });
-    const roles = await electRoles({ userId: String(user.id) });
-    const playerSocketId = await resolvePlayerSocketId({
-      userId: String(user.id),
-      roles,
-    });
-    socket.nsp.to(roomId).emit(ROLES_UPDATE_EVENT, {
-      version: roles.version,
-      playerDeviceId: roles.playerDeviceId,
-      remoteDeviceId: roles.remoteDeviceId,
-      playerSocketId,
-    });
-  });
 };
 
 export const handleNewControlEvent = ({
@@ -381,33 +289,10 @@ export const handleNewControlEvent = ({
     );
 
     /**
-     * Forwarding strategy:
-     *  - STATUS events are broadcast to room (metrics for observers)
-     *  - Other controls are sent to the elected player socket only
-     *    (and echoed back to sender). Fallback to room broadcast if no player.
+     * Emit boradcast {NEW_REMOTE_CONTROL_EVENT} event
      */
-    if (data.event === REMOTE_CONTROLS.STATUS) {
-      socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
-      return;
-    }
-
-    const roles = await getCurrentRoles(String(user.id));
-    const playerSocketId = await resolvePlayerSocketId({
-      userId: String(user.id),
-      roles,
-    });
-
-    // Echo to sender for immediate UI response
-    if (playerSocketId === socket.id || !playerSocketId) {
-      socket.emit(NEW_REMOTE_CONTROL_EVENT, data);
-    }
-
-    if (playerSocketId && playerSocketId !== socket.id) {
-      socket.nsp.to(playerSocketId).emit(NEW_REMOTE_CONTROL_EVENT, data);
-    } else if (!playerSocketId) {
-      // Fallback: legacy behavior
-      socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
-    }
+    socket.emit(NEW_REMOTE_CONTROL_EVENT, data);
+    socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
   };
 };
 

@@ -47,27 +47,9 @@ export type RemoteControlEvent = {
   key?: string;
   frameNumber?: number;
   isWebClientEvent?: boolean;
-  targetClientId?: string;
   // Desktop status metrics
   currentTime?: number; // seconds
   duration?: number; // seconds
   fps?: number; // display fps
   paused?: boolean; // desktop pause state
-};
-
-export type PresenceUpdate = {
-  type: "add" | "update" | "remove";
-  clientId: string;
-  clientType?: string;
-  clientVersion?: string;
-  updatedAt: number;
-};
-
-export type StatusUpdate = {
-  clientId: string;
-  paused?: boolean;
-  speed?: number;
-  captions?: boolean;
-  fullscreen?: boolean;
-  currentIndex?: number;
 };

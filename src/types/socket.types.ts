@@ -40,6 +40,17 @@ export const REMOTE_CONTROLS = {
   RESET_PLAYLIST: "reset_playlist",
 };
 
+/**
+ * Device management socket events
+ */
+export const DEVICE_EVENTS = {
+  REGISTER: "device:register",
+  ROLE_ASSIGNED: "device:role-assigned",
+  LIST_UPDATED: "device:list-updated",
+  PING: "device:ping",
+  PONG: "device:pong",
+};
+
 export type RemoteControlEvent = {
   event: string;
   name?: string | null;

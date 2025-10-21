@@ -7,6 +7,8 @@ import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import { VoteType } from "types/vote.types";
 import { getRequestContext } from "utils/api.util";
+import { PresenceStore } from "utils/presence.util";
+import { PresenceUpdate, StatusUpdate } from "types/socket.types";
 import {
   findOneDream,
   getDreamSelectedColumns,
@@ -25,6 +27,8 @@ import {
 } from "utils/user.util";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
+const PRESENCE_UPDATE_EVENT = "presence_update";
+const STATUS_UPDATE_EVENT = "status_update";
 const PING_EVENT = "ping";
 const PING_EVENT_REDIS = "ping_redis";
 const GOOD_BYE_EVENT = "goodbye";
@@ -39,6 +43,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
 
   const clientInfo = getRequestContext(socket.request.headers);
+  const clientId: string = socket.id;
 
   /**
    * Create session
@@ -55,11 +60,45 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    */
   const roomId = "USER:" + user.id;
   socket.join(roomId);
+  // also join a dedicated client room
+  const clientRoomId = PresenceStore.getClientRoomId(clientId);
+  socket.join(clientRoomId);
+
+  // save presence and broadcast add
+  await PresenceStore.saveClientPresence({
+    clientId,
+    userId: user.id,
+    userUUID: user.uuid,
+    clientType: clientInfo.type,
+    clientVersion: clientInfo.version,
+  });
+  const presenceAdd: PresenceUpdate = {
+    type: "add",
+    clientId,
+    clientType: clientInfo.type,
+    clientVersion: clientInfo.version,
+    updatedAt: Date.now(),
+  };
+  socket.emit(PRESENCE_UPDATE_EVENT, presenceAdd);
+  socket.broadcast.to(roomId).emit(PRESENCE_UPDATE_EVENT, presenceAdd);
 
   socket.on(
     NEW_REMOTE_CONTROL_EVENT,
     handleNewControlEvent({ socket, user, roomId }),
   );
+
+  socket.on(STATUS_UPDATE_EVENT, async (data: StatusUpdate) => {
+    const payload: StatusUpdate = {
+      clientId,
+      paused: data?.paused,
+      speed: data?.speed,
+      captions: data?.captions,
+      fullscreen: data?.fullscreen,
+      currentIndex: data?.currentIndex,
+    };
+    socket.emit(STATUS_UPDATE_EVENT, payload);
+    socket.broadcast.to(roomId).emit(STATUS_UPDATE_EVENT, payload);
+  });
 
   /**
    * Register ping handler
@@ -291,8 +330,22 @@ export const handleNewControlEvent = ({
     /**
      * Emit boradcast {NEW_REMOTE_CONTROL_EVENT} event
      */
-    socket.emit(NEW_REMOTE_CONTROL_EVENT, data);
-    socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
+    const targetClientId = data.targetClientId;
+    if (targetClientId) {
+      const presence = await PresenceStore.getClientPresence(targetClientId);
+      if (!presence || presence.userUUID !== user.uuid) {
+        socket.emit(GENERAL_MESSAGES.ERROR, {
+          error: GENERAL_MESSAGES.UNAUTHORIZED,
+        });
+        return;
+      }
+      const targetRoom = PresenceStore.getClientRoomId(targetClientId);
+      socket.to(targetRoom).emit(NEW_REMOTE_CONTROL_EVENT, data);
+      socket.emit(NEW_REMOTE_CONTROL_EVENT, data);
+    } else {
+      socket.emit(NEW_REMOTE_CONTROL_EVENT, data);
+      socket.broadcast.to(roomId).emit(NEW_REMOTE_CONTROL_EVENT, data);
+    }
   };
 };
 
@@ -327,6 +380,8 @@ export const handlePingEvent = ({
      */
     // tracker.sendEventWithSocketRequestContext(socket, user.uuid, "CLIENT_PING", {});
     sessionTracker.handlePing(socket.id);
+    // refresh presence TTL
+    await PresenceStore.touchClientPresence(socket.id);
 
     /**
      * Emit boradcast {PING_EVENT} event
@@ -389,5 +444,14 @@ export const handleGoodbyeEvent = ({
      * Emit boradcast {PING_EVENT} event
      */
     socket.broadcast.to(roomId).emit(GOOD_BYE_EVENT);
+    // remove presence and broadcast removal
+    await PresenceStore.removeClientPresence(socket.id, user.id);
+    const presenceRemove: PresenceUpdate = {
+      type: "remove",
+      clientId: socket.id,
+      updatedAt: Date.now(),
+    };
+    socket.emit(PRESENCE_UPDATE_EVENT, presenceRemove);
+    socket.broadcast.to(roomId).emit(PRESENCE_UPDATE_EVENT, presenceRemove);
   };
 };

@@ -9,4 +9,8 @@ export const ALLOWED_HEADERS = [
   "Edream-Client-Type",
   "E-Dream-Client-Version",
   "Edream-Client-Version",
+  "edream-client-type",
+  "e-dream-client-type",
+  "edream-client-version",
+  "e-dream-client-version",
 ];

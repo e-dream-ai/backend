@@ -25,6 +25,7 @@ import {
 } from "utils/user.util";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
+const CONNECTIONS_COUNT_EVENT = "connections_count";
 const PING_EVENT = "ping";
 const PING_EVENT_REDIS = "ping_redis";
 const GOOD_BYE_EVENT = "goodbye";
@@ -56,6 +57,15 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   const roomId = "USER:" + user.id;
   socket.join(roomId);
 
+  // Emit initial connections count to all devices for this user
+  try {
+    const count = sessionTracker.getActiveSessionsCountByUser(user.uuid);
+    socket.emit(CONNECTIONS_COUNT_EVENT, { count });
+    socket.broadcast.to(roomId).emit(CONNECTIONS_COUNT_EVENT, { count });
+  } catch (e) {
+    // noop
+  }
+
   socket.on(
     NEW_REMOTE_CONTROL_EVENT,
     handleNewControlEvent({ socket, user, roomId }),
@@ -77,7 +87,21 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   /**
    * Register goodbye handler
    */
-  socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, user, roomId }));
+  socket.on(
+    GOOD_BYE_EVENT,
+    handleGoodbyeEvent({ socket, user, roomId, sessionTracker }),
+  );
+
+  // On disconnect, end session and broadcast updated count
+  socket.on("disconnect", () => {
+    try {
+      sessionTracker.endSession(socket.id);
+      const count = sessionTracker.getActiveSessionsCountByUser(user.uuid);
+      socket.broadcast.to(roomId).emit(CONNECTIONS_COUNT_EVENT, { count });
+    } catch (e) {
+      // noop
+    }
+  });
 };
 
 export const handleNewControlEvent = ({
@@ -332,6 +356,15 @@ export const handlePingEvent = ({
      * Emit boradcast {PING_EVENT} event
      */
     socket.broadcast.to(roomId).emit(PING_EVENT);
+
+    // Also broadcast current connections count to keep clients updated
+    try {
+      const count = sessionTracker.getActiveSessionsCountByUser(user.uuid);
+      socket.emit(CONNECTIONS_COUNT_EVENT, { count });
+      socket.broadcast.to(roomId).emit(CONNECTIONS_COUNT_EVENT, { count });
+    } catch (e) {
+      // noop
+    }
   };
 };
 
@@ -374,10 +407,12 @@ export const handleGoodbyeEvent = ({
   user,
   socket,
   roomId,
+  sessionTracker,
 }: {
   user: User;
   socket: Socket;
   roomId: string;
+  sessionTracker: SessionTracker;
 }) => {
   return async () => {
     /**
@@ -389,5 +424,15 @@ export const handleGoodbyeEvent = ({
      * Emit boradcast {PING_EVENT} event
      */
     socket.broadcast.to(roomId).emit(GOOD_BYE_EVENT);
+
+    // End this session and broadcast updated connections count
+    try {
+      sessionTracker.endSession(socket.id);
+      const count = sessionTracker.getActiveSessionsCountByUser(user.uuid);
+      socket.emit(CONNECTIONS_COUNT_EVENT, { count });
+      socket.broadcast.to(roomId).emit(CONNECTIONS_COUNT_EVENT, { count });
+    } catch (e) {
+      // noop
+    }
   };
 };

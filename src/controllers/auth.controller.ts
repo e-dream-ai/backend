@@ -490,7 +490,6 @@ export const handleCurrentUserDream = async (
 ) => {
   const currentDream = res.locals.user?.currentDream;
 
-  // Transform dream to include signed URLs if it exists
   const transformedDream = currentDream
     ? await transformDreamWithSignedUrls(currentDream)
     : null;
@@ -532,7 +531,6 @@ export const handleCurrentUserPlaylist = async (
     });
   }
 
-  // Transform playlist to include signed URLs if it exists
   const transformedPlaylist = playlist
     ? await transformPlaylistWithSignedUrls(playlist)
     : null;

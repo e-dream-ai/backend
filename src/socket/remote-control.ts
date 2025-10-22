@@ -25,10 +25,10 @@ import {
 } from "utils/user.util";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
-const CONNECTIONS_COUNT_EVENT = "connections_count";
 const PING_EVENT = "ping";
 const PING_EVENT_REDIS = "ping_redis";
 const GOOD_BYE_EVENT = "goodbye";
+const CLIENT_PRESENCE_EVENT = "client_presence";
 
 const sessionTracker = new SessionTracker({
   pingTimeout: 15000,
@@ -57,14 +57,22 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   const roomId = "USER:" + user.id;
   socket.join(roomId);
 
-  // Emit initial connections count to all devices for this user
-  try {
-    const count = sessionTracker.getActiveSessionsCountByUser(user.uuid);
-    socket.emit(CONNECTIONS_COUNT_EVENT, { count });
-    socket.broadcast.to(roomId).emit(CONNECTIONS_COUNT_EVENT, { count });
-  } catch (e) {
-    // noop
-  }
+  /**
+   * Helper to emit current presence (number of sockets) to the user room
+   */
+  const emitPresence = async () => {
+    try {
+      const size = socket.nsp.adapter.rooms.get(roomId)?.size || 0;
+      socket.nsp.to(roomId).emit(CLIENT_PRESENCE_EVENT, {
+        connectedDevices: size,
+      });
+    } catch (err) {
+      // no-op: presence is best-effort
+    }
+  };
+
+  // Emit initial presence after joining
+  await emitPresence();
 
   socket.on(
     NEW_REMOTE_CONTROL_EVENT,
@@ -76,7 +84,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    */
   socket.on(
     PING_EVENT,
-    handlePingEvent({ socket, user, roomId, sessionTracker }),
+    handlePingEvent({ socket, user, roomId, sessionTracker, emitPresence }),
   );
 
   /**
@@ -87,20 +95,11 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   /**
    * Register goodbye handler
    */
-  socket.on(
-    GOOD_BYE_EVENT,
-    handleGoodbyeEvent({ socket, user, roomId, sessionTracker }),
-  );
+  socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, user, roomId }));
 
-  // On disconnect, end session and broadcast updated count
-  socket.on("disconnect", () => {
-    try {
-      sessionTracker.endSession(socket.id);
-      const count = sessionTracker.getActiveSessionsCountByUser(user.uuid);
-      socket.broadcast.to(roomId).emit(CONNECTIONS_COUNT_EVENT, { count });
-    } catch (e) {
-      // noop
-    }
+  // Emit presence on disconnect
+  socket.on("disconnect", async () => {
+    await emitPresence();
   });
 };
 
@@ -334,11 +333,13 @@ export const handlePingEvent = ({
   socket,
   roomId,
   sessionTracker,
+  emitPresence,
 }: {
   user: User;
   socket: Socket;
   roomId: string;
   sessionTracker: SessionTracker;
+  emitPresence: () => Promise<void>;
 }) => {
   return async () => {
     /**
@@ -357,14 +358,8 @@ export const handlePingEvent = ({
      */
     socket.broadcast.to(roomId).emit(PING_EVENT);
 
-    // Also broadcast current connections count to keep clients updated
-    try {
-      const count = sessionTracker.getActiveSessionsCountByUser(user.uuid);
-      socket.emit(CONNECTIONS_COUNT_EVENT, { count });
-      socket.broadcast.to(roomId).emit(CONNECTIONS_COUNT_EVENT, { count });
-    } catch (e) {
-      // noop
-    }
+    // Update presence (best-effort)
+    await emitPresence();
   };
 };
 
@@ -407,12 +402,10 @@ export const handleGoodbyeEvent = ({
   user,
   socket,
   roomId,
-  sessionTracker,
 }: {
   user: User;
   socket: Socket;
   roomId: string;
-  sessionTracker: SessionTracker;
 }) => {
   return async () => {
     /**
@@ -425,14 +418,14 @@ export const handleGoodbyeEvent = ({
      */
     socket.broadcast.to(roomId).emit(GOOD_BYE_EVENT);
 
-    // End this session and broadcast updated connections count
+    // Update presence (best-effort)
     try {
-      sessionTracker.endSession(socket.id);
-      const count = sessionTracker.getActiveSessionsCountByUser(user.uuid);
-      socket.emit(CONNECTIONS_COUNT_EVENT, { count });
-      socket.broadcast.to(roomId).emit(CONNECTIONS_COUNT_EVENT, { count });
-    } catch (e) {
-      // noop
+      const size = socket.nsp.adapter.rooms.get(roomId)?.size || 0;
+      socket.nsp.to(roomId).emit(CLIENT_PRESENCE_EVENT, {
+        connectedDevices: size,
+      });
+    } catch (err) {
+      // no-op
     }
   };
 };

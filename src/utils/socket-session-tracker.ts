@@ -198,14 +198,4 @@ export class SessionTracker extends EventEmitter {
       lastPing: session.lastPing,
     };
   }
-
-  getActiveSessionsCountByUser(userUUID: string): number {
-    let count = 0;
-    for (const [, session] of this.sessions) {
-      if (session.userUUID === userUUID && session.isActive) {
-        count += 1;
-      }
-    }
-    return count;
-  }
 }

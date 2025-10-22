@@ -29,6 +29,7 @@ const PING_EVENT = "ping";
 const PING_EVENT_REDIS = "ping_redis";
 const GOOD_BYE_EVENT = "goodbye";
 const CLIENT_PRESENCE_EVENT = "client_presence";
+const WEB_CLIENT_STATUS_EVENT = "web_client_status";
 
 const sessionTracker = new SessionTracker({
   pingTimeout: 15000,
@@ -62,9 +63,14 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    */
   const emitPresence = async () => {
     try {
-      const size = socket.nsp.adapter.rooms.get(roomId)?.size || 0;
+      const room = socket.nsp.adapter.rooms.get(roomId);
+      const size = room?.size || 0;
+      const hasWebPlayer = room
+        ? sessionTracker.anyWebClientActive(room.values())
+        : false;
       socket.nsp.to(roomId).emit(CLIENT_PRESENCE_EVENT, {
         connectedDevices: size,
+        hasWebPlayer,
       });
     } catch (err) {
       // no-op: presence is best-effort
@@ -86,6 +92,17 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     PING_EVENT,
     handlePingEvent({ socket, user, roomId, sessionTracker, emitPresence }),
   );
+
+  /**
+   * Register web client status handler
+   */
+  socket.on(WEB_CLIENT_STATUS_EVENT, async (payload?: { active?: boolean }) => {
+    try {
+      sessionTracker.setWebClientActive(socket.id, Boolean(payload?.active));
+    } finally {
+      await emitPresence();
+    }
+  });
 
   /**
    * Register ping redis handler

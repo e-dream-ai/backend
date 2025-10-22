@@ -21,6 +21,7 @@ type SessionData = {
   totalTimeInSeconds: number;
   isActive: boolean;
   pings: PingData[];
+  webClientActive?: boolean;
 };
 
 // Ping data structure
@@ -90,6 +91,7 @@ export class SessionTracker extends EventEmitter {
       totalTimeInSeconds: 0,
       isActive: true,
       pings: [],
+      webClientActive: false,
     };
 
     this.sessions.set(socketId, session);
@@ -162,6 +164,24 @@ export class SessionTracker extends EventEmitter {
       app_version: session.clientVersion,
     });
     return sessionMetrics;
+  }
+
+  setWebClientActive(socketId: string, isActive: boolean): void {
+    const session = this.sessions.get(socketId);
+    if (!session) return;
+    session.webClientActive = Boolean(isActive);
+  }
+
+  isWebClientActive(socketId: string): boolean {
+    const session = this.sessions.get(socketId);
+    return Boolean(session?.webClientActive);
+  }
+
+  anyWebClientActive(socketIds: Iterable<string>): boolean {
+    for (const id of socketIds) {
+      if (this.isWebClientActive(id)) return true;
+    }
+    return false;
   }
 
   calculateAveragePingTime(session: SessionData): number {

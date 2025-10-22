@@ -4,11 +4,7 @@ import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { User } from "entities";
 import { remoteControlSchema } from "schemas/socket.schema";
 import { Socket } from "socket.io";
-import {
-  REMOTE_CONTROLS,
-  RemoteControlEvent,
-  DEVICE_EVENTS,
-} from "types/socket.types";
+import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import { VoteType } from "types/vote.types";
 import { getRequestContext } from "utils/api.util";
 import {
@@ -27,8 +23,6 @@ import {
   resetUserLastClientPingAt,
   setUserLastClientPingAt,
 } from "utils/user.util";
-import { deviceSessionManager } from "./device-session-manager";
-import { DeviceRegistrationData } from "types/device-session.types";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
 const PING_EVENT = "ping";
@@ -84,26 +78,6 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    * Register goodbye handler
    */
   socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, user, roomId }));
-
-  /**
-   * Register device registration handler
-   */
-  socket.on(
-    DEVICE_EVENTS.REGISTER,
-    handleDeviceRegister({ socket, user, roomId }),
-  );
-
-  /**
-   * Register device ping handler
-   */
-  socket.on(DEVICE_EVENTS.PING, handleDevicePing({ socket, user }));
-
-  /**
-   * Handle disconnection
-   */
-  socket.on("disconnect", () => {
-    handleDisconnect({ socket, user, roomId });
-  });
 };
 
 export const handleNewControlEvent = ({
@@ -416,144 +390,4 @@ export const handleGoodbyeEvent = ({
      */
     socket.broadcast.to(roomId).emit(GOOD_BYE_EVENT);
   };
-};
-
-/**
- * Handles device registration from a client
- */
-export const handleDeviceRegister = ({
-  user,
-  socket,
-  roomId,
-}: {
-  user: User;
-  socket: Socket;
-  roomId: string;
-}) => {
-  return async (data: DeviceRegistrationData) => {
-    try {
-      // Register device with session manager
-      const deviceSession = deviceSessionManager.registerDevice(
-        socket.id,
-        user.uuid,
-        data,
-      );
-
-      // Get role assignments after election
-      const assignments = deviceSessionManager.runElection(user.uuid);
-
-      // Send role assignment to all devices in the room
-      assignments.forEach((assignment) => {
-        const devices = deviceSessionManager.getUserDevices(user.uuid);
-        const targetDevice = devices.find(
-          (d) => d.deviceMetadata.deviceId === assignment.deviceId,
-        );
-
-        if (targetDevice) {
-          // Emit to specific device
-          if (targetDevice.socketId === socket.id) {
-            socket.emit(DEVICE_EVENTS.ROLE_ASSIGNED, assignment);
-          } else {
-            socket
-              .to(targetDevice.socketId)
-              .emit(DEVICE_EVENTS.ROLE_ASSIGNED, assignment);
-          }
-        }
-      });
-
-      // Broadcast device list update to all devices in the room
-      const deviceListUpdate = deviceSessionManager.getDeviceListUpdate(
-        user.uuid,
-        data.deviceId,
-      );
-
-      socket.emit(DEVICE_EVENTS.LIST_UPDATED, deviceListUpdate);
-      socket.broadcast
-        .to(roomId)
-        .emit(DEVICE_EVENTS.LIST_UPDATED, deviceListUpdate);
-
-      // Send analytics event
-      tracker.sendEventWithSocketRequestContext(
-        socket,
-        user.uuid,
-        "CLIENT_HELLO",
-        {
-          device_type: data.deviceType,
-          device_role: deviceSession.role,
-        },
-      );
-    } catch (error) {
-      console.error("Error registering device:", error);
-      socket.emit(GENERAL_MESSAGES.ERROR, {
-        error: "Failed to register device",
-      });
-    }
-  };
-};
-
-/**
- * Handles device ping to update last seen timestamp
- */
-export const handleDevicePing = ({
-  socket,
-}: {
-  user: User;
-  socket: Socket;
-}) => {
-  return async () => {
-    deviceSessionManager.updateLastSeen(socket.id);
-    socket.emit(DEVICE_EVENTS.PONG);
-  };
-};
-
-/**
- * Handles socket disconnection and device cleanup
- */
-export const handleDisconnect = ({
-  user,
-  socket,
-}: {
-  user: User;
-  socket: Socket;
-  roomId: string;
-}) => {
-  // Get device before unregistering
-  const device = deviceSessionManager.getDeviceBySocketId(socket.id);
-
-  if (device) {
-    // Unregister device
-    deviceSessionManager.unregisterDevice(socket.id, user.uuid);
-
-    // Get remaining devices
-    const remainingDevices = deviceSessionManager.getUserDevices(user.uuid);
-
-    if (remainingDevices.length > 0) {
-      // Run election for remaining devices
-      const assignments = deviceSessionManager.runElection(user.uuid);
-
-      // Notify remaining devices of role changes
-      assignments.forEach((assignment) => {
-        const targetDevice = remainingDevices.find(
-          (d) => d.deviceMetadata.deviceId === assignment.deviceId,
-        );
-
-        if (targetDevice) {
-          socket
-            .to(targetDevice.socketId)
-            .emit(DEVICE_EVENTS.ROLE_ASSIGNED, assignment);
-        }
-      });
-
-      // Broadcast updated device list
-      remainingDevices.forEach((d) => {
-        const deviceListUpdate = deviceSessionManager.getDeviceListUpdate(
-          user.uuid,
-          d.deviceMetadata.deviceId,
-        );
-        socket
-          .to(d.socketId)
-          .emit(DEVICE_EVENTS.LIST_UPDATED, deviceListUpdate);
-      });
-    }
-  }
 };

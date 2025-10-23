@@ -37,6 +37,8 @@ const sessionTracker = new SessionTracker({
   cleanupInterval: 20000,
 });
 
+const ignoredEarlyNextBySocket = new Map<string, boolean>();
+
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
 
@@ -116,6 +118,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
 
   // Emit presence on disconnect
   socket.on("disconnect", async () => {
+    ignoredEarlyNextBySocket.delete(socket.id);
     await emitPresence();
   });
 };
@@ -146,12 +149,19 @@ export const handleNewControlEvent = ({
       const hasReceivedFirstPing = Boolean(
         metrics && metrics.lastPing > metrics.startTime,
       );
+
       if (
         data?.event === REMOTE_CONTROLS.GO_NEXT_DREAM &&
-        !hasReceivedFirstPing &&
         data?.isWebClientEvent !== true
       ) {
-        return;
+        if (!hasReceivedFirstPing) {
+          const alreadyIgnored =
+            ignoredEarlyNextBySocket.get(socket.id) === true;
+          if (!alreadyIgnored) {
+            ignoredEarlyNextBySocket.set(socket.id, true);
+            return;
+          }
+        }
       }
     } catch {
       // no-op: ignore errors

@@ -38,6 +38,7 @@ const sessionTracker = new SessionTracker({
 });
 
 const ignoredEarlyNextBySocket = new Map<string, boolean>();
+const EARLY_NEXT_WINDOW_MS = 300;
 
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
@@ -149,12 +150,18 @@ export const handleNewControlEvent = ({
       const hasReceivedFirstPing = Boolean(
         metrics && metrics.lastPing > metrics.startTime,
       );
+      const withinEarlyWindow = Boolean(
+        metrics && Date.now() - metrics.startTime < EARLY_NEXT_WINDOW_MS,
+      );
 
       if (
         data?.event === REMOTE_CONTROLS.GO_NEXT_DREAM &&
         data?.isWebClientEvent !== true
       ) {
-        if (!hasReceivedFirstPing) {
+        const looksAutoFromNative =
+          !data?.uuid && !data?.key && typeof data?.frameNumber !== "number";
+
+        if (!hasReceivedFirstPing && withinEarlyWindow && looksAutoFromNative) {
           const alreadyIgnored =
             ignoredEarlyNextBySocket.get(socket.id) === true;
           if (!alreadyIgnored) {

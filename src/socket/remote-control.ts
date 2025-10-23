@@ -139,6 +139,25 @@ export const handleNewControlEvent = ({
     }
 
     /**
+     * Ignore "next" event sent by desktop client before first ping.
+     */
+    try {
+      const metrics = sessionTracker.getSessionMetrics(socket.id);
+      const hasReceivedFirstPing = Boolean(
+        metrics && metrics.lastPing > metrics.startTime,
+      );
+      if (
+        data?.event === REMOTE_CONTROLS.GO_NEXT_DREAM &&
+        !hasReceivedFirstPing &&
+        data?.isWebClientEvent !== true
+      ) {
+        return;
+      }
+    } catch {
+      // no-op: ignore errors
+    }
+
+    /**
      * Get event
      */
     const event = data.event;

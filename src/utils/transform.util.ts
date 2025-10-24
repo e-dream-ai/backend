@@ -675,6 +675,35 @@ export const transformPlaylistWithSignedUrls = async (
   return transformedPlaylist;
 };
 
+export const transformCurrentPlaylistWithSignedUrls = async (
+  currentPlaylist: Playlist,
+): Promise<Playlist> => {
+  const session = new TransformSession();
+
+  session.addEntityKeys(currentPlaylist, "playlist");
+  if (currentPlaylist.items) {
+    currentPlaylist.items.forEach((item) => {
+      session.addComplexEntityKeys(item, "playlistItem");
+    });
+  }
+
+  const signedUrls = await session.executeBatch();
+
+  const transformedPlaylist = session.applyToEntity(
+    currentPlaylist,
+    "playlist",
+    signedUrls,
+  );
+
+  if (transformedPlaylist.items) {
+    transformedPlaylist.items = transformedPlaylist.items.map((item) =>
+      session.applyToComplexEntity(item, "playlistItem", signedUrls),
+    );
+  }
+
+  return transformedPlaylist;
+};
+
 export const transformFeedItemsWithSignedUrls = async (
   feedItems: FeedItem[],
 ): Promise<FeedItem[]> => {

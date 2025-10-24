@@ -64,13 +64,43 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   /**
    * Helper to emit current presence (number of sockets) to the user room
    */
+  const USER_WEB_ACTIVE_TTL_SECONDS = 60;
+  const getUserWebActiveKey = (uuid: string) => `user:web_active:${uuid}`;
+
+  const setUserWebActive = async (uuid: string, isActive: boolean) => {
+    const key = getUserWebActiveKey(uuid);
+    if (isActive) {
+      await redisClient.set(key, "1", "EX", USER_WEB_ACTIVE_TTL_SECONDS);
+    } else {
+      await redisClient.del(key);
+    }
+  };
+
+  const getUserWebActive = async (uuid: string): Promise<boolean> => {
+    const key = getUserWebActiveKey(uuid);
+    try {
+      const v = await redisClient.get(key);
+      return v === "1";
+    } catch {
+      return false;
+    }
+  };
+
   const emitPresence = async () => {
     try {
       const room = socket.nsp.adapter.rooms.get(roomId);
       const size = room?.size || 0;
-      const hasWebPlayer = room
+      const hasActiveLocally = room
         ? sessionTracker.anyWebClientActive(room.values())
         : false;
+      // include cached user-level active flag to avoid reconnect races
+      const cachedActive = await getUserWebActive(user.uuid);
+      const hasWebPlayer = Boolean(hasActiveLocally || cachedActive);
+
+      // refresh user-level flag TTL whenever we see a local active socket
+      if (hasActiveLocally) {
+        await setUserWebActive(user.uuid, true);
+      }
       socket.nsp.to(roomId).emit(CLIENT_PRESENCE_EVENT, {
         connectedDevices: size,
         hasWebPlayer,
@@ -101,7 +131,20 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    */
   socket.on(WEB_CLIENT_STATUS_EVENT, async (payload?: { active?: boolean }) => {
     try {
-      sessionTracker.setWebClientActive(socket.id, Boolean(payload?.active));
+      const isActive = Boolean(payload?.active);
+      sessionTracker.setWebClientActive(socket.id, isActive);
+      if (isActive) {
+        await setUserWebActive(user.uuid, true);
+      } else {
+        // if no other active sockets remain for this user, clear cached flag
+        const room = socket.nsp.adapter.rooms.get(roomId);
+        const hasActiveLocally = room
+          ? sessionTracker.anyWebClientActive(room.values())
+          : false;
+        if (!hasActiveLocally) {
+          await setUserWebActive(user.uuid, false);
+        }
+      }
     } finally {
       await emitPresence();
     }
@@ -120,7 +163,17 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   // Emit presence on disconnect
   socket.on("disconnect", async () => {
     ignoredEarlyNextBySocket.delete(socket.id);
-    await emitPresence();
+    try {
+      const room = socket.nsp.adapter.rooms.get(roomId);
+      const hasActiveLocally = room
+        ? sessionTracker.anyWebClientActive(room?.values())
+        : false;
+      if (!hasActiveLocally) {
+        await setUserWebActive(user.uuid, false);
+      }
+    } finally {
+      await emitPresence();
+    }
   });
 };
 

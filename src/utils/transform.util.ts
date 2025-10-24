@@ -652,8 +652,8 @@ export const transformPlaylistWithSignedUrls = async (
   const session = new TransformSession();
 
   session.addEntityKeys(playlist, "playlist");
-  if (playlist.items) {
-    playlist.items.forEach((item) => {
+  if (playlist.playlistItems) {
+    playlist.playlistItems.forEach((item) => {
       session.addComplexEntityKeys(item, "playlistItem");
     });
   }
@@ -662,6 +662,35 @@ export const transformPlaylistWithSignedUrls = async (
 
   const transformedPlaylist = session.applyToEntity(
     playlist,
+    "playlist",
+    signedUrls,
+  );
+
+  if (transformedPlaylist.playlistItems) {
+    transformedPlaylist.playlistItems = transformedPlaylist.playlistItems.map(
+      (item) => session.applyToComplexEntity(item, "playlistItem", signedUrls),
+    );
+  }
+
+  return transformedPlaylist;
+};
+
+export const transformCurrentPlaylistWithSignedUrls = async (
+  currentPlaylist: Playlist,
+): Promise<Playlist> => {
+  const session = new TransformSession();
+
+  session.addEntityKeys(currentPlaylist, "playlist");
+  if (currentPlaylist.items) {
+    currentPlaylist.items.forEach((item) => {
+      session.addComplexEntityKeys(item, "playlistItem");
+    });
+  }
+
+  const signedUrls = await session.executeBatch();
+
+  const transformedPlaylist = session.applyToEntity(
+    currentPlaylist,
     "playlist",
     signedUrls,
   );

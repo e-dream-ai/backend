@@ -37,6 +37,9 @@ const sessionTracker = new SessionTracker({
   cleanupInterval: 20000,
 });
 
+const ignoredEarlyNextBySocket = new Map<string, boolean>();
+const EARLY_NEXT_WINDOW_MS = 300;
+
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
 
@@ -159,6 +162,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
 
   // Emit presence on disconnect
   socket.on("disconnect", async () => {
+    ignoredEarlyNextBySocket.delete(socket.id);
     try {
       const room = socket.nsp.adapter.rooms.get(roomId);
       const hasActiveLocally = room
@@ -189,6 +193,38 @@ export const handleNewControlEvent = ({
       // Validation failed, send an error response
       socket.emit("Validation error", { error: error.message });
       return;
+    }
+
+    /**
+     * Ignore "next" event sent by desktop client before first ping.
+     */
+    try {
+      const metrics = sessionTracker.getSessionMetrics(socket.id);
+      const hasReceivedFirstPing = Boolean(
+        metrics && metrics.lastPing > metrics.startTime,
+      );
+      const withinEarlyWindow = Boolean(
+        metrics && Date.now() - metrics.startTime < EARLY_NEXT_WINDOW_MS,
+      );
+
+      if (
+        data?.event === REMOTE_CONTROLS.GO_NEXT_DREAM &&
+        data?.isWebClientEvent !== true
+      ) {
+        const looksAutoFromNative =
+          !data?.uuid && !data?.key && typeof data?.frameNumber !== "number";
+
+        if (!hasReceivedFirstPing && withinEarlyWindow && looksAutoFromNative) {
+          const alreadyIgnored =
+            ignoredEarlyNextBySocket.get(socket.id) === true;
+          if (!alreadyIgnored) {
+            ignoredEarlyNextBySocket.set(socket.id, true);
+            return;
+          }
+        }
+      }
+    } catch {
+      // no-op: ignore errors
     }
 
     /**

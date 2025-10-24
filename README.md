@@ -1,4 +1,4 @@
-# <div align="center"><h1>e-dream.ai backend </h1></div>
+# <div align="center"><h1>infinidream.ai backend </h1></div>
 
 ## Requeriments
 
@@ -7,7 +7,20 @@
 - [heroku-22 stack](https://devcenter.heroku.com/articles/heroku-22-stack) (only for deploys, not need to install locally)
 - [heroku buildpack pnpm](https://github.com/unfold/heroku-buildpack-pnpm)
 
-## Project structure
+## Related repositories
+
+This is the backend application server. It works with these other parts of the server:
+
+- [frontend](https://github.com/e-dream-ai/frontend) Web UI
+- [video](https://github.com/e-dream-ai/video) Video Ingestion with FFMPEG
+- [presign-service](https://github.com/e-dream-ai/presign-service) small backend service for presigning URLs
+- [cf-image-worker](https://github.com/e-dream-ai/cf-image-worker) edge worker for secure image access
+
+And these client repos:
+
+- [client](https://github.com/e-dream-ai/client) C++ client
+- [python-api](https://github.com/e-dream-ai/python-api) API for writing your own clients
+- [python-api](https://github.com/e-dream-ai/electric-sheep-engine) a client for managing the Electric Sheep in Infinidream
 
 ```
 ./src

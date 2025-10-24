@@ -28,12 +28,17 @@ const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
 const PING_EVENT = "ping";
 const PING_EVENT_REDIS = "ping_redis";
 const GOOD_BYE_EVENT = "goodbye";
+const CLIENT_PRESENCE_EVENT = "client_presence";
+const WEB_CLIENT_STATUS_EVENT = "web_client_status";
 
 const sessionTracker = new SessionTracker({
   pingTimeout: 15000,
   inactivityThreshold: 40000,
   cleanupInterval: 20000,
 });
+
+const ignoredEarlyNextBySocket = new Map<string, boolean>();
+const EARLY_NEXT_WINDOW_MS = 300;
 
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
@@ -56,6 +61,58 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   const roomId = "USER:" + user.id;
   socket.join(roomId);
 
+  /**
+   * Helper to emit current presence (number of sockets) to the user room
+   */
+  const USER_WEB_ACTIVE_TTL_SECONDS = 60;
+  const getUserWebActiveKey = (uuid: string) => `user:web_active:${uuid}`;
+
+  const setUserWebActive = async (uuid: string, isActive: boolean) => {
+    const key = getUserWebActiveKey(uuid);
+    if (isActive) {
+      await redisClient.set(key, "1", "EX", USER_WEB_ACTIVE_TTL_SECONDS);
+    } else {
+      await redisClient.del(key);
+    }
+  };
+
+  const getUserWebActive = async (uuid: string): Promise<boolean> => {
+    const key = getUserWebActiveKey(uuid);
+    try {
+      const v = await redisClient.get(key);
+      return v === "1";
+    } catch {
+      return false;
+    }
+  };
+
+  const emitPresence = async () => {
+    try {
+      const room = socket.nsp.adapter.rooms.get(roomId);
+      const size = room?.size || 0;
+      const hasActiveLocally = room
+        ? sessionTracker.anyWebClientActive(room.values())
+        : false;
+      // include cached user-level active flag to avoid reconnect races
+      const cachedActive = await getUserWebActive(user.uuid);
+      const hasWebPlayer = Boolean(hasActiveLocally || cachedActive);
+
+      // refresh user-level flag TTL whenever we see a local active socket
+      if (hasActiveLocally) {
+        await setUserWebActive(user.uuid, true);
+      }
+      socket.nsp.to(roomId).emit(CLIENT_PRESENCE_EVENT, {
+        connectedDevices: size,
+        hasWebPlayer,
+      });
+    } catch (err) {
+      // no-op: presence is best-effort
+    }
+  };
+
+  // Emit initial presence after joining
+  await emitPresence();
+
   socket.on(
     NEW_REMOTE_CONTROL_EVENT,
     handleNewControlEvent({ socket, user, roomId }),
@@ -66,8 +123,32 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    */
   socket.on(
     PING_EVENT,
-    handlePingEvent({ socket, user, roomId, sessionTracker }),
+    handlePingEvent({ socket, user, roomId, sessionTracker, emitPresence }),
   );
+
+  /**
+   * Register web client status handler
+   */
+  socket.on(WEB_CLIENT_STATUS_EVENT, async (payload?: { active?: boolean }) => {
+    try {
+      const isActive = Boolean(payload?.active);
+      sessionTracker.setWebClientActive(socket.id, isActive);
+      if (isActive) {
+        await setUserWebActive(user.uuid, true);
+      } else {
+        // if no other active sockets remain for this user, clear cached flag
+        const room = socket.nsp.adapter.rooms.get(roomId);
+        const hasActiveLocally = room
+          ? sessionTracker.anyWebClientActive(room.values())
+          : false;
+        if (!hasActiveLocally) {
+          await setUserWebActive(user.uuid, false);
+        }
+      }
+    } finally {
+      await emitPresence();
+    }
+  });
 
   /**
    * Register ping redis handler
@@ -78,6 +159,22 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    * Register goodbye handler
    */
   socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, user, roomId }));
+
+  // Emit presence on disconnect
+  socket.on("disconnect", async () => {
+    ignoredEarlyNextBySocket.delete(socket.id);
+    try {
+      const room = socket.nsp.adapter.rooms.get(roomId);
+      const hasActiveLocally = room
+        ? sessionTracker.anyWebClientActive(room?.values())
+        : false;
+      if (!hasActiveLocally) {
+        await setUserWebActive(user.uuid, false);
+      }
+    } finally {
+      await emitPresence();
+    }
+  });
 };
 
 export const handleNewControlEvent = ({
@@ -96,6 +193,38 @@ export const handleNewControlEvent = ({
       // Validation failed, send an error response
       socket.emit("Validation error", { error: error.message });
       return;
+    }
+
+    /**
+     * Ignore "next" event sent by desktop client before first ping.
+     */
+    try {
+      const metrics = sessionTracker.getSessionMetrics(socket.id);
+      const hasReceivedFirstPing = Boolean(
+        metrics && metrics.lastPing > metrics.startTime,
+      );
+      const withinEarlyWindow = Boolean(
+        metrics && Date.now() - metrics.startTime < EARLY_NEXT_WINDOW_MS,
+      );
+
+      if (
+        data?.event === REMOTE_CONTROLS.GO_NEXT_DREAM &&
+        data?.isWebClientEvent !== true
+      ) {
+        const looksAutoFromNative =
+          !data?.uuid && !data?.key && typeof data?.frameNumber !== "number";
+
+        if (!hasReceivedFirstPing && withinEarlyWindow && looksAutoFromNative) {
+          const alreadyIgnored =
+            ignoredEarlyNextBySocket.get(socket.id) === true;
+          if (!alreadyIgnored) {
+            ignoredEarlyNextBySocket.set(socket.id, true);
+            return;
+          }
+        }
+      }
+    } catch {
+      // no-op: ignore errors
     }
 
     /**
@@ -310,11 +439,13 @@ export const handlePingEvent = ({
   socket,
   roomId,
   sessionTracker,
+  emitPresence,
 }: {
   user: User;
   socket: Socket;
   roomId: string;
   sessionTracker: SessionTracker;
+  emitPresence: () => Promise<void>;
 }) => {
   return async () => {
     /**
@@ -332,6 +463,9 @@ export const handlePingEvent = ({
      * Emit boradcast {PING_EVENT} event
      */
     socket.broadcast.to(roomId).emit(PING_EVENT);
+
+    // Update presence (best-effort)
+    await emitPresence();
   };
 };
 
@@ -389,5 +523,15 @@ export const handleGoodbyeEvent = ({
      * Emit boradcast {PING_EVENT} event
      */
     socket.broadcast.to(roomId).emit(GOOD_BYE_EVENT);
+
+    // Update presence (best-effort)
+    try {
+      const size = socket.nsp.adapter.rooms.get(roomId)?.size || 0;
+      socket.nsp.to(roomId).emit(CLIENT_PRESENCE_EVENT, {
+        connectedDevices: size,
+      });
+    } catch (err) {
+      // no-op
+    }
   };
 };

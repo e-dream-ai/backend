@@ -74,6 +74,7 @@ import {
   transformPlaylistWithSignedUrls,
   transformPlaylistItemsWithSignedUrls,
   transformPlaylistKeyframeEntitiesWithSignedUrls,
+  transformDreamsWithSignedUrls,
 } from "utils/transform.util";
 
 /**
@@ -228,11 +229,12 @@ export const handleGetDefaultPlaylist = async (
     }
 
     const dreams = await populateDefautPlaylist(defaultPlaylist.data);
+    const transformedDreams = await transformDreamsWithSignedUrls(dreams);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { dreams },
+        data: { dreams: transformedDreams },
       }),
     );
   } catch (err) {

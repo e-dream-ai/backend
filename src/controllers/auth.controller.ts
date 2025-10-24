@@ -80,7 +80,7 @@ import {
 import {
   transformUserWithSignedUrls,
   transformDreamWithSignedUrls,
-  transformPlaylistWithSignedUrls,
+  transformCurrentPlaylistWithSignedUrls,
 } from "utils/transform.util";
 import { roleRepository, userRepository } from "database/repositories";
 import { setUserCurrentPlaylist } from "utils/socket.util";
@@ -532,7 +532,7 @@ export const handleCurrentUserPlaylist = async (
   }
 
   const transformedPlaylist = playlist
-    ? await transformPlaylistWithSignedUrls(playlist)
+    ? await transformCurrentPlaylistWithSignedUrls(playlist)
     : null;
 
   return res

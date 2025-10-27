@@ -36,7 +36,9 @@ export class FeedItem {
    * Dream of Playlist Item
    * Should be null if playlistItem exists
    */
-  @OneToOne(() => Dream, (dream) => dream.feedItem)
+  @OneToOne(() => Dream, (dream) => dream.feedItem, {
+    cascade: ["soft-remove"],
+  })
   @JoinColumn()
   @Index()
   dreamItem: Dream;
@@ -45,7 +47,9 @@ export class FeedItem {
    * Playlist of Playlist Item
    * Should be null if dreamItem exists
    */
-  @OneToOne(() => Playlist, (playlist) => playlist.feedItem)
+  @OneToOne(() => Playlist, (playlist) => playlist.feedItem, {
+    cascade: ["soft-remove"],
+  })
   @JoinColumn()
   @Index()
   playlistItem: Playlist;

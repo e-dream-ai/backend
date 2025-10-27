@@ -94,7 +94,7 @@
     "socket.io": "^4.7.4",
     "swagger-jsdoc": "6.2.8",
     "swagger-ui-express": "^5.0.0",
-    "typeorm": "0.3.17",
+    "typeorm": "0.3.27",
     "utility-types": "^3.10.0",
     "uuid": "^10.0.0"
   },

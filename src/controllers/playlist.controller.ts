@@ -782,6 +782,7 @@ export const handleDeletePlaylist = async (
       select: { user: { id: true } },
       relations: {
         user: true,
+        feedItem: true,
       },
     });
 

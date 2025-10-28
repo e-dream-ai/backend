@@ -308,6 +308,7 @@ export const handleGetGroupedFeed = async (
     // Filter out dreams that are now in virtual playlists from the main feed
     const filteredFeed = transformedFeed.filter(
       (feedItem) =>
+        (feedItem.dreamItem || feedItem.playlistItem) &&
         !(feedItem.dreamItem && dreamUUIDs.has(feedItem.dreamItem.uuid)),
     );
 

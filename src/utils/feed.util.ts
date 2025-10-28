@@ -55,6 +55,7 @@ export const getFeedFindOptionsWhere = (
     ...nsfwCondition,
     ...searchCondition,
     ...(onlyHidden ? { hidden: true } : {}),
+    deleted_at: IsNull(),
   };
 
   // For admins, no hidden filter is applied

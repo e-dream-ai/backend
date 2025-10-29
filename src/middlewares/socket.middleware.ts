@@ -3,7 +3,10 @@ import { ExtendedError } from "socket.io/dist/namespace";
 import { fetchUserByCognitoId } from "controllers/auth.controller";
 import { APP_LOGGER } from "shared/logger";
 import { validateCognitoJWT } from "utils/auth.util";
-import { authenticateAndGetWorkOSSession } from "utils/workos.util";
+import {
+  authenticateAndGetWorkOSSession,
+  syncDbUserToWorkOS,
+} from "utils/workos.util";
 import { SOCKET_AUTH_ERROR_MESSAGES } from "constants/messages/auth.constant";
 import { syncWorkOSUser } from "utils/user.util";
 
@@ -105,6 +108,9 @@ export const socketWorkOSAuth = async (
 
     const user = await syncWorkOSUser(session!.user);
     socket.data.user = user;
+
+    // Reconcile DB -> WorkOS (push local changes if any)
+    await syncDbUserToWorkOS(user, session!.user);
 
     /**
      * continue if user exists

@@ -66,7 +66,11 @@ import {
   setUserLastLoginAt,
   syncWorkOSUser,
 } from "utils/user.util";
-import { workos, workOSCookieConfig } from "utils/workos.util";
+import {
+  workos,
+  workOSCookieConfig,
+  syncDbUserToWorkOS,
+} from "utils/workos.util";
 import env from "shared/env";
 import {
   // GenericServerException,
@@ -790,6 +794,9 @@ export const handleWorkOSCallback = async (
 
     const user = await syncWorkOSUser(workOSUser);
 
+    // Reconcile DB -> WorkOS (push local changes if any)
+    await syncDbUserToWorkOS(user, workOSUser);
+
     await setUserLastLoginAt(user);
 
     return handleWorkosAuthenticatedResponse(req as RequestType, res, {
@@ -838,6 +845,9 @@ export const loginWithPassword = async (
     res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
     const user = await syncWorkOSUser(workOSUser);
+
+    // Reconcile DB -> WorkOS (push local changes if any)
+    await syncDbUserToWorkOS(user, workOSUser);
 
     await setUserLastLoginAt(user);
 
@@ -919,6 +929,9 @@ export const loginWithMagicAuth = async (
       res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
       const user = await syncWorkOSUser(workOSUser);
+
+      // Reconcile DB -> WorkOS (push local changes if any)
+      await syncDbUserToWorkOS(user, workOSUser);
 
       await setUserLastLoginAt(user);
 
@@ -1051,6 +1064,9 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
       const { sealedSession, session: refreshedSession } = refreshResponse;
 
       const user = await syncWorkOSUser(refreshedSession!.user!);
+
+      // Reconcile DB -> WorkOS (push local changes if any)
+      await syncDbUserToWorkOS(user, refreshedSession!.user!);
 
       // Set the sealed session in a cookie
       res.cookie("wos-session", sealedSession, workOSCookieConfig);

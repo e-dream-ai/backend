@@ -49,6 +49,7 @@ import { workos } from "utils/workos.util";
 import {
   transformUsersWithSignedUrls,
   transformUserWithSignedUrls,
+  transformDreamsWithSignedUrls,
 } from "utils/transform.util";
 
 /**
@@ -231,10 +232,11 @@ export const handleGetVotedDreams = async (
       skip,
       voteType: type,
     });
+    const transformedDreams = await transformDreamsWithSignedUrls(dreams);
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { count, dreams },
+        data: { count, dreams: transformedDreams },
       }),
     );
   } catch (err) {

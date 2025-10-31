@@ -8,7 +8,6 @@ import httpStatus from "http-status";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import type { SessionCookieData, User as WorkOSUser } from "@workos-inc/node";
 import { APP_LOGGER } from "shared/logger";
-import { User } from "entities";
 
 const IS_DEVELOPMENT = env.NODE_ENV === "development";
 
@@ -125,79 +124,6 @@ export const setWorkOSUserContext = async (
   res.locals.workosUser = workOSUser;
   res.locals.userRole = workOSRole;
   res.locals.user = user;
-};
-
-/**
- * Pushes local DB user changes back to WorkOS to keep data in sync.
- * It updates basic profile fields and organization membership role.
- */
-export const syncDbUserToWorkOS = async (
-  dbUser: User,
-  workOSUser?: WorkOSUser,
-) => {
-  try {
-    const userId = dbUser.workOSId || workOSUser?.id;
-    if (!userId) return;
-
-    const desiredFirstName = dbUser.name ?? undefined;
-    const desiredLastName = dbUser.lastName ?? undefined;
-    const desiredEmail = dbUser.email ?? undefined;
-
-    const pendingUpdates: Record<string, string> = {};
-
-    if (
-      desiredFirstName !== undefined &&
-      desiredFirstName !== (workOSUser?.firstName ?? "")
-    ) {
-      pendingUpdates.firstName = desiredFirstName;
-    }
-    if (
-      desiredLastName !== undefined &&
-      desiredLastName !== (workOSUser?.lastName ?? "")
-    ) {
-      pendingUpdates.lastName = desiredLastName;
-    }
-    if (
-      desiredEmail !== undefined &&
-      desiredEmail !== (workOSUser?.email ?? "")
-    ) {
-      pendingUpdates.email = desiredEmail;
-    }
-
-    if (Object.keys(pendingUpdates).length > 0) {
-      await workos.userManagement.updateUser({
-        userId,
-        ...pendingUpdates,
-      });
-    }
-
-    // Ensure org membership role matches local role
-    if (dbUser.role?.name && env.WORKOS_ORGANIZATION_ID) {
-      const memberships =
-        await workos.userManagement.listOrganizationMemberships({
-          userId,
-        });
-      const membership = memberships.data.find(
-        (m) => m.organizationId === env.WORKOS_ORGANIZATION_ID,
-      );
-
-      if (!membership) {
-        await workos.userManagement.createOrganizationMembership({
-          userId,
-          organizationId: env.WORKOS_ORGANIZATION_ID,
-          roleSlug: dbUser.role.name,
-        });
-      } else if (membership.role.slug !== dbUser.role.name) {
-        await workos.userManagement.updateOrganizationMembership(
-          membership.id,
-          { roleSlug: dbUser.role.name },
-        );
-      }
-    }
-  } catch (e) {
-    const error = e as Error;
-    APP_LOGGER.error(error);
-  }
 };
 
 /**

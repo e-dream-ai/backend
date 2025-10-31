@@ -23,7 +23,7 @@ export const handleWorkosWebhook = async (
   res: ResponseType,
 ) => {
   try {
-    const payload = req.body;
+    const payload = req.body as unknown as Buffer;
     const sigHeader: string | undefined = req.headers[
       "workos-signature"
     ] as string;
@@ -39,10 +39,6 @@ export const handleWorkosWebhook = async (
     });
 
     if (webhook.event === "organization_membership.updated") {
-      /**
-       * Updating role from workos weebhook
-       */
-
       const workosId = webhook.data.userId ?? undefined;
       const user = await userRepository.findOne({
         where: { workOSId: workosId },

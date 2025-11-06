@@ -1234,14 +1234,42 @@ export const handleUpdateDream = async (
       ...updateData,
     });
 
-    const updatedDream = {
-      ...dream,
-      ...updateData,
-    };
+    const [updatedDream] = await dreamRepository.find({
+      where: { uuid: dreamUUID },
+      relations: {
+        user: true,
+        displayedOwner: true,
+        startKeyframe: true,
+        endKeyframe: true,
+      },
+      select: getDreamSelectedColumns({
+        originalVideo: true,
+        featureRank: true,
+        playlistItems: true,
+        startKeyframe: true,
+        endKeyframe: true,
+      }),
+    });
+
+    if (!updatedDream) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    updatedDream.playlistItems = await findDreamPlaylistItems(
+      dreamUUID,
+      user.id,
+      isUserAdmin,
+    );
+
+    if (!isAdmin(user)) {
+      delete updatedDream.featureRank;
+    }
+
+    const transformedDream = await transformDreamWithSignedUrls(updatedDream);
 
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+      .json(jsonResponse({ success: true, data: { dream: transformedDream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

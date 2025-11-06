@@ -656,10 +656,31 @@ export const handleUpdatePlaylist = async (
       ...updateData,
     });
 
+    const updatedPlaylist = await findOnePlaylist({
+      where: { uuid },
+      select: getPlaylistSelectedColumns({ featureRank: true }),
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
+    });
+
+    if (!updatedPlaylist) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    if (!isAdmin(user)) {
+      delete updatedPlaylist.featureRank;
+    }
+
+    const transformedPlaylist =
+      await transformPlaylistWithSignedUrls(updatedPlaylist);
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { playlist: { ...playlist, ...updateData } },
+        data: { playlist: transformedPlaylist },
       }),
     );
   } catch (err) {

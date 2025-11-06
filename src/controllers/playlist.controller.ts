@@ -832,6 +832,7 @@ export const handleOrderPlaylist = async (
   const uuid: string = req.params.uuid!;
   const user = res.locals.user!;
   const order = req.body.order!;
+  const isUserAdmin = isAdmin(user);
 
   try {
     const playlist = await playlistRepository.findOne({
@@ -877,7 +878,47 @@ export const handleOrderPlaylist = async (
      */
     await refreshPlaylistUpdatedAtTimestamp(playlist.id);
 
-    return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
+    const result = await getPaginatedPlaylistItems({
+      playlistId: playlist.id,
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
+      take: PAGINATION.PLAYLIST_ITEMS_TAKE,
+      skip: 0,
+    });
+
+    for (const item of result.items) {
+      if (item.playlistItem && !item.playlistItem.thumbnail) {
+        const fallbackThumbnail = await computePlaylistThumbnailRecursive(
+          item.playlistItem.id,
+          {
+            userId: user.id,
+            isAdmin: isUserAdmin,
+            nsfw: user?.nsfw,
+            onlyProcessedDreams: true,
+          },
+        );
+        if (fallbackThumbnail) {
+          item.playlistItem.thumbnail = fallbackThumbnail;
+        }
+      }
+    }
+
+    const transformedItems = await transformPlaylistItemsWithSignedUrls(
+      result.items,
+    );
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          items: transformedItems,
+          totalCount: result.totalCount,
+        },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

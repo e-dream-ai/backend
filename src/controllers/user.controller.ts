@@ -15,7 +15,7 @@ import { ApiKey } from "entities/ApiKey.entity";
 import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
-import { FindOptionsWhere, ILike } from "typeorm";
+import { FindOptionsWhere, ILike, In } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import {
   GetUsersQuery,
@@ -118,9 +118,27 @@ export const handleGetUsers = async (
      * users with a registered last login are verified users
      * this will find users with not null last_login_at
      */
+    let roleFilter: FindOptionsWhere<Role> | undefined;
+    if (role) {
+      if (role === ROLES.ADMIN_GROUP) {
+        roleFilter = { name: role };
+      } else if (role === ROLES.CREATOR_GROUP) {
+        roleFilter = { name: In([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]) };
+      } else if (role === ROLES.USER_GROUP) {
+        roleFilter = {
+          name: In([ROLES.USER_GROUP, ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+        };
+      } else {
+        roleFilter = { name: role };
+      }
+    } else {
+      roleFilter = {
+        name: In([ROLES.USER_GROUP, ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+      };
+    }
     const baseConditions = {
       verified: true,
-      role: role ? { name: role } : undefined,
+      role: roleFilter,
     };
     const whereSentence = search
       ? [

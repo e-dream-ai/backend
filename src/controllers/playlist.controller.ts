@@ -72,6 +72,7 @@ import { getUserIdentifier, isAdmin } from "utils/user.util";
 import {
   transformPlaylistsWithSignedUrls,
   transformPlaylistWithSignedUrls,
+  transformCurrentPlaylistWithSignedUrls,
   transformPlaylistItemsWithSignedUrls,
   transformPlaylistKeyframeEntitiesWithSignedUrls,
   transformDreamsWithSignedUrls,
@@ -674,8 +675,24 @@ export const handleUpdatePlaylist = async (
       delete updatedPlaylist.featureRank;
     }
 
+    if (!updatedPlaylist.thumbnail) {
+      const fallbackThumbnail = await computePlaylistThumbnailRecursive(
+        updatedPlaylist.id,
+        {
+          userId: user.id,
+          isAdmin: isUserAdmin,
+          nsfw: user?.nsfw,
+          onlyProcessedDreams: true,
+        },
+      );
+
+      if (fallbackThumbnail) {
+        updatedPlaylist.thumbnail = fallbackThumbnail;
+      }
+    }
+
     const transformedPlaylist =
-      await transformPlaylistWithSignedUrls(updatedPlaylist);
+      await transformCurrentPlaylistWithSignedUrls(updatedPlaylist);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

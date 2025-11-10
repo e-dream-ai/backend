@@ -39,6 +39,8 @@ const ENTITY_CONFIGS = {
     nestedEntities: [
       { path: "user", entityType: "user" as const },
       { path: "displayedOwner", entityType: "user" as const },
+      { path: "startKeyframe", entityType: "keyframe" as const },
+      { path: "endKeyframe", entityType: "keyframe" as const },
     ],
     arrayEntities: [
       {

@@ -118,11 +118,22 @@ export const handleGetUsers = async (
      * users with a registered last login are verified users
      * this will find users with not null last_login_at
      */
-    const whereSentence = {
-      name: search ? ILike(`%${search}%`) : undefined,
+    const baseConditions = {
       verified: true,
       role: role ? { name: role } : undefined,
-    } as FindOptionsWhere<User>;
+    };
+    const whereSentence = search
+      ? [
+        {
+          ...baseConditions,
+          name: ILike(`%${search}%`),
+        },
+        {
+          ...baseConditions,
+          email: ILike(`%${search}%`),
+        },
+      ]
+      : (baseConditions as FindOptionsWhere<User>);
     const [users, count] = await userRepository.findAndCount({
       where: whereSentence,
       select: getUserSelectedColumns(),

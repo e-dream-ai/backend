@@ -31,6 +31,13 @@ const feedRouter = Router();
  *        schema:
  *          type: integer
  *          example: 1
+ *      - name: search
+ *        in: query
+ *        description: Search query to filter playlists by name
+ *        required: false
+ *        schema:
+ *          type: string
+ *          example: "my playlist"
  *    responses:
  *      '200':
  *        description: Gets ranked playlist
@@ -68,6 +75,7 @@ feedRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(feedSchema),
   feedController.handleGetRankedFeed,
 );
 

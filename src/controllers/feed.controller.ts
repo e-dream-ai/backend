@@ -37,6 +37,7 @@ export const handleGetRankedFeed = async (
     PAGINATION.MAX_TAKE,
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
+  const search = req.query.search ? String(req.query.search) : undefined;
   const user = res.locals.user!;
   const isUserAdmin = isAdmin(user);
   const nsfw = user?.nsfw;
@@ -50,6 +51,7 @@ export const handleGetRankedFeed = async (
     // Get where conditions with appropriate hidden item handling
     const whereSentence = getFeedFindOptionsWhere(baseOptions, {
       nsfw,
+      search,
       isAdmin: isUserAdmin,
       userId: user.id,
       ranked: true,

@@ -581,24 +581,58 @@ export const deletePlaylistItemAndResetOrder = async ({
       throw new Error("Playlist item not found");
     }
 
-    // 1. Soft remove the specified item
+    const deletedOrder = itemToDelete.order;
+
     await transactionalEntityManager.softRemove(itemToDelete);
 
-    // 2. Fetch all remaining items in the playlist, ordered by their current order
+    await transactionalEntityManager
+      .createQueryBuilder()
+      .update(PlaylistItem)
+      .set({
+        order: () => "\"order\" - 1",
+      })
+      .where("playlistId = :playlistId", { playlistId })
+      .andWhere("deleted_at IS NULL")
+      .andWhere("\"order\" > :deletedOrder", { deletedOrder })
+      .execute();
+  });
+};
+
+export const bulkDeletePlaylistItemsAndResetOrder = async ({
+  playlistId,
+  itemIdsToDelete,
+}: {
+  playlistId: number;
+  itemIdsToDelete: number[];
+}) => {
+  if (itemIdsToDelete.length === 0) {
+    return;
+  }
+
+  await appDataSource.transaction(async (transactionalEntityManager) => {
+    await transactionalEntityManager.softRemove(
+      PlaylistItem,
+      itemIdsToDelete.map((id) => ({ id, playlist: { id: playlistId } })),
+    );
+
     const remainingItems = await transactionalEntityManager.find(PlaylistItem, {
       where: { playlist: { id: playlistId } },
       order: { order: "ASC" },
     });
 
-    for (let i = 0; i < remainingItems.length; i++) {
-      // 3. Update the order of all remaining items using zero-based indexing
-      const newOrder = i;
-      const itemId = remainingItems[i].id;
+    if (remainingItems.length > 0) {
+      const caseStatements = remainingItems
+        .map((item, index) => `WHEN id = ${item.id} THEN ${index}`)
+        .join(" ");
 
-      // 4. Update the items
-      await transactionalEntityManager.update(PlaylistItem, itemId, {
-        order: newOrder,
-      });
+      await transactionalEntityManager.query(
+        `
+        UPDATE playlist_item
+        SET "order" = CASE ${caseStatements} END
+        WHERE "playlistId" = $1 AND "deleted_at" IS NULL
+      `,
+        [playlistId],
+      );
     }
   });
 };
@@ -627,28 +661,20 @@ export const deletePlaylistKeyframeAndResetOrder = async ({
       throw new Error("Playlist keyframe not found");
     }
 
-    // 1. Soft remove the specified keyframe
+    const deletedOrder = keyframeToDelete.order;
+
     await transactionalEntityManager.softRemove(keyframeToDelete);
 
-    // 2. Fetch all remaining keyframes in the playlist, ordered by their current order
-    const remainingKeyframes = await transactionalEntityManager.find(
-      PlaylistKeyframe,
-      {
-        where: { playlist: { id: playlistId } },
-        order: { order: "ASC" },
-      },
-    );
-
-    for (let i = 0; i < remainingKeyframes.length; i++) {
-      // 3. Update the order of all remaining keyframes using zero-based indexing
-      const newOrder = i;
-      const keyframeId = remainingKeyframes[i].id;
-
-      // 4. Update the keyframes
-      await transactionalEntityManager.update(PlaylistKeyframe, keyframeId, {
-        order: newOrder,
-      });
-    }
+    await transactionalEntityManager
+      .createQueryBuilder()
+      .update(PlaylistKeyframe)
+      .set({
+        order: () => "\"order\" - 1",
+      })
+      .where("playlistId = :playlistId", { playlistId })
+      .andWhere("deleted_at IS NULL")
+      .andWhere("\"order\" > :deletedOrder", { deletedOrder })
+      .execute();
   });
 };
 

@@ -55,7 +55,7 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.478.0",
     "@aws-sdk/client-s3": "^3.498.0",
-    "@aws-sdk/client-ses": "^3.588.0",
+    "@aws-sdk/client-ses": "^3.932.0",
     "@aws-sdk/client-sqs": "^3.485.0",
     "@aws-sdk/s3-presigned-post": "^3.499.0",
     "@aws-sdk/s3-request-presigner": "^3.498.0",

@@ -6,7 +6,8 @@ updates:
       interval: "weekly"
       day: "monday"
     target-branch: "stage"
-    cool-down: "7d"
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: "npm"
     directory: "/"
@@ -14,4 +15,5 @@ updates:
       interval: "weekly"
       day: "monday"
     target-branch: "stage"
-    cool-down: "7d"
+    cooldown:
+      default-days: 7

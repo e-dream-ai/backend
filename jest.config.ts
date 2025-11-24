@@ -6,9 +6,23 @@ const config: Config = {
   roots: ["<rootDir>/src"],
   testMatch: ["**/__tests__/**/*.test.ts", "**/?(*.)+(spec|test).ts"],
   transform: {
-    "^.+\\.tsx?$": ["ts-jest", { tsconfig: "<rootDir>/tsconfig.json" }],
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      {
+        tsconfig: "<rootDir>/tsconfig.json",
+      },
+    ],
+    "^.+\\.(js|mjs)x?$": [
+      "ts-jest",
+      {
+        tsconfig: {
+          allowJs: true,
+          esModuleInterop: true,
+        },
+      },
+    ],
   },
-  moduleFileExtensions: ["ts", "tsx", "js", "json", "node"],
+  moduleFileExtensions: ["ts", "tsx", "js", "mjs", "json", "node"],
   setupFilesAfterEnv: ["<rootDir>/src/__tests__/jest.setup.ts"],
   moduleNameMapper: {
     "^(clients|constants|controllers|database|entities|middlewares|migrations|routes|schemas|script|shared|socket|transformers|types|utils)/(.*)$":
@@ -20,6 +34,7 @@ const config: Config = {
   coverageDirectory: "coverage",
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.test.ts"],
   coveragePathIgnorePatterns: ["/node_modules/", "/dist/"],
+  transformIgnorePatterns: ["node_modules/(?!.*/uuid/.*|.*/uuid@.*|uuid/.*)"],
   testTimeout: 50000,
   forceExit: true,
 };

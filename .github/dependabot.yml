@@ -12,5 +12,3 @@ updates:
       interval: "weekly"
       day: "monday"
     target-branch: "stage"
-    cooldown:
-      min-age: "7 days"

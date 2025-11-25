@@ -121,7 +121,9 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     const lastStateJson = await redisClient.get(getUserStateSyncKey(user.id));
     if (lastStateJson) {
       const lastState = JSON.parse(lastStateJson);
-      socket.emit(STATE_SYNC_EVENT, lastState);
+      setTimeout(() => {
+        socket.emit(STATE_SYNC_EVENT, lastState);
+      }, 100);
     }
   } catch (error) {
     console.error("Error retrieving cached state_sync:", error);

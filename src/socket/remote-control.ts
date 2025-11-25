@@ -41,6 +41,9 @@ const sessionTracker = new SessionTracker({
 const ignoredEarlyNextBySocket = new Map<string, boolean>();
 const EARLY_NEXT_WINDOW_MS = 300;
 
+const STATE_SYNC_TTL_SECONDS = 300;
+const getUserStateSyncKey = (userId: number) => `user:state_sync:${userId}`;
+
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
 
@@ -114,6 +117,16 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   // Emit initial presence after joining
   await emitPresence();
 
+  try {
+    const lastStateJson = await redisClient.get(getUserStateSyncKey(user.id));
+    if (lastStateJson) {
+      const lastState = JSON.parse(lastStateJson);
+      socket.emit(STATE_SYNC_EVENT, lastState);
+    }
+  } catch (error) {
+    console.error("Error retrieving cached state_sync:", error);
+  }
+
   socket.on(
     NEW_REMOTE_CONTROL_EVENT,
     handleNewControlEvent({ socket, user, roomId }),
@@ -159,7 +172,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   /**
    * Register state sync handler
    */
-  socket.on(STATE_SYNC_EVENT, handleStateSyncEvent({ socket, roomId }));
+  socket.on(STATE_SYNC_EVENT, handleStateSyncEvent({ socket, roomId, user }));
 
   /**
    * Register goodbye handler
@@ -487,9 +500,11 @@ export const handlePingEvent = ({
 export const handleStateSyncEvent = ({
   socket,
   roomId,
+  user,
 }: {
   socket: Socket;
   roomId: string;
+  user: User;
 }) => {
   return async (data: {
     dream_uuid?: string;
@@ -501,6 +516,14 @@ export const handleStateSyncEvent = ({
     fps?: string;
   }) => {
     try {
+      const stateJson = JSON.stringify(data);
+      await redisClient.set(
+        getUserStateSyncKey(user.id),
+        stateJson,
+        "EX",
+        STATE_SYNC_TTL_SECONDS,
+      );
+
       socket.emit(STATE_SYNC_EVENT, data);
       socket.broadcast.to(roomId).emit(STATE_SYNC_EVENT, data);
     } catch (error) {

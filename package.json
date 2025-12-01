@@ -59,7 +59,7 @@
     "@aws-sdk/client-sqs": "^3.485.0",
     "@aws-sdk/s3-presigned-post": "^3.499.0",
     "@aws-sdk/s3-request-presigner": "^3.498.0",
-    "@bugsnag/js": "^7.22.4",
+    "@bugsnag/js": "^8.6.0",
     "@bugsnag/plugin-express": "^7.19.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "@workos-inc/node": "^7.21.0",

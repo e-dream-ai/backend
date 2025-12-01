@@ -120,8 +120,8 @@ importers:
         specifier: 5.0.0-beta.2
         version: 5.0.0-beta.2
       reflect-metadata:
-        specifier: ^0.1.13
-        version: 0.1.14
+        specifier: ^0.2.2
+        version: 0.2.2
       socket.io:
         specifier: ^4.7.4
         version: 4.8.1
@@ -3478,6 +3478,9 @@ packages:
 
   reflect-metadata@0.1.14:
     resolution: {integrity: sha512-ZhYeb6nRaXCfhnndflDK8qI6ZQ/YcWZCISRAWICW9XYqMUwjZM9Z0DveWX/ABN01oxSHwVxKQmxeYZSsm0jh5A==}
+
+  reflect-metadata@0.2.2:
+    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
@@ -8398,6 +8401,8 @@ snapshots:
       node-abort-controller: 3.1.1
 
   reflect-metadata@0.1.14: {}
+
+  reflect-metadata@0.2.2: {}
 
   require-directory@2.1.1: {}
 

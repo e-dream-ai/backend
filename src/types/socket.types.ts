@@ -14,6 +14,8 @@ export const REMOTE_CONTROLS = {
   DISLIKE_CURRENT_DREAM: "dislike_current_dream",
   GO_PREVIOUS_DREAM: "previous",
   GO_NEXT_DREAM: "next",
+  TOGGLE_REPEAT: "repeat",
+  TOGGLE_SHUFFLE: "shuffle",
   PLAYBACK_SLOWER: "playback_slower",
   PLAYBACK_FASTER: "playback_faster",
   FORWARD: "forward",

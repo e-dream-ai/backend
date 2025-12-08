@@ -7,6 +7,7 @@ import {
 import {
   AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
+  CreateDreamRequest,
   CreateMultipartUploadDreamRequest,
   CreateMultipartUploadFileRequest,
   DreamFileType,
@@ -22,6 +23,33 @@ import { RequestValidationSchema } from "types/validator.types";
 export const requestDreamSchema: RequestValidationSchema = {
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const createDreamSchema: RequestValidationSchema = {
+  body: Joi.object<CreateDreamRequest>().keys({
+    name: Joi.string().required(),
+    prompt: Joi.alternatives().try(Joi.string(), Joi.object()).required(),
+    description: Joi.string().optional().allow("").max(4000),
+    sourceUrl: Joi.string()
+      .uri({
+        scheme: ["http", "https"],
+        allowRelative: false,
+      })
+      .optional()
+      .allow("")
+      .max(500)
+      .messages({
+        "string.uri":
+          "Invalid URL format. URL must start with http:// or https://",
+      }),
+    nsfw: Joi.boolean(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
+    ccbyLicense: Joi.boolean(),
   }),
 };
 
@@ -41,6 +69,7 @@ export const updateDreamSchema: RequestValidationSchema = {
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0),
     description: Joi.string().optional().allow("").max(4000),
+    prompt: Joi.string().optional().allow("").max(4000),
     sourceUrl: Joi.string()
       .uri({
         scheme: ["http", "https"],

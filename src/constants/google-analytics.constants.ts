@@ -14,6 +14,10 @@ export const GAEventKeys = {
     category: "dream",
     action: "uploaded",
   },
+  USER_NEW_DREAM_FROM_PROMPT: {
+    category: "dream",
+    action: "created_from_prompt",
+  },
   DREAM_PLAYED: {
     category: "dream",
     action: "played",

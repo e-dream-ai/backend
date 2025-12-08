@@ -4,7 +4,15 @@ export type DreamParamsRequest = {
   uuid: string;
 };
 
-export type CreateDreamRequest = object;
+export type CreateDreamRequest = {
+  name: string;
+  prompt: string | object;
+  description?: string;
+  sourceUrl?: string;
+  nsfw?: boolean;
+  hidden?: boolean;
+  ccbyLicense?: boolean;
+};
 
 export type Frame = { frameNumber: number; url: string };
 
@@ -27,6 +35,7 @@ export type UpdateDreamRequest = {
   nsfw?: boolean;
   hidden?: boolean;
   description?: string;
+  prompt?: string;
   sourceUrl?: string;
   ccbyLicense?: boolean;
 };

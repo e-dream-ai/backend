@@ -8,6 +8,7 @@ import validatorMiddleware from "middlewares/validator.middleware";
 import {
   abortMultipartUploadDreamSchema,
   completeMultipartUploadDreamSchema,
+  createDreamSchema,
   createMultipartUploadDreamSchema,
   createMultipartUploadFileSchema,
   getDreamsSchema,
@@ -83,6 +84,14 @@ dreamRouter.get(
   ]),
   validatorMiddleware(getDreamsSchema),
   dreamController.handleGetDreams,
+);
+
+dreamRouter.post(
+  "/",
+  requireAuth,
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(createDreamSchema),
+  dreamController.handleCreateDream,
 );
 
 /**

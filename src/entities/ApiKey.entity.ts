@@ -12,7 +12,7 @@ import {
 } from "typeorm";
 import { encrypt, hashApiKey } from "utils/crypto.util";
 import { User } from "./User.entity";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 
 @Entity()
 /**
@@ -64,7 +64,7 @@ export class ApiKey {
    * Generates, encrypts and hashes apikey to store on database
    */
   generateApiKey() {
-    const apikey = uuidv4();
+    const apikey = randomUUID();
     const { iv, content } = encrypt(apikey);
     this.apikey = content;
     this.iv = iv;

@@ -91,7 +91,7 @@ export const processDreamRequest = async (dream: Dream) => {
         const result = await queueWorkerJob(queueName, jobData);
 
         if (result.success) {
-          return { id: result.jobId, status: "queued" };
+          return { id: result.jobId, status: "queued", isPromptBased: true };
         } else {
           APP_LOGGER.error(
             `Failed to queue worker job for dream ${dream.uuid}: ${result.error}`,

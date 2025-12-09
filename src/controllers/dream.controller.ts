@@ -163,9 +163,11 @@ export const handleCreateDream = async (
 
     await dreamRepository.save(dream);
 
-    await updateVideoServiceWorker(TURN_ON_QUANTITY);
+    const processResult = await processDreamRequest(dream);
 
-    await processDreamRequest(dream);
+    if (!processResult?.isPromptBased) {
+      await updateVideoServiceWorker(TURN_ON_QUANTITY);
+    }
 
     const [savedDream] = await dreamRepository.find({
       where: { uuid: dream.uuid },
@@ -598,14 +600,16 @@ export const handleCompleteMultipartUpload = async (
 
     if (type === DreamFileType.DREAM && !processed) {
       /**
-       * turn on video service worker
-       */
-      await updateVideoServiceWorker(TURN_ON_QUANTITY);
-
-      /**
        * process dream requests: it needs to provide updated dream with originalVideo value
        */
-      await processDreamRequest(updatedDream);
+      const processResult = await processDreamRequest(updatedDream);
+
+      /**
+       * turn on video service worker only if not prompt-based
+       */
+      if (!processResult?.isPromptBased) {
+        await updateVideoServiceWorker(TURN_ON_QUANTITY);
+      }
     }
 
     tracker.sendEventWithRequestContext(res, user.uuid, "USER_NEW_UPLOAD", {});
@@ -915,9 +919,11 @@ export const handleProcessDream = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    await updateVideoServiceWorker(TURN_ON_QUANTITY);
+    const processResult = await processDreamRequest(dream);
 
-    await processDreamRequest(dream);
+    if (!processResult?.isPromptBased) {
+      await updateVideoServiceWorker(TURN_ON_QUANTITY);
+    }
 
     const updatedDream = await dreamRepository.save({
       ...dream,

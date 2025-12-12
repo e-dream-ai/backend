@@ -516,7 +516,6 @@ export const handleStateSyncEvent = ({
     paused?: string;
     playback_speed?: string;
     fps?: string;
-    base_fps?: string;
   }) => {
     try {
       const stateJson = JSON.stringify(data);

@@ -103,6 +103,8 @@ export const updateDreamProcessedSchema: RequestValidationSchema = {
     processedVideoFPS: Joi.number(),
     processedVideoFrames: Joi.number().integer(),
     processedVideoSize: Joi.number().integer(),
+    processedMediaWidth: Joi.number().integer(),
+    processedMediaHeight: Joi.number().integer(),
     filmstrip: Joi.array<number>(),
     md5: Joi.string(),
   }),

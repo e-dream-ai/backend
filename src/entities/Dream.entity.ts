@@ -95,6 +95,18 @@ export class Dream {
   processedVideoFPS?: number | null;
 
   /**
+   * Processed media resolution width in pixels (video or image)
+   */
+  @Column({ type: "integer", nullable: true, default: null })
+  processedMediaWidth?: number | null;
+
+  /**
+   * Processed media resolution height in pixels (video or image)
+   */
+  @Column({ type: "integer", nullable: true, default: null })
+  processedMediaHeight?: number | null;
+
+  /**
    * featureRank
    * default 0
    */

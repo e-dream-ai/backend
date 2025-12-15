@@ -1002,6 +1002,8 @@ export const handleSetDreamStatusProcessed = async (
   const processedVideoSize = req.body.processedVideoSize;
   const processedVideoFrames = req.body.processedVideoFrames!;
   const processedVideoFPS = req.body.processedVideoFPS;
+  const processedMediaWidth = req.body.processedMediaWidth;
+  const processedMediaHeight = req.body.processedMediaHeight;
   const activityLevel = req.body.activityLevel!;
   const filmstrip = req.body.filmstrip
     ? (req.body.filmstrip as number[])
@@ -1040,6 +1042,8 @@ export const handleSetDreamStatusProcessed = async (
       processedVideoSize,
       processedVideoFrames,
       processedVideoFPS,
+      processedMediaWidth,
+      processedMediaHeight,
       activityLevel,
       filmstrip: formatedFilmstrip,
       md5,

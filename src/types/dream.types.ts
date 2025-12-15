@@ -44,6 +44,8 @@ export type UpdateDreamProcessedRequest = {
   processedVideoSize?: number;
   processedVideoFrames?: number;
   processedVideoFPS?: number;
+  processedMediaWidth?: number;
+  processedMediaHeight?: number;
   activityLevel?: number;
   filmstrip?: number[];
   md5?: string;

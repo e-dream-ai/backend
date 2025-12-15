@@ -20,6 +20,13 @@ import { VOTE_FIELDS, VoteType } from "types/vote.types";
 import { DreamStatusType } from "types/dream.types";
 import { getKeyframeSelectedColumns } from "./keyframe.util";
 import { getPlaylistFindOptionsWhere } from "./playlist.util";
+import {
+  parsePromptJson,
+  getAlgorithmFromPrompt,
+  isValidAlgorithm,
+  mapAlgorithmToQueue,
+} from "./prompt.util";
+import { queueWorkerJob } from "./worker-queue.util";
 
 const queueUrl = ""; // env.AWS_SQS_URL;
 
@@ -61,16 +68,45 @@ export const processDreamSQS = async (dream: Dream) => {
   await sqsClient.send(command);
 };
 
-/**
- * Send dream process request to video server
- * @param dream - dream should include contain user data
- */
 export const processDreamRequest = async (dream: Dream) => {
+  const promptJson = parsePromptJson(dream);
+
+  if (promptJson) {
+    const algorithm = getAlgorithmFromPrompt(promptJson);
+
+    if (algorithm && isValidAlgorithm(algorithm)) {
+      const queueName = mapAlgorithmToQueue(algorithm);
+
+      if (queueName) {
+        APP_LOGGER.info(
+          `Processing dream ${dream.uuid} with algorithm ${algorithm}`,
+        );
+
+        const jobData = {
+          dream_uuid: dream.uuid,
+          auto_upload: true,
+          ...promptJson,
+        };
+
+        const result = await queueWorkerJob(queueName, jobData);
+
+        if (result.success) {
+          return { id: result.jobId, status: "queued", isPromptBased: true };
+        } else {
+          APP_LOGGER.error(
+            `Failed to queue worker job for dream ${dream.uuid}: ${result.error}`,
+          );
+        }
+      }
+    } else {
+      APP_LOGGER.warn(
+        `Unsupported algorithm ${algorithm} for dream ${dream.uuid}, falling back to video service`,
+      );
+    }
+  }
+
   const extension = getFileExtension(dream.original_video || "");
   const data = {
-    /**
-     * user identifier is not needed anymore
-     */
     dream_uuid: dream.uuid,
     extension,
   };
@@ -161,6 +197,7 @@ export const getDreamSelectedColumns = ({
     hidden: true,
     filmstrip: filmstrip,
     description: true,
+    prompt: true,
     sourceUrl: true,
     ccbyLicense: true,
     md5: true,

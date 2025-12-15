@@ -174,6 +174,9 @@ export class Dream {
   @Column({ nullable: true, type: "varchar", length: 32 })
   md5?: string | null;
 
+  @Column({ nullable: true, type: "json" })
+  prompt?: string | null;
+
   // start keyframe column
   @ManyToOne(() => Keyframe, { nullable: true })
   @JoinColumn()

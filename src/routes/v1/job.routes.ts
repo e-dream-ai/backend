@@ -56,6 +56,13 @@ jobRouter.get(
   jobController.handleGetJobs,
 );
 
+jobRouter.post(
+  "/worker",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  jobController.handleTurnOn,
+);
+
 // jobRouter.post(
 //   "/turn-on",
 //   requireAuth,

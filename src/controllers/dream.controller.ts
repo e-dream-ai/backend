@@ -29,6 +29,7 @@ import env from "shared/env";
 import {
   AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
+  CreateDreamRequest,
   CreateMultipartUploadDreamRequest,
   CreateMultipartUploadFileRequest,
   DreamFileType,
@@ -125,6 +126,65 @@ export const handleGetDreams = async (
         data: { dreams: transformedDreams, count },
       }),
     );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+export const handleCreateDream = async (
+  req: RequestType<CreateDreamRequest>,
+  res: ResponseType,
+) => {
+  const user = res.locals.user!;
+
+  try {
+    const name = truncateString(req.body.name, 1000, false);
+    const description = req.body.description;
+    const sourceUrl = req.body.sourceUrl;
+    const nsfw = req.body.nsfw;
+    const hidden = req.body.hidden;
+    const ccbyLicense = req.body.ccbyLicense;
+    const prompt =
+      typeof req.body.prompt === "string"
+        ? req.body.prompt
+        : JSON.stringify(req.body.prompt);
+
+    const dream = new Dream();
+    dream.name = name;
+    dream.description = description;
+    dream.sourceUrl = sourceUrl;
+    dream.prompt = prompt;
+    dream.user = user;
+    dream.nsfw = nsfw ?? false;
+    dream.hidden = hidden ?? false;
+    dream.ccbyLicense = ccbyLicense ?? false;
+    dream.status = DreamStatusType.QUEUE;
+
+    await dreamRepository.save(dream);
+
+    const processResult = await processDreamRequest(dream);
+
+    if (!processResult?.isPromptBased) {
+      await updateVideoServiceWorker(TURN_ON_QUANTITY);
+    }
+
+    const [savedDream] = await dreamRepository.find({
+      where: { uuid: dream.uuid },
+      relations: { user: true },
+      select: getDreamSelectedColumns(),
+    });
+
+    tracker.sendEventWithRequestContext(
+      res,
+      user.uuid,
+      "USER_NEW_DREAM_FROM_PROMPT",
+      {},
+    );
+
+    return res
+      .status(httpStatus.CREATED)
+      .json(jsonResponse({ success: true, data: { dream: savedDream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -540,14 +600,16 @@ export const handleCompleteMultipartUpload = async (
 
     if (type === DreamFileType.DREAM && !processed) {
       /**
-       * turn on video service worker
-       */
-      await updateVideoServiceWorker(TURN_ON_QUANTITY);
-
-      /**
        * process dream requests: it needs to provide updated dream with originalVideo value
        */
-      await processDreamRequest(updatedDream);
+      const processResult = await processDreamRequest(updatedDream);
+
+      /**
+       * turn on video service worker only if not prompt-based
+       */
+      if (!processResult?.isPromptBased) {
+        await updateVideoServiceWorker(TURN_ON_QUANTITY);
+      }
     }
 
     tracker.sendEventWithRequestContext(res, user.uuid, "USER_NEW_UPLOAD", {});
@@ -850,9 +912,6 @@ export const handleProcessDream = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
-      /**
-       * originalVideo needed to process dream
-       */
       select: getDreamSelectedColumns({ originalVideo: true }),
     });
 
@@ -860,15 +919,11 @@ export const handleProcessDream = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    /**
-     * turn on video service worker
-     */
-    await updateVideoServiceWorker(TURN_ON_QUANTITY);
+    const processResult = await processDreamRequest(dream);
 
-    /**
-     * process dream - provide updated dream
-     */
-    await processDreamRequest(dream);
+    if (!processResult?.isPromptBased) {
+      await updateVideoServiceWorker(TURN_ON_QUANTITY);
+    }
 
     const updatedDream = await dreamRepository.save({
       ...dream,

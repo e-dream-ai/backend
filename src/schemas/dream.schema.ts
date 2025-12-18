@@ -11,6 +11,7 @@ import {
   CreateMultipartUploadDreamRequest,
   CreateMultipartUploadFileRequest,
   DreamFileType,
+  DreamMediaType,
   DreamParamsRequest,
   DreamStatusType,
   GetDreamsQuery,
@@ -29,7 +30,7 @@ export const requestDreamSchema: RequestValidationSchema = {
 export const createDreamSchema: RequestValidationSchema = {
   body: Joi.object<CreateDreamRequest>().keys({
     name: Joi.string().required(),
-    prompt: Joi.alternatives().try(Joi.string(), Joi.object()).required(),
+    prompt: Joi.alternatives().try(Joi.string(), Joi.object()).optional(),
     description: Joi.string().optional().allow("").max(4000),
     sourceUrl: Joi.string()
       .uri({
@@ -50,6 +51,9 @@ export const createDreamSchema: RequestValidationSchema = {
       otherwise: Joi.forbidden(),
     }),
     ccbyLicense: Joi.boolean(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
   }),
 };
 
@@ -91,6 +95,9 @@ export const updateDreamSchema: RequestValidationSchema = {
     ccbyLicense: Joi.boolean(),
     startKeyframe: Joi.string().uuid(),
     endKeyframe: Joi.string().uuid(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -121,7 +128,7 @@ export const createMultipartUploadDreamSchema: RequestValidationSchema = {
     uuid: Joi.string().uuid(),
     name: Joi.string(),
     extension: Joi.string()
-      .valid(...ALLOWED_VIDEO_TYPES)
+      .valid(...ALLOWED_VIDEO_TYPES, ...ALLOWED_IMAGE_TYPES)
       .required(),
     parts: Joi.number().greater(0).integer().required(),
     description: Joi.string().optional().allow("").max(4000),
@@ -144,6 +151,9 @@ export const createMultipartUploadDreamSchema: RequestValidationSchema = {
       otherwise: Joi.forbidden(),
     }),
     ccbyLicense: Joi.boolean(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
   }),
 };
 

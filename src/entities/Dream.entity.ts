@@ -17,7 +17,7 @@ import { FeedItem } from "./FeedItem.entity";
 import { PlaylistItem } from "./PlaylistItem.entity";
 import { User } from "./User.entity";
 import { Vote } from "./Vote.entity";
-import { DreamStatusType, Frame } from "types/dream.types";
+import { DreamStatusType, DreamMediaType, Frame } from "types/dream.types";
 import { ColumnNumericTransformer } from "transformers/numeric.transformer";
 import { ColumnVideoTransformer } from "transformers/video.transformer";
 import env from "shared/env";
@@ -65,6 +65,17 @@ export class Dream {
   })
   @Index()
   status: DreamStatusType;
+
+  /**
+   * media type: video or image
+   */
+  @Column({
+    type: "enum",
+    enum: DreamMediaType,
+    default: DreamMediaType.VIDEO,
+  })
+  @Index()
+  mediaType: DreamMediaType;
 
   /**
    * processed video

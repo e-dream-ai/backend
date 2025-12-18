@@ -17,7 +17,7 @@ import { getUserSelectedColumns } from "./user.util";
 import { FeedItemType } from "types/feed-item.types";
 import { APP_LOGGER } from "shared/logger";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
-import { DreamStatusType } from "types/dream.types";
+import { DreamMediaType, DreamStatusType } from "types/dream.types";
 import { getKeyframeSelectedColumns } from "./keyframe.util";
 import { getPlaylistFindOptionsWhere } from "./playlist.util";
 import {
@@ -105,13 +105,30 @@ export const processDreamRequest = async (dream: Dream) => {
     }
   }
 
+  // Skip processing if there's no file to process
+  if (!dream.original_video) {
+    APP_LOGGER.info(
+      `Skipping processing for dream ${dream.uuid}: no file or prompt provided`,
+    );
+    return { status: "skipped", isPromptBased: false };
+  }
+
   const extension = getFileExtension(dream.original_video || "");
   const data = {
     dream_uuid: dream.uuid,
     extension,
   };
+
+  const mediaType = dream.mediaType ?? DreamMediaType.VIDEO;
+  const endpoint =
+    mediaType === DreamMediaType.IMAGE ? "/process-image" : "/process-video";
+
+  APP_LOGGER.info(
+    `Processing dream ${dream.uuid} with mediaType ${mediaType} via ${endpoint}`,
+  );
+
   return axios
-    .post(`${PROCESS_VIDEO_SERVER_URL}/process-video`, data, {
+    .post(`${PROCESS_VIDEO_SERVER_URL}${endpoint}`, data, {
       headers: {
         Authorization: `Api-Key ${VIDEO_INGESTION_API_KEY}`,
         ...getRequestHeaders({ contentType: ContentType.json }),
@@ -190,6 +207,7 @@ export const getDreamSelectedColumns = ({
     downvotes: true,
     activityLevel: true,
     status: true,
+    mediaType: true,
     processedVideoSize: true,
     processedVideoFrames: true,
     processedVideoFPS: true,

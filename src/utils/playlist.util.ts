@@ -7,7 +7,7 @@ import {
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
-import { DreamStatusType } from "types/dream.types";
+import { DreamMediaType, DreamStatusType } from "types/dream.types";
 import { playlistKeyframeRepository } from "database/repositories";
 import { framesToSeconds } from "./video.utils";
 
@@ -218,13 +218,17 @@ export const getPlaylistItemsQueryBuilder = (
   }
 
   // Apply filtering for get processed dreams only
+  // For client endpoints, exclude image dreams
   if (filter?.onlyProcessedDreams) {
     queryBuilder.andWhere(
       `(
-      dreamItem.status = :status OR 
+      (dreamItem.status = :status AND (dreamItem.mediaType IS NULL OR dreamItem.mediaType != :imageMediaType)) OR 
       playlistItem.id IS NOT NULL
     )`,
-      { status: DreamStatusType.PROCESSED },
+      {
+        status: DreamStatusType.PROCESSED,
+        imageMediaType: DreamMediaType.IMAGE,
+      },
     );
   }
 
@@ -459,7 +463,8 @@ export const computePlaylistTotalDreamCount = async (
     if (item.dreamItem) {
       if (
         !filter.onlyProcessedDreams ||
-        item.dreamItem.status === DreamStatusType.PROCESSED
+        (item.dreamItem.status === DreamStatusType.PROCESSED &&
+          item.dreamItem.mediaType !== DreamMediaType.IMAGE)
       ) {
         totalDreamCount++;
       }

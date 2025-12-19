@@ -423,6 +423,12 @@ export const getTopDreams = async (take: number = 50) => {
     .createQueryBuilder()
     .where("Dream.deleted_at IS NULL")
     .andWhere("Dream.status = :status", { status: DreamStatusType.PROCESSED })
+    .andWhere(
+      "(Dream.mediaType IS NULL OR Dream.mediaType != :imageMediaType)",
+      {
+        imageMediaType: DreamMediaType.IMAGE,
+      },
+    )
     .orderBy("Dream.upvotes", "DESC")
     .addOrderBy("RANDOM()")
     .take(take)

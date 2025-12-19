@@ -1,5 +1,6 @@
 import { FeedItemType } from "./feed-item.types";
 import { Dream, User, FeedItem } from "entities";
+import { DreamMediaType } from "./dream.types";
 
 export type GetFeedRequest = {
   take?: number;
@@ -8,6 +9,7 @@ export type GetFeedRequest = {
   userUUID?: string;
   type?: FeedItemType;
   onlyHidden?: string;
+  mediaType?: DreamMediaType;
 };
 
 export type VirtualPlaylist = {

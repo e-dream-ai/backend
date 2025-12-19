@@ -463,8 +463,7 @@ export const computePlaylistTotalDreamCount = async (
     if (item.dreamItem) {
       if (
         !filter.onlyProcessedDreams ||
-        (item.dreamItem.status === DreamStatusType.PROCESSED &&
-          item.dreamItem.mediaType !== DreamMediaType.IMAGE)
+        item.dreamItem.status === DreamStatusType.PROCESSED
       ) {
         totalDreamCount++;
       }

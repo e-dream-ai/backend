@@ -67,3 +67,7 @@ export const mapAlgorithmToQueue = (algorithm: string): string | null => {
   }
   return ALGORITHM_TO_QUEUE_MAP[algorithm];
 };
+
+export const isImageGenerationAlgorithm = (algorithm: string): boolean => {
+  return algorithm === "qwen-image";
+};

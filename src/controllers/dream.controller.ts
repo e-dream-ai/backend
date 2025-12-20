@@ -51,6 +51,7 @@ import {
   handleVoteDream,
   processDreamRequest,
 } from "utils/dream.util";
+import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
@@ -147,12 +148,29 @@ export const handleCreateDream = async (
     const nsfw = req.body.nsfw;
     const hidden = req.body.hidden;
     const ccbyLicense = req.body.ccbyLicense;
-    const mediaType = req.body.mediaType ?? DreamMediaType.VIDEO;
     const prompt = req.body.prompt
       ? typeof req.body.prompt === "string"
         ? req.body.prompt
         : JSON.stringify(req.body.prompt)
       : undefined;
+
+    let mediaType = req.body.mediaType;
+    if (!mediaType && prompt) {
+      try {
+        const parsedPrompt =
+          typeof prompt === "string" ? JSON.parse(prompt) : prompt;
+        if (parsedPrompt?.infinidream_algorithm) {
+          const algorithm = parsedPrompt.infinidream_algorithm;
+          if (isImageGenerationAlgorithm(algorithm)) {
+            mediaType = DreamMediaType.IMAGE;
+          }
+        }
+      } catch (error) {
+        // If prompt parsing fails, continue with default mediaType
+        // Error is intentionally ignored as we fall back to default VIDEO mediaType
+      }
+    }
+    mediaType = mediaType ?? DreamMediaType.VIDEO;
 
     if (mediaType === DreamMediaType.IMAGE && !prompt) {
       return res.status(httpStatus.BAD_REQUEST).json(

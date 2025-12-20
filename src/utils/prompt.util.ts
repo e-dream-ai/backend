@@ -6,13 +6,19 @@ export interface PromptJson {
   [key: string]: unknown;
 }
 
-const SUPPORTED_ALGORITHMS = ["animatediff", "deforum", "uprez"] as const;
+const SUPPORTED_ALGORITHMS = [
+  "animatediff",
+  "deforum",
+  "uprez",
+  "qwen-image",
+] as const;
 type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
 
 const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   animatediff: "video",
   deforum: "deforumvideo",
   uprez: "uprezvideo",
+  "qwen-image": "qwenimage",
 };
 
 export const parsePromptJson = (dream: Dream): PromptJson | null => {

@@ -13,6 +13,7 @@ const SUPPORTED_ALGORITHMS = [
   "qwen-image",
   "wan-t2v",
   "wan-i2v",
+  "wan-i2v-lora",
 ] as const;
 type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
 
@@ -23,6 +24,7 @@ const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   "qwen-image": "qwenimage",
   "wan-t2v": "want2v",
   "wan-i2v": "wani2v",
+  "wan-i2v-lora": "wani2vlora",
 };
 
 export const parsePromptJson = (dream: Dream): PromptJson | null => {

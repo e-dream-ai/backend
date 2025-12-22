@@ -33,6 +33,7 @@ import {
   CreateMultipartUploadDreamRequest,
   CreateMultipartUploadFileRequest,
   DreamFileType,
+  DreamMediaType,
   DreamParamsRequest,
   DreamStatusType,
   Frame,
@@ -50,6 +51,7 @@ import {
   handleVoteDream,
   processDreamRequest,
 } from "utils/dream.util";
+import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
@@ -79,6 +81,7 @@ import {
   transformDreamWithSignedUrls,
   transformDreamsWithSignedUrls,
 } from "utils/transform.util";
+import { detectMediaTypeFromExtension } from "utils/media.util";
 
 /**
  * Handles get dreams
@@ -145,20 +148,50 @@ export const handleCreateDream = async (
     const nsfw = req.body.nsfw;
     const hidden = req.body.hidden;
     const ccbyLicense = req.body.ccbyLicense;
-    const prompt =
-      typeof req.body.prompt === "string"
+    const prompt = req.body.prompt
+      ? typeof req.body.prompt === "string"
         ? req.body.prompt
-        : JSON.stringify(req.body.prompt);
+        : JSON.stringify(req.body.prompt)
+      : undefined;
+
+    let mediaType = req.body.mediaType;
+    if (!mediaType && prompt) {
+      try {
+        const parsedPrompt =
+          typeof prompt === "string" ? JSON.parse(prompt) : prompt;
+        if (parsedPrompt?.infinidream_algorithm) {
+          const algorithm = parsedPrompt.infinidream_algorithm;
+          if (isImageGenerationAlgorithm(algorithm)) {
+            mediaType = DreamMediaType.IMAGE;
+          }
+        }
+      } catch (error) {
+        // If prompt parsing fails, continue with default mediaType
+        // Error is intentionally ignored as we fall back to default VIDEO mediaType
+      }
+    }
+    mediaType = mediaType ?? DreamMediaType.VIDEO;
+
+    if (mediaType === DreamMediaType.IMAGE && !prompt) {
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message:
+            "Image dreams require either a prompt for AI generation or a file upload via multipart upload",
+        }),
+      );
+    }
 
     const dream = new Dream();
     dream.name = name;
     dream.description = description;
     dream.sourceUrl = sourceUrl;
-    dream.prompt = prompt;
+    dream.prompt = prompt ?? null;
     dream.user = user;
     dream.nsfw = nsfw ?? false;
     dream.hidden = hidden ?? false;
     dream.ccbyLicense = ccbyLicense ?? false;
+    dream.mediaType = mediaType;
     dream.status = DreamStatusType.QUEUE;
 
     await dreamRepository.save(dream);
@@ -221,6 +254,11 @@ export const handleCreateMultipartUpload = async (
     const nsfw = req.body.nsfw;
     const hidden = req.body.hidden;
     const ccbyLicense = req.body.ccbyLicense;
+    const mediaType =
+      req.body.mediaType ??
+      (extension
+        ? detectMediaTypeFromExtension(extension)
+        : DreamMediaType.VIDEO);
 
     if (!dreamUUID) {
       // create dream
@@ -232,6 +270,7 @@ export const handleCreateMultipartUpload = async (
       dream.nsfw = nsfw ?? false;
       dream.hidden = hidden ?? false;
       dream.ccbyLicense = ccbyLicense ?? false;
+      dream.mediaType = mediaType;
       await dreamRepository.save(dream);
     } else {
       // find dream
@@ -561,11 +600,18 @@ export const handleCompleteMultipartUpload = async (
       });
 
       /**
-       * if dream file is the original then updates name, original_video object key and status
+       * Auto-detect mediaType from file extension if not already set
+       */
+      const detectedMediaType = detectMediaTypeFromExtension(fileExtension);
+      const currentMediaType = dream.mediaType ?? detectedMediaType;
+
+      /**
+       * if dream file is the original then updates name, original_video object key, mediaType and status
        */
       await dreamRepository.update(dream.id, {
         name,
         original_video: filePath!,
+        mediaType: currentMediaType,
         status: DreamStatusType.QUEUE,
       });
     } else if (type === DreamFileType.DREAM && processed) {
@@ -1002,6 +1048,8 @@ export const handleSetDreamStatusProcessed = async (
   const processedVideoSize = req.body.processedVideoSize;
   const processedVideoFrames = req.body.processedVideoFrames!;
   const processedVideoFPS = req.body.processedVideoFPS;
+  const processedMediaWidth = req.body.processedMediaWidth;
+  const processedMediaHeight = req.body.processedMediaHeight;
   const activityLevel = req.body.activityLevel!;
   const filmstrip = req.body.filmstrip
     ? (req.body.filmstrip as number[])
@@ -1040,6 +1088,8 @@ export const handleSetDreamStatusProcessed = async (
       processedVideoSize,
       processedVideoFrames,
       processedVideoFPS,
+      processedMediaWidth,
+      processedMediaHeight,
       activityLevel,
       filmstrip: formatedFilmstrip,
       md5,

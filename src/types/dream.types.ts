@@ -6,12 +6,13 @@ export type DreamParamsRequest = {
 
 export type CreateDreamRequest = {
   name: string;
-  prompt: string | object;
+  prompt?: string | object;
   description?: string;
   sourceUrl?: string;
   nsfw?: boolean;
   hidden?: boolean;
   ccbyLicense?: boolean;
+  mediaType?: DreamMediaType;
 };
 
 export type Frame = { frameNumber: number; url: string };
@@ -38,12 +39,15 @@ export type UpdateDreamRequest = {
   prompt?: string;
   sourceUrl?: string;
   ccbyLicense?: boolean;
+  mediaType?: DreamMediaType;
 };
 
 export type UpdateDreamProcessedRequest = {
   processedVideoSize?: number;
   processedVideoFrames?: number;
   processedVideoFPS?: number;
+  processedMediaWidth?: number;
+  processedMediaHeight?: number;
   activityLevel?: number;
   filmstrip?: number[];
   md5?: string;
@@ -59,6 +63,7 @@ export type CreateMultipartUploadDreamRequest = {
   description?: string;
   sourceUrl?: string;
   ccbyLicense?: boolean;
+  mediaType?: DreamMediaType;
 };
 
 export type CreateMultipartUploadFileRequest = {
@@ -105,4 +110,9 @@ export enum DreamStatusType {
   PROCESSING = "processing",
   FAILED = "failed",
   PROCESSED = "processed",
+}
+
+export enum DreamMediaType {
+  VIDEO = "video",
+  IMAGE = "image",
 }

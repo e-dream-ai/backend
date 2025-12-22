@@ -6,6 +6,7 @@ import { FindOptionsWhere } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { GetFeedRequest } from "types/feed.types";
+import { DreamMediaType } from "types/dream.types";
 import {
   formatFeedResponse,
   getFeedFindOptionsRelations,
@@ -115,6 +116,9 @@ export const handleGetFeed = async (
   const search = req.query.search ? String(req.query.search) : undefined;
   const userUUID = req.query.userUUID;
   const type = req.query.type;
+  const mediaType =
+    req.query.mediaType ||
+    (type === FeedItemType.DREAM ? DreamMediaType.VIDEO : undefined);
   const user = res.locals.user!;
   const nsfw = user?.nsfw;
   // Convert to boolean since Joi handles it as string since we are working with a query param
@@ -135,6 +139,7 @@ export const handleGetFeed = async (
       onlyHidden,
       isAdmin: isUserAdmin,
       userId: user.id,
+      mediaType,
     });
 
     const [rawFeed, count] = await feedItemRepository.findAndCount({
@@ -259,6 +264,9 @@ export const handleGetGroupedFeed = async (
   const search = req.query.search ? String(req.query.search) : undefined;
   const userUUID = req.query.userUUID;
   const type = req.query.type;
+  const mediaType =
+    req.query.mediaType ||
+    (type === FeedItemType.DREAM ? DreamMediaType.VIDEO : undefined);
   const user = res.locals.user!;
   const nsfw = user?.nsfw;
   const onlyHidden = req.query.onlyHidden === "true";
@@ -278,6 +286,7 @@ export const handleGetGroupedFeed = async (
       onlyHidden,
       isAdmin: isUserAdmin,
       userId: user.id,
+      mediaType,
     });
 
     const [rawFeed, count] = await feedItemRepository.findAndCount({

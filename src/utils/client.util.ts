@@ -1,11 +1,12 @@
 import appDataSource from "database/app-data-source";
 import { Dream, Playlist, PlaylistItem } from "entities";
-import { In } from "typeorm";
+import { In, Not } from "typeorm";
 import {
   ClientDream,
   ClientPlaylist,
   PartialClientDream,
 } from "types/client.types";
+import { DreamMediaType } from "types/dream.types";
 
 /**
  * Repositories
@@ -90,7 +91,10 @@ export const populateDefautPlaylist = async (
   }
 
   const dreams = await dreamRepository.find({
-    where: { uuid: In(uuids) },
+    where: {
+      uuid: In(uuids),
+      mediaType: Not(DreamMediaType.IMAGE),
+    },
     relations: { user: true, playlistItems: true },
     select: ["uuid", "updated_at"],
   });

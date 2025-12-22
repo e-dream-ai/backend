@@ -5,14 +5,14 @@ import {
   voteRepository,
 } from "database/repositories";
 import httpStatus from "http-status";
-import { In } from "typeorm";
+import { In, Not } from "typeorm";
 import {
   ClientDream,
   ClientPlaylist,
   GetDreamsQuery,
   GetDreamsRequestQuery,
 } from "types/client.types";
-import { DreamParamsRequest } from "types/dream.types";
+import { DreamMediaType, DreamParamsRequest } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { PlaylistParamsRequest } from "types/playlist.types";
 import { VoteType } from "types/vote.types";
@@ -210,7 +210,10 @@ export const handleGetDownloadUrl = async (
 
   try {
     const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID! },
+      where: {
+        uuid: dreamUUID!,
+        mediaType: Not(DreamMediaType.IMAGE),
+      },
       relations: { user: true, displayedOwner: true, playlistItems: true },
       select: getDreamSelectedColumns({
         originalVideo: true,
@@ -256,7 +259,10 @@ export const handleGetDreams = async (
 
   try {
     const dreams = await dreamRepository.find({
-      where: { uuid: In(uuids) },
+      where: {
+        uuid: In(uuids),
+        mediaType: Not(DreamMediaType.IMAGE), // Exclude image dreams for native client
+      },
       relations: {
         user: true,
         displayedOwner: true,
@@ -309,7 +315,10 @@ export const handleDreamsRequest = async (
 
   try {
     const dreams = await dreamRepository.find({
-      where: { uuid: In(uuids) },
+      where: {
+        uuid: In(uuids),
+        mediaType: Not(DreamMediaType.IMAGE), // Exclude image dreams for native client
+      },
       relations: {
         user: true,
         displayedOwner: true,

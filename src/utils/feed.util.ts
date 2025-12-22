@@ -11,6 +11,7 @@ import {
 import { getUserSelectedColumns } from "./user.util";
 import { VirtualPlaylist } from "types/feed.types";
 import { computePlaylistThumbnailRecursive } from "./playlist.util";
+import { DreamMediaType } from "types/dream.types";
 
 type FeedItemFindOptions = {
   // Filters NSFW content
@@ -25,6 +26,8 @@ type FeedItemFindOptions = {
   userId: number;
   // Gets best ranked content
   ranked?: boolean;
+  // Filters by media type (image/video)
+  mediaType?: DreamMediaType;
 };
 
 type FeedItemFindOptionsWhere =
@@ -46,11 +49,11 @@ export const getFeedFindOptionsWhere = (
   const isAdmin = findOptions?.isAdmin || false;
   const onlyHidden = findOptions?.onlyHidden || false;
   const ranked = findOptions?.ranked || false;
+  const mediaType = findOptions?.mediaType;
 
-  // Base conditions for NSFW and search
+  // Base conditions for NSFW and search (shared by both dreams and playlists)
   const nsfwCondition = findOptions?.nsfw ? {} : { nsfw: false };
 
-  // Combine base conditions
   const baseConditions: FeedItemFindOptionsWhere = {
     ...nsfwCondition,
     ...searchCondition,
@@ -58,10 +61,15 @@ export const getFeedFindOptionsWhere = (
     deleted_at: IsNull(),
   };
 
+  const dreamBaseConditions: FeedItemFindOptionsWhere = {
+    ...baseConditions,
+    ...(mediaType ? { mediaType } : {}),
+  };
+
   // For admins, no hidden filter is applied
   if (isAdmin) {
     return [
-      { ...options, dreamItem: baseConditions, playlistItem: IsNull() },
+      { ...options, dreamItem: dreamBaseConditions, playlistItem: IsNull() },
       {
         ...options,
         dreamItem: IsNull(),
@@ -76,7 +84,27 @@ export const getFeedFindOptionsWhere = (
   // Handle hidden items with ownership
   // Apply on both (dreams and playlists)
   // Add base conditions (search and NSFW)
-  const itemsConditions: FeedItemFindOptionsWhere = [
+  const dreamItemsConditions: FeedItemFindOptionsWhere = [
+    {
+      ...dreamBaseConditions,
+      hidden: true,
+      user: Raw((alias) => `${alias} = :userId`, { userId }),
+      ...(ranked && { featureRank: MoreThanOrEqual(1) }),
+    },
+    // If onlyHidden, skip adding not hidden items to the query
+    // If not onlyHidden, add visible items to the query
+    ...(onlyHidden
+      ? []
+      : [
+        {
+          ...dreamBaseConditions,
+          hidden: false,
+          ...(ranked && { featureRank: MoreThanOrEqual(1) }),
+        },
+      ]),
+  ];
+
+  const playlistItemsConditions: FeedItemFindOptionsWhere = [
     {
       ...baseConditions,
       hidden: true,
@@ -97,11 +125,11 @@ export const getFeedFindOptionsWhere = (
   ];
 
   return [
-    { ...options, dreamItem: itemsConditions, playlistItem: IsNull() },
+    { ...options, dreamItem: dreamItemsConditions, playlistItem: IsNull() },
     {
       ...options,
       dreamItem: IsNull(),
-      playlistItem: itemsConditions,
+      playlistItem: playlistItemsConditions,
     },
   ];
 };
@@ -112,6 +140,7 @@ export const getFeedDreamItemSelectedColumns = (): FindOptionsSelect<Dream> => {
     uuid: true,
     name: true,
     thumbnail: true,
+    mediaType: true,
     user: getUserSelectedColumns(),
     displayedOwner: getUserSelectedColumns(),
     playlistItems: {

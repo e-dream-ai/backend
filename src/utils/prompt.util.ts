@@ -6,13 +6,25 @@ export interface PromptJson {
   [key: string]: unknown;
 }
 
-const SUPPORTED_ALGORITHMS = ["animatediff", "deforum", "uprez"] as const;
+const SUPPORTED_ALGORITHMS = [
+  "animatediff",
+  "deforum",
+  "uprez",
+  "qwen-image",
+  "wan-t2v",
+  "wan-i2v",
+  "wan-i2v-lora",
+] as const;
 type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
 
 const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   animatediff: "video",
   deforum: "deforumvideo",
   uprez: "uprezvideo",
+  "qwen-image": "qwenimage",
+  "wan-t2v": "want2v",
+  "wan-i2v": "wani2v",
+  "wan-i2v-lora": "wani2vlora",
 };
 
 export const parsePromptJson = (dream: Dream): PromptJson | null => {
@@ -60,4 +72,8 @@ export const mapAlgorithmToQueue = (algorithm: string): string | null => {
     return null;
   }
   return ALGORITHM_TO_QUEUE_MAP[algorithm];
+};
+
+export const isImageGenerationAlgorithm = (algorithm: string): boolean => {
+  return algorithm === "qwen-image";
 };

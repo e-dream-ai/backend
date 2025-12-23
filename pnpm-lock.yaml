@@ -69,8 +69,8 @@ importers:
         specifier: ^1.18.0
         version: 1.18.2
       http-status:
-        specifier: ^1.7.0
-        version: 1.8.1
+        specifier: ^2.1.0
+        version: 2.1.0
       ioredis:
         specifier: ^5.8.1
         version: 5.8.2
@@ -2548,8 +2548,8 @@ packages:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
     engines: {node: '>= 0.8'}
 
-  http-status@1.8.1:
-    resolution: {integrity: sha512-YQF7j8Qf/Rlby0IbRPiWfNZt6aeUv3K0Pi0x3crbMZN+7F8dPn5k4b3n897vpM1Vk8Mg2fhOYc9fktKEQWMy/Q==}
+  http-status@2.1.0:
+    resolution: {integrity: sha512-O5kPr7AW7wYd/BBiOezTwnVAnmSNFY+J7hlZD2X5IOxVBetjcHAiTXhzj0gMrnojQlwy+UT1/Y3H3vJ3UlmvLA==}
     engines: {node: '>= 0.4.0'}
 
   human-signals@2.1.0:
@@ -7407,7 +7407,7 @@ snapshots:
       statuses: 2.0.1
       toidentifier: 1.0.1
 
-  http-status@1.8.1: {}
+  http-status@2.1.0: {}
 
   human-signals@2.1.0: {}
 

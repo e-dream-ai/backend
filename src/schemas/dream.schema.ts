@@ -72,6 +72,11 @@ export const updateDreamSchema: RequestValidationSchema = {
     activityLevel: Joi.number(),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0),
+    user: Joi.string().uuid().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
     description: Joi.string().optional().allow("").max(4000),
     prompt: Joi.string().optional().allow("").max(4000),
     sourceUrl: Joi.string()

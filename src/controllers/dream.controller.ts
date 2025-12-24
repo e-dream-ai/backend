@@ -1267,6 +1267,7 @@ export const handleUpdateDream = async (
     /* eslint-disable @typescript-eslint/no-unused-vars */
     const {
       displayedOwner: _displayedOwner,
+      user: _user,
       startKeyframe: _startKeyframe,
       endKeyframe: _endKeyframe,
       ...sanitizedDreamData
@@ -1276,10 +1277,11 @@ export const handleUpdateDream = async (
     // Define an object to hold the fields that are allowed to be updated
     let updateData: Partial<Dream> = sanitizedDreamData as Omit<
       UpdateDreamRequest,
-      "displayedOwner" | "startKeyframe" | "endKeyframe"
+      "displayedOwner" | "user" | "startKeyframe" | "endKeyframe"
     >;
 
     let displayedOwner: User | null = null;
+    let newOwner: User | null = null;
     let startKeyframe: Keyframe | null,
       endKeyframe: Keyframe | null = null;
 
@@ -1287,6 +1289,28 @@ export const handleUpdateDream = async (
       displayedOwner = await userRepository.findOneBy({
         id: req.body.displayedOwner,
       });
+    }
+
+    // Update actual owner (user field) - admin only
+    if (isAdmin(user) && req.body.user) {
+      newOwner = await userRepository.findOne({
+        where: { uuid: req.body.user },
+      });
+
+      if (!newOwner) {
+        return handleNotFound(req as RequestType, res, {
+          message: "User not found",
+        });
+      }
+
+      updateData = { ...updateData, user: newOwner };
+      /**
+       * update feed item user too
+       */
+      await feedItemRepository.update(
+        { dreamItem: { id: dream.id } },
+        { user: newOwner },
+      );
     }
 
     // find start keyframe, if exists save it into the dream

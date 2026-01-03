@@ -591,7 +591,7 @@ dreamRouter.get(
 dreamRouter.post(
   "/:uuid/process-dream",
   requireAuth,
-  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(requestDreamSchema),
   dreamController.handleProcessDream,
 );

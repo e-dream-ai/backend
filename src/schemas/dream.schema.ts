@@ -30,7 +30,9 @@ export const requestDreamSchema: RequestValidationSchema = {
 export const createDreamSchema: RequestValidationSchema = {
   body: Joi.object<CreateDreamRequest>().keys({
     name: Joi.string().required(),
-    prompt: Joi.alternatives().try(Joi.string(), Joi.object()).optional(),
+    prompt: Joi.alternatives()
+      .try(Joi.string().max(30000), Joi.object())
+      .optional(),
     description: Joi.string().optional().allow("").max(4000),
     sourceUrl: Joi.string()
       .uri({
@@ -78,7 +80,7 @@ export const updateDreamSchema: RequestValidationSchema = {
       otherwise: Joi.forbidden(),
     }),
     description: Joi.string().optional().allow("").max(4000),
-    prompt: Joi.string().optional().allow("").max(4000),
+    prompt: Joi.string().optional().allow("").max(30000),
     sourceUrl: Joi.string()
       .uri({
         scheme: ["http", "https"],

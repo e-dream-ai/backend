@@ -953,6 +953,7 @@ export const handleProcessDream = async (
   res: ResponseType,
 ) => {
   const dreamUUID: string = req.params.uuid!;
+  const user = res.locals.user!;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -963,6 +964,16 @@ export const handleProcessDream = async (
 
     if (!dream) {
       return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
     }
 
     const processResult = await processDreamRequest(dream);

@@ -54,6 +54,10 @@ export type UpdateDreamProcessedRequest = {
   md5?: string;
 };
 
+export type SetDreamStatusFailedRequest = {
+  error?: string;
+};
+
 export type CreateMultipartUploadDreamRequest = {
   uuid?: string;
   name: string;

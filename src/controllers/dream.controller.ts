@@ -39,6 +39,7 @@ import {
   Frame,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
+  SetDreamStatusFailedRequest,
   UpdateDreamProcessedRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
@@ -1179,10 +1180,11 @@ export const handleSetDreamStatusProcessed = async (
  *
  */
 export const handleSetDreamStatusFailed = async (
-  req: RequestType<UpdateDreamRequest, unknown, DreamParamsRequest>,
+  req: RequestType<SetDreamStatusFailedRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
   const dreamUUID: string = req.params.uuid!;
+  const error = req.body?.error;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -1198,6 +1200,7 @@ export const handleSetDreamStatusFailed = async (
     const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.FAILED,
+      error: error || null,
     });
 
     return res

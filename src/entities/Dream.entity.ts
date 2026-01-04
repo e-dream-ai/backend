@@ -191,6 +191,9 @@ export class Dream {
   @Column({ nullable: true, type: "varchar" })
   description?: string | null;
 
+  @Column({ nullable: true, type: "text" })
+  error?: string | null;
+
   @Column({ nullable: true, type: "varchar" })
   sourceUrl?: string | null;
 

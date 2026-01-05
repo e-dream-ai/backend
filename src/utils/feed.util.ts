@@ -140,6 +140,7 @@ export const getFeedDreamItemSelectedColumns = (): FindOptionsSelect<Dream> => {
     uuid: true,
     name: true,
     thumbnail: true,
+    status: true,
     mediaType: true,
     user: getUserSelectedColumns(),
     displayedOwner: getUserSelectedColumns(),

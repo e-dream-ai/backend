@@ -52,6 +52,11 @@ export type UpdateDreamProcessedRequest = {
   activityLevel?: number;
   filmstrip?: number[];
   md5?: string;
+  mediaType?: DreamMediaType;
+};
+
+export type SetDreamStatusFailedRequest = {
+  error?: string;
 };
 
 export type CreateMultipartUploadDreamRequest = {

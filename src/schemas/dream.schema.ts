@@ -16,6 +16,7 @@ import {
   DreamStatusType,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
+  SetDreamStatusFailedRequest,
   UpdateDreamProcessedRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
@@ -121,6 +122,9 @@ export const updateDreamProcessedSchema: RequestValidationSchema = {
     processedMediaHeight: Joi.number().integer(),
     filmstrip: Joi.array<number>(),
     md5: Joi.string(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -252,6 +256,15 @@ export const abortMultipartUploadDreamSchema: RequestValidationSchema = {
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
     uploadId: Joi.string().required(),
+  }),
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const setDreamStatusFailedSchema: RequestValidationSchema = {
+  body: Joi.object<SetDreamStatusFailedRequest>().keys({
+    error: Joi.string().optional().allow("").max(10000),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

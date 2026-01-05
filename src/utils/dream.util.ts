@@ -217,6 +217,7 @@ export const getDreamSelectedColumns = ({
     hidden: true,
     filmstrip: filmstrip,
     description: true,
+    error: true,
     prompt: true,
     sourceUrl: true,
     ccbyLicense: true,

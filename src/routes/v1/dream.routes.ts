@@ -14,6 +14,7 @@ import {
   getDreamsSchema,
   refreshMultipartUploadUrlSchema,
   requestDreamSchema,
+  setDreamStatusFailedSchema,
   updateDreamProcessedSchema,
   updateDreamSchema,
 } from "schemas/dream.schema";
@@ -757,7 +758,7 @@ dreamRouter.post(
   "/:uuid/status/failed",
   requireAuth,
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
-  validatorMiddleware(requestDreamSchema),
+  validatorMiddleware(setDreamStatusFailedSchema),
   dreamController.handleSetDreamStatusFailed,
 );
 

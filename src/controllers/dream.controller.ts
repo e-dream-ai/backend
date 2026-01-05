@@ -39,6 +39,7 @@ import {
   Frame,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
+  SetDreamStatusFailedRequest,
   UpdateDreamProcessedRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
@@ -1066,6 +1067,7 @@ export const handleSetDreamStatusProcessed = async (
     ? (req.body.filmstrip as number[])
     : undefined;
   const md5 = req.body.md5;
+  const mediaType = req.body.mediaType;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -1093,7 +1095,7 @@ export const handleSetDreamStatusProcessed = async (
         }) as Frame,
     );
 
-    await dreamRepository.update(dream.id, {
+    const updateData: Partial<Dream> = {
       status: DreamStatusType.PROCESSED,
       processed_at: new Date(),
       processedVideoSize,
@@ -1102,9 +1104,20 @@ export const handleSetDreamStatusProcessed = async (
       processedMediaWidth,
       processedMediaHeight,
       activityLevel,
-      filmstrip: formatedFilmstrip,
       md5,
-    });
+    };
+
+    if (mediaType === DreamMediaType.IMAGE) {
+      updateData.filmstrip = null as unknown as Frame[];
+    } else if (formatedFilmstrip) {
+      updateData.filmstrip = formatedFilmstrip;
+    }
+
+    if (mediaType) {
+      updateData.mediaType = mediaType;
+    }
+
+    await dreamRepository.update(dream.id, updateData);
 
     const [updatedDream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
@@ -1179,10 +1192,11 @@ export const handleSetDreamStatusProcessed = async (
  *
  */
 export const handleSetDreamStatusFailed = async (
-  req: RequestType<UpdateDreamRequest, unknown, DreamParamsRequest>,
+  req: RequestType<SetDreamStatusFailedRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
   const dreamUUID: string = req.params.uuid!;
+  const error = req.body?.error;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -1198,6 +1212,7 @@ export const handleSetDreamStatusFailed = async (
     const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.FAILED,
+      error: error || null,
     });
 
     return res

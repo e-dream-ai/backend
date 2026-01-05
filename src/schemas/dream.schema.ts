@@ -122,6 +122,9 @@ export const updateDreamProcessedSchema: RequestValidationSchema = {
     processedMediaHeight: Joi.number().integer(),
     filmstrip: Joi.array<number>(),
     md5: Joi.string(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

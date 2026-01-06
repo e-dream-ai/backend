@@ -8,20 +8,25 @@ const QUEUES = ["video", "deforumvideo", "uprezvideo"];
 interface JobProgressData {
   user_id: number | string;
   dream_uuid: string;
-  progress: number;
+  progress?: number;
+  output?: number | unknown;
 }
 
 export class JobProgressService {
   private queueEvents: QueueEvents[] = [];
+  private isInitialized = false;
 
-  constructor() {
-    this.initializeListeners();
-  }
+  public start() {
+    if (this.isInitialized) return;
+    this.isInitialized = true;
 
-  private initializeListeners() {
     for (const queueName of QUEUES) {
       const events = new QueueEvents(queueName, {
-        connection: redisClient,
+        connection: redisClient.duplicate(),
+      });
+
+      events.on("error", (error) => {
+        APP_LOGGER.error(`QueueEvents error on ${queueName}:`, error);
       });
 
       events.on("progress", async ({ jobId, data }) => {
@@ -32,8 +37,14 @@ export class JobProgressService {
           const {
             user_id: userId,
             dream_uuid: dreamUuid,
-            progress,
+            progress: rawProgress,
+            output,
           } = data as JobProgressData;
+
+          let progress = rawProgress;
+          if (progress === undefined && typeof output === "number") {
+            progress = output;
+          }
 
           if (userId && progress !== undefined) {
             const roomId = "USER:" + userId;
@@ -43,10 +54,6 @@ export class JobProgressService {
               dream_uuid: dreamUuid,
               progress,
             });
-
-            APP_LOGGER.info(
-              `Relayed progress ${progress}% for job ${jobId} to namespace /remote-control, room ${roomId}`,
-            );
           }
         } catch (error) {
           APP_LOGGER.error(`Error relaying job progress for ${jobId}:`, error);
@@ -54,7 +61,6 @@ export class JobProgressService {
       });
 
       this.queueEvents.push(events);
-      APP_LOGGER.info(`Listening for progress events on queue: ${queueName}`);
     }
   }
 

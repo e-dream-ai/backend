@@ -84,6 +84,7 @@ export async function startServer(): Promise<ServerResources> {
  */
 function configureApp(app: express.Application, io: Server) {
   setIo(io);
+  jobProgressService.start();
   const bugsnagMiddleware = Bugsnag.getPlugin("express");
 
   if (env.NODE_ENV !== "development") {

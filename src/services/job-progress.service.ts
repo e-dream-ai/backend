@@ -37,14 +37,15 @@ export class JobProgressService {
 
           if (userId && progress !== undefined) {
             const roomId = "USER:" + userId;
-            io.of("remote-control").to(roomId).emit("job:progress", {
+
+            io.of("/remote-control").to(roomId).emit("job:progress", {
               jobId,
               dream_uuid: dreamUuid,
               progress,
             });
 
             APP_LOGGER.info(
-              `Sent progress ${progress}% for job ${jobId} (dream ${dreamUuid}) to user ${userId}`,
+              `Relayed progress ${progress}% for job ${jobId} to namespace /remote-control, room ${roomId}`,
             );
           }
         } catch (error) {

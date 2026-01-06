@@ -3,6 +3,7 @@ import { redisClient } from "clients/redis.client";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { User } from "entities";
 import { remoteControlSchema } from "schemas/socket.schema";
+import { APP_LOGGER } from "shared/logger";
 import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import { VoteType } from "types/vote.types";
@@ -64,6 +65,9 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    */
   const roomId = "USER:" + user.id;
   socket.join(roomId);
+  APP_LOGGER.info(
+    `Socket ${socket.id} joined room ${roomId} in namespace ${socket.nsp.name}`,
+  );
 
   /**
    * Helper to emit current presence (number of sockets) to the user room

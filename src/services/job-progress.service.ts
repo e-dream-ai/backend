@@ -37,7 +37,7 @@ export class JobProgressService {
 
           if (userId && progress !== undefined) {
             const roomId = "USER:" + userId;
-            io.to(roomId).emit("job:progress", {
+            io.of("remote-control").to(roomId).emit("job:progress", {
               jobId,
               dream_uuid: dreamUuid,
               progress,

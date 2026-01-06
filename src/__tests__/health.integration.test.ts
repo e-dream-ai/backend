@@ -30,6 +30,13 @@ describe("/api/v1/health integration", () => {
       remoteControlConnectionListener: jest.fn(),
     }));
 
+    jest.doMock("services/job-progress.service", () => ({
+      __esModule: true,
+      jobProgressService: {
+        stop: jest.fn().mockResolvedValue(undefined),
+      },
+    }));
+
     process.env = { ...realEnv };
     Object.assign(process.env, {
       npm_package_version: "1.0.0",

@@ -84,6 +84,7 @@ export const processDreamRequest = async (dream: Dream) => {
 
         const jobData = {
           dream_uuid: dream.uuid,
+          user_id: dream.user.id,
           auto_upload: true,
           ...promptJson,
         };
@@ -435,7 +436,7 @@ export const getTopDreams = async (take: number = 50) => {
     .take(take)
     .getMany();
 
-  return dreams.map((dream) => dream.uuid);
+  return dreams.map((dream: Dream) => dream.uuid);
 };
 
 /**
@@ -470,7 +471,7 @@ export const getVotedDreams = async (
     skip: options.skip,
   });
 
-  const dreams = votes.map((vote) => vote.dream);
+  const dreams = votes.map((vote: Vote) => vote.dream);
 
   return {
     dreams,

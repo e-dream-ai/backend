@@ -16,6 +16,8 @@ import Bugsnag from "@bugsnag/js";
 import { ALLOWED_HEADERS, ALLOWED_METHODS } from "constants/socket.constants";
 import { handleCustomOrigin } from "utils/api.util";
 import { redisClient } from "clients/redis.client";
+import { setIo } from "socket/io";
+import { jobProgressService } from "services/job-progress.service";
 
 export type ServerResources = {
   app: express.Application;
@@ -81,6 +83,7 @@ export async function startServer(): Promise<ServerResources> {
  * Configure express app with middlewares, routes and socket handlers
  */
 function configureApp(app: express.Application, io: Server) {
+  setIo(io);
   const bugsnagMiddleware = Bugsnag.getPlugin("express");
 
   if (env.NODE_ENV !== "development") {
@@ -144,6 +147,9 @@ export async function shutdownServer(
       resolve();
     });
   });
+
+  // Stop BullMQ event listeners
+  await jobProgressService.stop();
 
   // Close Redis connections
   await Promise.all([pubClient.quit(), subClient.quit()]);

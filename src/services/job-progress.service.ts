@@ -13,13 +13,6 @@ interface JobProgressData {
   output?: number | unknown;
 }
 
-interface JobProgressEmitData {
-  jobId: string;
-  dream_uuid: string;
-  status?: string;
-  progress?: number;
-}
-
 export class JobProgressService {
   private queueEvents: QueueEvents[] = [];
   private isInitialized = false;
@@ -58,14 +51,12 @@ export class JobProgressService {
           if (userId && (progress !== undefined || status)) {
             const roomId = "USER:" + userId;
 
-            const emitData: JobProgressEmitData = {
+            io.of("/remote-control").to(roomId).emit("job:progress", {
               jobId,
               dream_uuid: dreamUuid,
               status,
               progress,
-            };
-
-            io.of("/remote-control").to(roomId).emit("job:progress", emitData);
+            });
           }
         } catch (error) {
           APP_LOGGER.error(`Error relaying job progress for ${jobId}:`, error);

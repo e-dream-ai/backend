@@ -92,6 +92,11 @@ export const processDreamRequest = async (dream: Dream) => {
         const result = await queueWorkerJob(queueName, jobData);
 
         if (result.success) {
+          await dreamRepository.update(dream.id, {
+            lastJobId: result.jobId,
+            lastQueueName: queueName,
+          });
+
           return { id: result.jobId, status: "queued", isPromptBased: true };
         } else {
           APP_LOGGER.error(
@@ -224,6 +229,8 @@ export const getDreamSelectedColumns = ({
     sourceUrl: true,
     ccbyLicense: true,
     md5: true,
+    lastJobId: true,
+    lastQueueName: true,
     processed_at: true,
     created_at: true,
     updated_at: true,

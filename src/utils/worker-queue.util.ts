@@ -38,3 +38,29 @@ export const queueWorkerJob = async (
     };
   }
 };
+
+export const cancelWorkerJob = async (
+  queueName: string,
+  jobId: string,
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const queue = new Queue(queueName, {
+      connection: redisClient,
+    });
+
+    const job = await queue.getJob(jobId);
+    if (job) {
+      await job.remove();
+      APP_LOGGER.info(`Cancelled job ${jobId} from ${queueName}`);
+    }
+
+    await queue.close();
+    return { success: true };
+  } catch (error) {
+    APP_LOGGER.error(`Failed to cancel job ${jobId} in ${queueName}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};

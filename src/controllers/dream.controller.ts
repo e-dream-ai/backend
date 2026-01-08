@@ -52,6 +52,7 @@ import {
   handleVoteDream,
   processDreamRequest,
 } from "utils/dream.util";
+import { cancelWorkerJob } from "utils/worker-queue.util";
 import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
@@ -1676,6 +1677,76 @@ export const handleDeleteDream = async (
     }
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles cancel dream
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dream cancelled
+ * BAD_REQUEST 400 - error cancelling dream
+ *
+ */
+export const handleCancelDream = async (
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = req.params.uuid!;
+  const user = res.locals.user!;
+
+  try {
+    const dream = await dreamRepository.findOne({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+    });
+
+    if (!dream) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    if (dream.lastJobId && dream.lastQueueName) {
+      await cancelWorkerJob(dream.lastQueueName, dream.lastJobId);
+    }
+
+    // Revert status if it has a video, otherwise set to none
+    const newStatus = dream.video
+      ? DreamStatusType.PROCESSED
+      : DreamStatusType.NONE;
+
+    await dreamRepository.update(dream.id, {
+      status: newStatus,
+      lastJobId: null,
+      lastQueueName: null,
+    });
+
+    const [updatedDream] = await dreamRepository.find({
+      where: { id: dream.id },
+      relations: { user: true },
+      select: getDreamSelectedColumns(),
+    });
+
+    const transformedDream = await transformDreamWithSignedUrls(updatedDream);
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { dream: transformedDream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

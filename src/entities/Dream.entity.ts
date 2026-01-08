@@ -224,6 +224,12 @@ export class Dream {
   @OneToMany(() => Report, (report) => report.dream)
   reports: Report[];
 
+  @Column({ nullable: true, type: "varchar" })
+  lastJobId?: string | null;
+
+  @Column({ nullable: true, type: "varchar" })
+  lastQueueName?: string | null;
+
   // last processed at date
   @Column({ nullable: true, type: "timestamp" })
   processed_at?: Date | null;

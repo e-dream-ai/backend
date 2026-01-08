@@ -597,6 +597,18 @@ dreamRouter.post(
   dreamController.handleProcessDream,
 );
 
+dreamRouter.post(
+  "/:uuid/cancel",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(requestDreamSchema),
+  dreamController.handleCancelDream,
+);
+
 /**
  * @swagger
  * /dream/{uuid}/status/processing:

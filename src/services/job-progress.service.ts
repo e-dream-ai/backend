@@ -8,6 +8,7 @@ const QUEUES = ["video", "deforumvideo", "uprezvideo"];
 interface JobProgressData {
   user_id: number | string;
   dream_uuid: string;
+  status?: string;
   progress?: number;
   output?: number | unknown;
 }
@@ -37,6 +38,7 @@ export class JobProgressService {
           const {
             user_id: userId,
             dream_uuid: dreamUuid,
+            status,
             progress: rawProgress,
             output,
           } = data as JobProgressData;
@@ -46,12 +48,13 @@ export class JobProgressService {
             progress = output;
           }
 
-          if (userId && progress !== undefined) {
+          if (userId && (progress !== undefined || status)) {
             const roomId = "USER:" + userId;
 
             io.of("/remote-control").to(roomId).emit("job:progress", {
               jobId,
               dream_uuid: dreamUuid,
+              status,
               progress,
             });
           }

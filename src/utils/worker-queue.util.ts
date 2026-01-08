@@ -51,7 +51,13 @@ export const cancelWorkerJob = async (
     const job = await queue.getJob(jobId);
     if (job) {
       await job.remove();
-      APP_LOGGER.info(`Cancelled job ${jobId} from ${queueName}`);
+      APP_LOGGER.info(
+        `Successfully removed active job ${jobId} from queue ${queueName}`,
+      );
+    } else {
+      APP_LOGGER.warn(
+        `Could not find job ${jobId} in queue ${queueName} to cancel`,
+      );
     }
 
     await queue.close();

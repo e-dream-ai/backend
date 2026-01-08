@@ -94,7 +94,17 @@ export const cancelJobAcrossQueues = async (
   dreamUuid: string,
   cancelRunpod: boolean = true,
 ): Promise<CancelJobResult> => {
-  const queueNames = ["deforumvideo", "uprezvideo", "video"];
+  const queueNames = [
+    "deforumvideo",
+    "hunyuanvideo",
+    "video",
+    "image",
+    "uprezvideo",
+    "want2v",
+    "wani2v",
+    "wani2vlora",
+    "qwenimage",
+  ];
 
   for (const queueName of queueNames) {
     try {

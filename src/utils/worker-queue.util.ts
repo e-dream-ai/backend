@@ -6,6 +6,7 @@ interface JobData {
   dream_uuid: string;
   auto_upload?: boolean;
   infinidream_algorithm: string;
+  previous_dream_status?: string;
   [key: string]: unknown;
 }
 

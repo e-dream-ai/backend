@@ -7,6 +7,7 @@ interface CancelJobResult {
   message: string;
   jobFound: boolean;
   runpodCancelled: boolean;
+  previousStatus?: string;
 }
 
 /**
@@ -53,15 +54,39 @@ export const cancelJobByDreamUuid = async (
       `Found job ${job.id} for dream ${dreamUuid} in queue ${queueName}`,
     );
 
+    const previousStatus = job.data?.previous_dream_status;
+
+    // Mark the job as cancelled by updating its data
     await job.updateData({
       ...job.data,
       cancelled_by_user: true,
       cancel_runpod: cancelRunpod,
     });
 
-    // Remove the job from the queue
-    // This will trigger the 'failed' event in the worker
-    await job.remove();
+    try {
+      await job.moveToFailed(
+        new Error("Job was cancelled by user"),
+        "0",
+        false,
+      );
+    } catch (moveError: unknown) {
+      const errorMsg =
+        moveError instanceof Error ? moveError.message : String(moveError);
+      APP_LOGGER.warn(
+        `Could not move job ${job.id} to failed state (${errorMsg}), attempting removal`,
+      );
+      try {
+        await job.remove();
+      } catch (removeError: unknown) {
+        const removeErrorMsg =
+          removeError instanceof Error
+            ? removeError.message
+            : String(removeError);
+        APP_LOGGER.warn(
+          `Could not remove job ${job.id} (${removeErrorMsg}), job may have already completed`,
+        );
+      }
+    }
 
     APP_LOGGER.info(
       `Cancelled job ${job.id} for dream ${dreamUuid} in queue ${queueName}`,
@@ -74,6 +99,7 @@ export const cancelJobByDreamUuid = async (
       message: "Job cancelled successfully",
       jobFound: true,
       runpodCancelled: cancelRunpod && !!job.data?.runpod_id,
+      previousStatus,
     };
   } catch (error) {
     APP_LOGGER.error(
@@ -118,9 +144,10 @@ export const cancelJobAcrossQueues = async (
         return result;
       }
     } catch (error: unknown) {
+      // Log full error for debugging
       APP_LOGGER.error(
         `Error checking queue ${queueName} for dream ${dreamUuid}:`,
-        error instanceof Error ? error.message : String(error),
+        error,
       );
     }
   }

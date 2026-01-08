@@ -68,7 +68,10 @@ export const processDreamSQS = async (dream: Dream) => {
   await sqsClient.send(command);
 };
 
-export const processDreamRequest = async (dream: Dream) => {
+export const processDreamRequest = async (
+  dream: Dream,
+  previousStatus?: string,
+) => {
   const promptJson = parsePromptJson(dream);
 
   if (promptJson) {
@@ -86,6 +89,7 @@ export const processDreamRequest = async (dream: Dream) => {
           dream_uuid: dream.uuid,
           user_id: dream.user.id,
           auto_upload: true,
+          previous_dream_status: previousStatus,
           ...promptJson,
         };
 

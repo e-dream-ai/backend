@@ -978,7 +978,10 @@ export const handleProcessDream = async (
       return handleForbidden(req as RequestType, res);
     }
 
-    const processResult = await processDreamRequest(dream);
+    // Store the current status before processing so we can restore it on cancel
+    const previousStatus = dream.status;
+
+    const processResult = await processDreamRequest(dream, previousStatus);
 
     if (!processResult?.isPromptBased) {
       await updateVideoServiceWorker(TURN_ON_QUANTITY);
@@ -1742,6 +1745,26 @@ export const handleCancelDreamJob = async (
       `Cancel job request for dream ${dreamUUID}: ${result.message}`,
     );
 
+    // Restore the previous dream status if the job was found and had a previous status
+    if (result.jobFound && result.previousStatus) {
+      try {
+        await dreamRepository.save({
+          ...dream,
+          status: result.previousStatus as DreamStatusType,
+        });
+        APP_LOGGER.info(
+          `Restored dream ${dreamUUID} status from queue to ${result.previousStatus}`,
+        );
+      } catch (statusError: unknown) {
+        APP_LOGGER.error(
+          `Failed to restore dream ${dreamUUID} status:`,
+          statusError instanceof Error
+            ? statusError.message
+            : String(statusError),
+        );
+      }
+    }
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
@@ -1749,6 +1772,7 @@ export const handleCancelDreamJob = async (
           message: result.message,
           jobFound: result.jobFound,
           runpodCancelled: result.runpodCancelled,
+          statusRestored: result.jobFound && !!result.previousStatus,
         },
       }),
     );

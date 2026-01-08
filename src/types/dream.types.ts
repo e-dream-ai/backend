@@ -34,6 +34,7 @@ export type UpdateDreamRequest = {
   user?: string;
   startKeyframe?: string;
   endKeyframe: string;
+  render_duration?: number;
   nsfw?: boolean;
   hidden?: boolean;
   description?: string;
@@ -49,6 +50,7 @@ export type UpdateDreamProcessedRequest = {
   processedVideoFPS?: number;
   processedMediaWidth?: number;
   processedMediaHeight?: number;
+  render_duration?: number;
   activityLevel?: number;
   filmstrip?: number[];
   md5?: string;

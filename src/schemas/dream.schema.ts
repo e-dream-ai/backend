@@ -103,6 +103,7 @@ export const updateDreamSchema: RequestValidationSchema = {
     ccbyLicense: Joi.boolean(),
     startKeyframe: Joi.string().uuid(),
     endKeyframe: Joi.string().uuid(),
+    render_duration: Joi.number().integer(),
     mediaType: Joi.string()
       .valid(...Object.values(DreamMediaType))
       .optional(),
@@ -120,6 +121,7 @@ export const updateDreamProcessedSchema: RequestValidationSchema = {
     processedVideoSize: Joi.number().integer(),
     processedMediaWidth: Joi.number().integer(),
     processedMediaHeight: Joi.number().integer(),
+    render_duration: Joi.number().integer(),
     filmstrip: Joi.array<number>(),
     md5: Joi.string(),
     mediaType: Joi.string()

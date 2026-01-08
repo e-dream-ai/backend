@@ -597,16 +597,62 @@ dreamRouter.post(
   dreamController.handleProcessDream,
 );
 
+/**
+ * @swagger
+ * /dream/{uuid}/cancel-job:
+ *  post:
+ *    tags:
+ *      - dream
+ *    summary: Cancel ongoing dream job
+ *    description: Cancel ongoing dream job (render/processing). Does not change dream state.
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Job cancelled successfully
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        message:
+ *                          type: string
+ *                        jobFound:
+ *                          type: boolean
+ *                        runpodCancelled:
+ *                          type: boolean
+ *      '404':
+ *        description: Dream not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *      '403':
+ *        description: Forbidden - user not authorized
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
 dreamRouter.post(
-  "/:uuid/cancel",
+  "/:uuid/cancel-job",
   requireAuth,
-  checkRoleMiddleware([
-    ROLES.USER_GROUP,
-    ROLES.CREATOR_GROUP,
-    ROLES.ADMIN_GROUP,
-  ]),
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(requestDreamSchema),
-  dreamController.handleCancelDream,
+  dreamController.handleCancelDreamJob,
 );
 
 /**

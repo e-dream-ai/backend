@@ -26,6 +26,7 @@ import {
 import { Dream, Keyframe, Report, User } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
+import { APP_LOGGER } from "shared/logger";
 import {
   AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
@@ -52,7 +53,6 @@ import {
   handleVoteDream,
   processDreamRequest,
 } from "utils/dream.util";
-import { cancelWorkerJob } from "utils/worker-queue.util";
 import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
@@ -1684,17 +1684,19 @@ export const handleDeleteDream = async (
 };
 
 /**
- * Handles cancel dream
+ * Handles cancel dream job
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object
  *
  * @returns {Response} Returns response
- * OK 200 - dream cancelled
- * BAD_REQUEST 400 - error cancelling dream
+ * OK 200 - job cancelled
+ * NOT_FOUND 404 - dream not found
+ * FORBIDDEN 403 - user not authorized
+ * INTERNAL_SERVER_ERROR 500 - error cancelling job
  *
  */
-export const handleCancelDream = async (
+export const handleCancelDreamJob = async (
   req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
@@ -1702,9 +1704,18 @@ export const handleCancelDream = async (
   const user = res.locals.user!;
 
   try {
-    const dream = await dreamRepository.findOne({
+    const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
+      select: {
+        id: true,
+        uuid: true,
+        status: true,
+        user: {
+          id: true,
+          uuid: true,
+        },
+      },
     });
 
     if (!dream) {
@@ -1721,34 +1732,32 @@ export const handleCancelDream = async (
       return handleForbidden(req as RequestType, res);
     }
 
-    if (dream.lastJobId && dream.lastQueueName) {
-      await cancelWorkerJob(dream.lastQueueName, dream.lastJobId);
-    }
+    // Import the cancel utility
+    const { cancelJobAcrossQueues } = await import("utils/job-cancel.util");
 
-    // Revert status if it has a video, otherwise set to none
-    const newStatus = dream.video
-      ? DreamStatusType.PROCESSED
-      : DreamStatusType.NONE;
+    // Cancel the job across all queues
+    const result = await cancelJobAcrossQueues(dreamUUID, true);
 
-    await dreamRepository.update(dream.id, {
-      status: newStatus,
-      lastJobId: null,
-      lastQueueName: null,
-    });
+    APP_LOGGER.info(
+      `Cancel job request for dream ${dreamUUID}: ${result.message}`,
+    );
 
-    const [updatedDream] = await dreamRepository.find({
-      where: { id: dream.id },
-      relations: { user: true },
-      select: getDreamSelectedColumns(),
-    });
-
-    const transformedDream = await transformDreamWithSignedUrls(updatedDream);
-
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: transformedDream } }));
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          message: result.message,
+          jobFound: result.jobFound,
+          runpodCancelled: result.runpodCancelled,
+        },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
+    APP_LOGGER.error(
+      `Error cancelling job for dream ${dreamUUID}:`,
+      error.message || error,
+    );
     return handleInternalServerError(error, req as RequestType, res);
   }
 };

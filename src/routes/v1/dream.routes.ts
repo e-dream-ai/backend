@@ -548,6 +548,58 @@ dreamRouter.get(
 
 /**
  * @swagger
+ * /dream/{uuid}/preview:
+ *  get:
+ *    tags:
+ *      - dream
+ *    summary: Gets dream preview frame
+ *    description: Gets dream preview frame (base64) from Redis if available
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Gets dream preview frame
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        preview_frame:
+ *                          type: string
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+dreamRouter.get(
+  "/:uuid/preview",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(requestDreamSchema),
+  dreamController.handleGetDreamPreview,
+);
+
+/**
+ * @swagger
  * /dream/{uuid}/process-dream:
  *  put:
  *    tags:

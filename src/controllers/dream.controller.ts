@@ -1,6 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
 import { r2Client } from "clients/r2.client";
+import { redisClient } from "clients/redis.client";
 
 import {
   FILE_EXTENSIONS,
@@ -1780,6 +1781,50 @@ export const handleCancelDreamJob = async (
     const error = err as Error;
     APP_LOGGER.error(
       `Error cancelling job for dream ${dreamUUID}:`,
+      error.message || error,
+    );
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handle get dream preview
+ * @param req
+ * @param res
+ */
+export const handleGetDreamPreview = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const dreamUUID = req.params.uuid;
+
+  try {
+    const previewKey = `job:preview:${dreamUUID}`;
+    const previewFrame = await redisClient.get(previewKey);
+
+    if (!previewFrame) {
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          data: {
+            preview_frame: null,
+          },
+        }),
+      );
+    }
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          preview_frame: previewFrame,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    APP_LOGGER.error(
+      `Error getting preview for dream ${dreamUUID}:`,
       error.message || error,
     );
     return handleInternalServerError(error, req as RequestType, res);

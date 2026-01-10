@@ -10,6 +10,7 @@ interface JobProgressData {
   dream_uuid: string;
   status?: string;
   progress?: number;
+  preview_frame?: string;
   output?: number | unknown;
 }
 
@@ -40,12 +41,18 @@ export class JobProgressService {
             dream_uuid: dreamUuid,
             status,
             progress: rawProgress,
+            preview_frame: previewFrame,
             output,
           } = data as JobProgressData;
 
           let progress = rawProgress;
           if (progress === undefined && typeof output === "number") {
             progress = output;
+          }
+
+          if (dreamUuid && previewFrame) {
+            const previewKey = `job:preview:${dreamUuid}`;
+            await redisClient.set(previewKey, previewFrame, "EX", 3600); // 1 hour TTL
           }
 
           if (userId && (progress !== undefined || status)) {
@@ -56,6 +63,7 @@ export class JobProgressService {
               dream_uuid: dreamUuid,
               status,
               progress,
+              preview_frame: previewFrame,
             });
           }
         } catch (error) {

@@ -52,7 +52,14 @@ export class JobProgressService {
 
           if (dreamUuid && previewFrame) {
             const previewKey = `job:preview:${dreamUuid}`;
+            APP_LOGGER.info(
+              `[JobProgress] Saving preview for ${dreamUuid} (${previewFrame.length} bytes)`,
+            );
             await redisClient.set(previewKey, previewFrame, "EX", 3600); // 1 hour TTL
+          } else if (previewFrame) {
+            APP_LOGGER.warn(
+              `[JobProgress] Received preview frame but dream_uuid is missing for job ${jobId}`,
+            );
           }
 
           if (userId && (progress !== undefined || status)) {

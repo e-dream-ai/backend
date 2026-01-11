@@ -1742,6 +1742,16 @@ export const handleCancelDreamJob = async (
     // Cancel the job across all queues
     const result = await cancelJobAcrossQueues(dreamUUID, true);
 
+    try {
+      const previewKey = `job:preview:${dreamUUID}`;
+      await redisClient.del(previewKey);
+    } catch (redisError) {
+      APP_LOGGER.error(
+        `Failed to clear preview for dream ${dreamUUID}:`,
+        redisError,
+      );
+    }
+
     APP_LOGGER.info(
       `Cancel job request for dream ${dreamUUID}: ${result.message}`,
     );

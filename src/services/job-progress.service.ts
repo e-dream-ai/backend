@@ -70,7 +70,6 @@ export class JobProgressService {
               dream_uuid: dreamUuid,
               status,
               progress,
-              preview_frame: previewFrame,
             });
           }
         } catch (error) {

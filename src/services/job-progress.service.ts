@@ -37,7 +37,6 @@ export class JobProgressService {
           if (!io) return;
 
           const {
-            user_id: userId,
             dream_uuid: dreamUuid,
             status,
             progress: rawProgress,
@@ -62,10 +61,10 @@ export class JobProgressService {
             );
           }
 
-          if (userId && (progress !== undefined || status)) {
-            const roomId = "USER:" + userId;
+          if (dreamUuid && (progress !== undefined || status)) {
+            const dreamRoomId = "DREAM:" + dreamUuid;
 
-            io.of("/remote-control").to(roomId).emit("job:progress", {
+            io.of("/remote-control").to(dreamRoomId).emit("job:progress", {
               jobId,
               dream_uuid: dreamUuid,
               status,

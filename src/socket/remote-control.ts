@@ -32,6 +32,8 @@ const GOOD_BYE_EVENT = "goodbye";
 const CLIENT_PRESENCE_EVENT = "client_presence";
 const WEB_CLIENT_STATUS_EVENT = "web_client_status";
 const STATE_SYNC_EVENT = "state_sync";
+const JOIN_DREAM_ROOM_EVENT = "join_dream_room";
+const LEAVE_DREAM_ROOM_EVENT = "leave_dream_room";
 
 const sessionTracker = new SessionTracker({
   pingTimeout: 15000,
@@ -179,6 +181,25 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    * Register state sync handler
    */
   socket.on(STATE_SYNC_EVENT, handleStateSyncEvent({ socket, roomId, user }));
+
+  /**
+   * Register dream room handlers
+   */
+  socket.on(JOIN_DREAM_ROOM_EVENT, (dreamUuid: string) => {
+    if (dreamUuid) {
+      const dreamRoomId = `DREAM:${dreamUuid}`;
+      socket.join(dreamRoomId);
+      APP_LOGGER.info(`Socket ${socket.id} joined dream room ${dreamRoomId}`);
+    }
+  });
+
+  socket.on(LEAVE_DREAM_ROOM_EVENT, (dreamUuid: string) => {
+    if (dreamUuid) {
+      const dreamRoomId = `DREAM:${dreamUuid}`;
+      socket.leave(dreamRoomId);
+      APP_LOGGER.info(`Socket ${socket.id} left dream room ${dreamRoomId}`);
+    }
+  });
 
   /**
    * Register goodbye handler

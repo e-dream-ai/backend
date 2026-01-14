@@ -10,6 +10,8 @@ interface JobProgressData {
   dream_uuid: string;
   status?: string;
   progress?: number;
+  render_time_ms?: number;
+  countdown_ms?: number;
   preview_frame?: string;
   output?: number | unknown;
 }
@@ -40,6 +42,8 @@ export class JobProgressService {
             dream_uuid: dreamUuid,
             status,
             progress: rawProgress,
+            render_time_ms: renderTimeMs,
+            countdown_ms: countdownMs,
             preview_frame: previewFrame,
             output,
           } = data as JobProgressData;
@@ -69,6 +73,8 @@ export class JobProgressService {
               dream_uuid: dreamUuid,
               status,
               progress,
+              render_time_ms: renderTimeMs,
+              countdown_ms: countdownMs,
             });
           }
         } catch (error) {

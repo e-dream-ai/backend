@@ -49,6 +49,28 @@ export class JobProgressService {
           } = data as JobProgressData;
 
           let progress = rawProgress;
+          let renderTimeMsFinal = renderTimeMs;
+          let countdownMsFinal = countdownMs;
+
+          if (typeof output === "object" && output !== null) {
+            const out = output as Record<string, unknown>;
+            if (progress === undefined && typeof out.progress === "number") {
+              progress = out.progress as number;
+            }
+            if (
+              renderTimeMsFinal === undefined &&
+              typeof out.render_time_ms === "number"
+            ) {
+              renderTimeMsFinal = out.render_time_ms as number;
+            }
+            if (
+              countdownMsFinal === undefined &&
+              typeof out.countdown_ms === "number"
+            ) {
+              countdownMsFinal = out.countdown_ms as number;
+            }
+          }
+
           if (progress === undefined && typeof output === "number") {
             progress = output;
           }
@@ -73,8 +95,8 @@ export class JobProgressService {
               dream_uuid: dreamUuid,
               status,
               progress,
-              render_time_ms: renderTimeMs,
-              countdown_ms: countdownMs,
+              render_time_ms: renderTimeMsFinal,
+              countdown_ms: countdownMsFinal,
             });
           }
         } catch (error) {

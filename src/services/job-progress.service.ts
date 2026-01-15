@@ -91,7 +91,6 @@ export class JobProgressService {
               status,
               progress,
               countdown_ms: countdownMsFinal,
-              preview_frame: previewFrameFinal,
             });
           }
         } catch (error) {

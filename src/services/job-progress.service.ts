@@ -11,7 +11,6 @@ interface JobProgressData {
   status?: string;
   progress?: number;
   render_time_ms?: number;
-  countdown_ms?: number;
   preview_frame?: string;
   output?: number | unknown;
 }
@@ -43,36 +42,18 @@ export class JobProgressService {
             status,
             progress: rawProgress,
             render_time_ms: renderTimeMs,
-            countdown_ms: countdownMs,
             preview_frame: previewFrame,
             output,
           } = data as JobProgressData;
 
           let progress = rawProgress;
           let renderTimeMsFinal = renderTimeMs;
-          let countdownMsFinal = countdownMs;
 
-          if (typeof output === "object" && output !== null) {
-            const out = output as Record<string, unknown>;
-            if (progress === undefined && typeof out.progress === "number") {
-              progress = out.progress as number;
-            }
-            if (
-              renderTimeMsFinal === undefined &&
-              typeof out.render_time_ms === "number"
-            ) {
-              renderTimeMsFinal = out.render_time_ms as number;
-            }
-            if (
-              countdownMsFinal === undefined &&
-              typeof out.countdown_ms === "number"
-            ) {
-              countdownMsFinal = out.countdown_ms as number;
-            }
-          }
-
-          if (progress === undefined && typeof output === "number") {
-            progress = output;
+          if (output && typeof output === "object") {
+            const out = output as unknown as JobProgressData;
+            if (progress === undefined) progress = out.progress;
+            if (renderTimeMsFinal === undefined)
+              renderTimeMsFinal = out.render_time_ms;
           }
 
           if (dreamUuid && previewFrame) {
@@ -90,14 +71,15 @@ export class JobProgressService {
           if (dreamUuid && (progress !== undefined || status)) {
             const dreamRoomId = "DREAM:" + dreamUuid;
 
-            io.of("/remote-control").to(dreamRoomId).emit("job:progress", {
-              jobId,
-              dream_uuid: dreamUuid,
-              status,
-              progress,
-              render_time_ms: renderTimeMsFinal,
-              countdown_ms: countdownMsFinal,
-            });
+            io.of("/remote-control")
+              .to(dreamRoomId)
+              .emit("job:progress", {
+                jobId,
+                dream_uuid: dreamUuid,
+                status,
+                progress: progress ? progress.toFixed(1) : undefined,
+                render_time_ms: renderTimeMsFinal,
+              });
           }
         } catch (error) {
           APP_LOGGER.error(`Error relaying job progress for ${jobId}:`, error);

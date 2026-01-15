@@ -120,37 +120,17 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     }
   };
 
-  // Emit initial presence after joining
-  await emitPresence();
-
-  try {
-    const lastStateJson = await redisClient.get(getUserStateSyncKey(user.id));
-    if (lastStateJson) {
-      const lastState = JSON.parse(lastStateJson);
-      setTimeout(() => {
-        socket.emit(STATE_SYNC_EVENT, lastState);
-      }, 100);
-    }
-  } catch (error) {
-    console.error("Error retrieving cached state_sync:", error);
-  }
-
+  // Register handlers first (synchronously) to avoid missing events during awaits
   socket.on(
     NEW_REMOTE_CONTROL_EVENT,
     handleNewControlEvent({ socket, user, roomId }),
   );
 
-  /**
-   * Register ping handler
-   */
   socket.on(
     PING_EVENT,
     handlePingEvent({ socket, user, roomId, sessionTracker, emitPresence }),
   );
 
-  /**
-   * Register web client status handler
-   */
   socket.on(WEB_CLIENT_STATUS_EVENT, async (payload?: { active?: boolean }) => {
     try {
       const isActive = Boolean(payload?.active);
@@ -172,19 +152,10 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     }
   });
 
-  /**
-   * Register ping redis handler
-   */
   socket.on(PING_EVENT_REDIS, handlePingRedisEvent());
 
-  /**
-   * Register state sync handler
-   */
   socket.on(STATE_SYNC_EVENT, handleStateSyncEvent({ socket, roomId, user }));
 
-  /**
-   * Register dream room handlers
-   */
   socket.on(JOIN_DREAM_ROOM_EVENT, (dreamUuid: string) => {
     if (dreamUuid) {
       const dreamRoomId = `DREAM:${dreamUuid}`;
@@ -201,12 +172,8 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     }
   });
 
-  /**
-   * Register goodbye handler
-   */
   socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, user, roomId }));
 
-  // Emit presence on disconnect
   socket.on("disconnect", async () => {
     ignoredEarlyNextBySocket.delete(socket.id);
     try {
@@ -221,6 +188,20 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
       await emitPresence();
     }
   });
+
+  await emitPresence();
+
+  try {
+    const lastStateJson = await redisClient.get(getUserStateSyncKey(user.id));
+    if (lastStateJson) {
+      const lastState = JSON.parse(lastStateJson);
+      setTimeout(() => {
+        socket.emit(STATE_SYNC_EVENT, lastState);
+      }, 100);
+    }
+  } catch (error) {
+    console.error("Error retrieving cached state_sync:", error);
+  }
 };
 
 export const handleNewControlEvent = ({

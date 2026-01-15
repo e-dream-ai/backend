@@ -10,7 +10,7 @@ interface JobProgressData {
   dream_uuid: string;
   status?: string;
   progress?: number;
-  render_time_ms?: number;
+  countdown_ms?: number;
   preview_frame?: string;
   output?: number | unknown;
 }
@@ -41,19 +41,19 @@ export class JobProgressService {
             dream_uuid: dreamUuid,
             status,
             progress: rawProgress,
-            render_time_ms: renderTimeMs,
+            countdown_ms: countdownMs,
             preview_frame: previewFrame,
             output,
           } = data as JobProgressData;
 
           let progress = rawProgress;
-          let renderTimeMsFinal = renderTimeMs;
+          let countdownMsFinal = countdownMs;
 
           if (output && typeof output === "object") {
             const out = output as unknown as JobProgressData;
             if (progress === undefined) progress = out.progress;
-            if (renderTimeMsFinal === undefined)
-              renderTimeMsFinal = out.render_time_ms;
+            if (countdownMsFinal === undefined)
+              countdownMsFinal = out.countdown_ms;
           }
 
           if (dreamUuid && previewFrame) {
@@ -71,15 +71,13 @@ export class JobProgressService {
           if (dreamUuid && (progress !== undefined || status)) {
             const dreamRoomId = "DREAM:" + dreamUuid;
 
-            io.of("/remote-control")
-              .to(dreamRoomId)
-              .emit("job:progress", {
-                jobId,
-                dream_uuid: dreamUuid,
-                status,
-                progress: progress ? progress.toFixed(1) : undefined,
-                render_time_ms: renderTimeMsFinal,
-              });
+            io.of("/remote-control").to(dreamRoomId).emit("job:progress", {
+              jobId,
+              dream_uuid: dreamUuid,
+              status,
+              progress,
+              countdown_ms: countdownMsFinal,
+            });
           }
         } catch (error) {
           APP_LOGGER.error(`Error relaying job progress for ${jobId}:`, error);

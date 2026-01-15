@@ -3,6 +3,17 @@ import { redisClient } from "clients/redis.client";
 import { getIo } from "socket/io";
 import { APP_LOGGER } from "shared/logger";
 
+const toNumber = (v: unknown): number | undefined => {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+
+  if (typeof v === "string") {
+    const n = Number(v.trim());
+    if (Number.isFinite(n)) return n;
+  }
+
+  return undefined;
+};
+
 const QUEUES = ["video", "deforumvideo", "uprezvideo"];
 
 interface JobProgressData {
@@ -11,7 +22,6 @@ interface JobProgressData {
   status?: string;
   progress?: number;
   countdown_ms?: number;
-  preview_frame?: string;
   output?: number | unknown;
 }
 
@@ -42,34 +52,24 @@ export class JobProgressService {
             status,
             progress: rawProgress,
             countdown_ms: countdownMs,
-            preview_frame: previewFrame,
             output,
           } = data as JobProgressData;
 
-          let progress = rawProgress;
+          let progress = toNumber(rawProgress);
           let countdownMsFinal = countdownMs;
 
           if (output && typeof output === "object") {
-            const out = output as unknown as JobProgressData;
-            if (progress === undefined) progress = out.progress;
-            if (countdownMsFinal === undefined)
-              countdownMsFinal = out.countdown_ms;
-          }
+            const out = output as Record<string, unknown>;
 
-          if (dreamUuid && previewFrame) {
-            const previewKey = `job:preview:${dreamUuid}`;
-            APP_LOGGER.info(
-              `[JobProgress] Saving preview for ${dreamUuid} (${previewFrame.length} bytes)`,
-            );
-            await redisClient.set(previewKey, previewFrame, "EX", 10800); // 3 hours TTL
-          } else if (previewFrame) {
-            APP_LOGGER.warn(
-              `[JobProgress] Received preview frame but dream_uuid is missing for job ${jobId}`,
-            );
+            if (progress === undefined) progress = toNumber(out.progress);
+            if (countdownMsFinal === undefined) {
+              const cm = toNumber(out.countdown_ms);
+              countdownMsFinal = cm;
+            }
           }
 
           if (dreamUuid && (progress !== undefined || status)) {
-            const dreamRoomId = "DREAM:" + dreamUuid;
+            const dreamRoomId = `DREAM:${dreamUuid}`;
 
             io.of("/remote-control").to(dreamRoomId).emit("job:progress", {
               jobId,

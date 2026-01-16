@@ -25,7 +25,7 @@ const config: Config = {
   moduleFileExtensions: ["ts", "tsx", "js", "mjs", "json", "node"],
   setupFilesAfterEnv: ["<rootDir>/src/__tests__/jest.setup.ts"],
   moduleNameMapper: {
-    "^(clients|constants|controllers|database|entities|middlewares|migrations|routes|schemas|script|shared|socket|transformers|types|utils)/(.*)$":
+    "^(clients|constants|controllers|database|entities|middlewares|migrations|routes|schemas|script|services|shared|socket|transformers|types|utils)/(.*)$":
       "<rootDir>/src/$1/$2",
     "^entities$": "<rootDir>/src/entities",
     "^server$": "<rootDir>/src/server",

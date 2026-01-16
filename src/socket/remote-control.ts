@@ -3,6 +3,7 @@ import { redisClient } from "clients/redis.client";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { User } from "entities";
 import { remoteControlSchema } from "schemas/socket.schema";
+import { APP_LOGGER } from "shared/logger";
 import { Socket } from "socket.io";
 import { REMOTE_CONTROLS, RemoteControlEvent } from "types/socket.types";
 import { VoteType } from "types/vote.types";
@@ -12,6 +13,7 @@ import {
   getDreamSelectedColumns,
   handleVoteDream,
 } from "utils/dream.util";
+import { getJobProgressKey } from "services/job-progress.service";
 import { generateReportFromNative } from "utils/report.util";
 import { SessionTracker } from "utils/socket-session-tracker";
 import {
@@ -31,6 +33,8 @@ const GOOD_BYE_EVENT = "goodbye";
 const CLIENT_PRESENCE_EVENT = "client_presence";
 const WEB_CLIENT_STATUS_EVENT = "web_client_status";
 const STATE_SYNC_EVENT = "state_sync";
+const JOIN_DREAM_ROOM_EVENT = "join_dream_room";
+const LEAVE_DREAM_ROOM_EVENT = "leave_dream_room";
 
 const sessionTracker = new SessionTracker({
   pingTimeout: 15000,
@@ -64,6 +68,9 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
    */
   const roomId = "USER:" + user.id;
   socket.join(roomId);
+  APP_LOGGER.info(
+    `Socket ${socket.id} joined room ${roomId} in namespace ${socket.nsp.name}`,
+  );
 
   /**
    * Helper to emit current presence (number of sockets) to the user room
@@ -114,37 +121,17 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     }
   };
 
-  // Emit initial presence after joining
-  await emitPresence();
-
-  try {
-    const lastStateJson = await redisClient.get(getUserStateSyncKey(user.id));
-    if (lastStateJson) {
-      const lastState = JSON.parse(lastStateJson);
-      setTimeout(() => {
-        socket.emit(STATE_SYNC_EVENT, lastState);
-      }, 100);
-    }
-  } catch (error) {
-    console.error("Error retrieving cached state_sync:", error);
-  }
-
+  // Register handlers first (synchronously) to avoid missing events during awaits
   socket.on(
     NEW_REMOTE_CONTROL_EVENT,
     handleNewControlEvent({ socket, user, roomId }),
   );
 
-  /**
-   * Register ping handler
-   */
   socket.on(
     PING_EVENT,
     handlePingEvent({ socket, user, roomId, sessionTracker, emitPresence }),
   );
 
-  /**
-   * Register web client status handler
-   */
   socket.on(WEB_CLIENT_STATUS_EVENT, async (payload?: { active?: boolean }) => {
     try {
       const isActive = Boolean(payload?.active);
@@ -166,22 +153,46 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     }
   });
 
-  /**
-   * Register ping redis handler
-   */
   socket.on(PING_EVENT_REDIS, handlePingRedisEvent());
 
-  /**
-   * Register state sync handler
-   */
   socket.on(STATE_SYNC_EVENT, handleStateSyncEvent({ socket, roomId, user }));
 
-  /**
-   * Register goodbye handler
-   */
+  socket.on(JOIN_DREAM_ROOM_EVENT, async (dreamUuid: string) => {
+    if (dreamUuid) {
+      const dreamRoomId = `DREAM:${dreamUuid}`;
+      socket.join(dreamRoomId);
+      APP_LOGGER.info(`Socket ${socket.id} joined dream room ${dreamRoomId}`);
+
+      try {
+        const cachedProgress = await redisClient.get(
+          getJobProgressKey(dreamUuid),
+        );
+        if (cachedProgress) {
+          const progressData = JSON.parse(cachedProgress);
+          socket.emit("job:progress", progressData);
+          APP_LOGGER.info(
+            `[Socket] Hydrated progress for ${dreamUuid} to socket ${socket.id}`,
+          );
+        }
+      } catch (err) {
+        APP_LOGGER.error(
+          `[Socket] Error fetching cached progress for ${dreamUuid}:`,
+          err,
+        );
+      }
+    }
+  });
+
+  socket.on(LEAVE_DREAM_ROOM_EVENT, (dreamUuid: string) => {
+    if (dreamUuid) {
+      const dreamRoomId = `DREAM:${dreamUuid}`;
+      socket.leave(dreamRoomId);
+      APP_LOGGER.info(`Socket ${socket.id} left dream room ${dreamRoomId}`);
+    }
+  });
+
   socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, user, roomId }));
 
-  // Emit presence on disconnect
   socket.on("disconnect", async () => {
     ignoredEarlyNextBySocket.delete(socket.id);
     try {
@@ -196,6 +207,20 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
       await emitPresence();
     }
   });
+
+  await emitPresence();
+
+  try {
+    const lastStateJson = await redisClient.get(getUserStateSyncKey(user.id));
+    if (lastStateJson) {
+      const lastState = JSON.parse(lastStateJson);
+      setTimeout(() => {
+        socket.emit(STATE_SYNC_EVENT, lastState);
+      }, 100);
+    }
+  } catch (error) {
+    console.error("Error retrieving cached state_sync:", error);
+  }
 };
 
 export const handleNewControlEvent = ({

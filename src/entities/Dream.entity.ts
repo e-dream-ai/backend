@@ -118,6 +118,12 @@ export class Dream {
   processedMediaHeight?: number | null;
 
   /**
+   * render duration in milliseconds
+   */
+  @Column({ type: "integer", nullable: true, default: null })
+  render_duration?: number | null;
+
+  /**
    * featureRank
    * default 0
    */

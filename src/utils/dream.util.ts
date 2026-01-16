@@ -68,7 +68,10 @@ export const processDreamSQS = async (dream: Dream) => {
   await sqsClient.send(command);
 };
 
-export const processDreamRequest = async (dream: Dream) => {
+export const processDreamRequest = async (
+  dream: Dream,
+  previousStatus?: string,
+) => {
   const promptJson = parsePromptJson(dream);
 
   if (promptJson) {
@@ -84,7 +87,9 @@ export const processDreamRequest = async (dream: Dream) => {
 
         const jobData = {
           dream_uuid: dream.uuid,
+          user_id: dream.user.id,
           auto_upload: true,
+          previous_dream_status: previousStatus,
           ...promptJson,
         };
 
@@ -213,6 +218,7 @@ export const getDreamSelectedColumns = ({
     processedVideoFPS: true,
     processedMediaWidth: true,
     processedMediaHeight: true,
+    render_duration: true,
     nsfw: true,
     hidden: true,
     filmstrip: filmstrip,
@@ -435,7 +441,7 @@ export const getTopDreams = async (take: number = 50) => {
     .take(take)
     .getMany();
 
-  return dreams.map((dream) => dream.uuid);
+  return dreams.map((dream: Dream) => dream.uuid);
 };
 
 /**
@@ -470,7 +476,7 @@ export const getVotedDreams = async (
     skip: options.skip,
   });
 
-  const dreams = votes.map((vote) => vote.dream);
+  const dreams = votes.map((vote: Vote) => vote.dream);
 
   return {
     dreams,

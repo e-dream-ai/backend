@@ -1,6 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
 import { r2Client } from "clients/r2.client";
+import { redisClient } from "clients/redis.client";
 
 import {
   FILE_EXTENSIONS,
@@ -26,6 +27,7 @@ import {
 import { Dream, Keyframe, Report, User } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
+import { APP_LOGGER } from "shared/logger";
 import {
   AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
@@ -977,7 +979,10 @@ export const handleProcessDream = async (
       return handleForbidden(req as RequestType, res);
     }
 
-    const processResult = await processDreamRequest(dream);
+    // Store the current status before processing so we can restore it on cancel
+    const previousStatus = dream.status;
+
+    const processResult = await processDreamRequest(dream, previousStatus);
 
     if (!processResult?.isPromptBased) {
       await updateVideoServiceWorker(TURN_ON_QUANTITY);
@@ -1062,6 +1067,7 @@ export const handleSetDreamStatusProcessed = async (
   const processedVideoFPS = req.body.processedVideoFPS;
   const processedMediaWidth = req.body.processedMediaWidth;
   const processedMediaHeight = req.body.processedMediaHeight;
+  const render_duration = req.body.render_duration;
   const activityLevel = req.body.activityLevel!;
   const filmstrip = req.body.filmstrip
     ? (req.body.filmstrip as number[])
@@ -1103,6 +1109,7 @@ export const handleSetDreamStatusProcessed = async (
       processedVideoFPS,
       processedMediaWidth,
       processedMediaHeight,
+      render_duration,
       activityLevel,
       md5,
     };
@@ -1676,6 +1683,160 @@ export const handleDeleteDream = async (
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles cancel dream job
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - job cancelled
+ * NOT_FOUND 404 - dream not found
+ * FORBIDDEN 403 - user not authorized
+ * INTERNAL_SERVER_ERROR 500 - error cancelling job
+ *
+ */
+export const handleCancelDreamJob = async (
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = req.params.uuid!;
+  const user = res.locals.user!;
+
+  try {
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+      select: {
+        id: true,
+        uuid: true,
+        status: true,
+        user: {
+          id: true,
+          uuid: true,
+        },
+      },
+    });
+
+    if (!dream) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    // Import the cancel utility
+    const { cancelJobAcrossQueues } = await import("utils/job-cancel.util");
+
+    // Cancel the job across all queues
+    const result = await cancelJobAcrossQueues(dreamUUID, true);
+
+    try {
+      const previewKey = `job:preview:${dreamUUID}`;
+      await redisClient.del(previewKey);
+    } catch (redisError) {
+      APP_LOGGER.error(
+        `Failed to clear preview for dream ${dreamUUID}:`,
+        redisError,
+      );
+    }
+
+    APP_LOGGER.info(
+      `Cancel job request for dream ${dreamUUID}: ${result.message}`,
+    );
+
+    // Restore the previous dream status if the job was found and had a previous status
+    if (result.jobFound && result.previousStatus) {
+      try {
+        await dreamRepository.save({
+          ...dream,
+          status: result.previousStatus as DreamStatusType,
+        });
+        APP_LOGGER.info(
+          `Restored dream ${dreamUUID} status from queue to ${result.previousStatus}`,
+        );
+      } catch (statusError: unknown) {
+        APP_LOGGER.error(
+          `Failed to restore dream ${dreamUUID} status:`,
+          statusError instanceof Error
+            ? statusError.message
+            : String(statusError),
+        );
+      }
+    }
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          message: result.message,
+          jobFound: result.jobFound,
+          runpodCancelled: result.runpodCancelled,
+          statusRestored: result.jobFound && !!result.previousStatus,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    APP_LOGGER.error(
+      `Error cancelling job for dream ${dreamUUID}:`,
+      error.message || error,
+    );
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handle get dream preview
+ * @param req
+ * @param res
+ */
+export const handleGetDreamPreview = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const dreamUUID = req.params.uuid;
+
+  try {
+    const previewKey = `job:preview:${dreamUUID}`;
+    const previewFrame = await redisClient.get(previewKey);
+
+    if (!previewFrame) {
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          data: {
+            preview_frame: null,
+          },
+        }),
+      );
+    }
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          preview_frame: previewFrame,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    APP_LOGGER.error(
+      `Error getting preview for dream ${dreamUUID}:`,
+      error.message || error,
+    );
     return handleInternalServerError(error, req as RequestType, res);
   }
 };

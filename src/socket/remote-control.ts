@@ -13,6 +13,7 @@ import {
   getDreamSelectedColumns,
   handleVoteDream,
 } from "utils/dream.util";
+import { getJobProgressKey } from "services/job-progress.service";
 import { generateReportFromNative } from "utils/report.util";
 import { SessionTracker } from "utils/socket-session-tracker";
 import {
@@ -156,11 +157,29 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
 
   socket.on(STATE_SYNC_EVENT, handleStateSyncEvent({ socket, roomId, user }));
 
-  socket.on(JOIN_DREAM_ROOM_EVENT, (dreamUuid: string) => {
+  socket.on(JOIN_DREAM_ROOM_EVENT, async (dreamUuid: string) => {
     if (dreamUuid) {
       const dreamRoomId = `DREAM:${dreamUuid}`;
       socket.join(dreamRoomId);
       APP_LOGGER.info(`Socket ${socket.id} joined dream room ${dreamRoomId}`);
+
+      try {
+        const cachedProgress = await redisClient.get(
+          getJobProgressKey(dreamUuid),
+        );
+        if (cachedProgress) {
+          const progressData = JSON.parse(cachedProgress);
+          socket.emit("job:progress", progressData);
+          APP_LOGGER.info(
+            `[Socket] Hydrated progress for ${dreamUuid} to socket ${socket.id}`,
+          );
+        }
+      } catch (err) {
+        APP_LOGGER.error(
+          `[Socket] Error fetching cached progress for ${dreamUuid}:`,
+          err,
+        );
+      }
     }
   });
 

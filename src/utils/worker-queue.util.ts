@@ -21,6 +21,12 @@ export const queueWorkerJob = async (
 
     const job = await queue.add("message", jobData);
 
+    await job.updateProgress({
+      dream_uuid: jobData.dream_uuid,
+      status: "IN_QUEUE",
+      progress: 0,
+    });
+
     await queue.close();
 
     APP_LOGGER.info(

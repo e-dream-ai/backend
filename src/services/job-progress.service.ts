@@ -1,4 +1,4 @@
-import { QueueEvents } from "bullmq";
+import { QueueEvents, Queue } from "bullmq";
 import { redisClient } from "clients/redis.client";
 import { getIo } from "socket/io";
 import { APP_LOGGER } from "shared/logger";
@@ -25,6 +25,9 @@ interface JobProgressData {
   preview_frame?: string;
   output?: number | unknown;
 }
+
+export const getJobProgressKey = (dreamUuid: string) =>
+  `job:progress:${dreamUuid}`;
 
 export class JobProgressService {
   private queueEvents: QueueEvents[] = [];
@@ -84,17 +87,58 @@ export class JobProgressService {
 
           if (dreamUuid && (progress !== undefined || status)) {
             const dreamRoomId = `DREAM:${dreamUuid}`;
-
-            io.of("/remote-control").to(dreamRoomId).emit("job:progress", {
+            const progressData = {
               jobId,
               dream_uuid: dreamUuid,
               status,
               progress,
               countdown_ms: countdownMsFinal,
-            });
+              updated_at: Date.now(),
+            };
+
+            await redisClient.set(
+              getJobProgressKey(dreamUuid),
+              JSON.stringify(progressData),
+              "EX",
+              10800, // 3 hours TTL is enough for active jobs
+            );
+
+            io.of("/remote-control")
+              .to(dreamRoomId)
+              .emit("job:progress", progressData);
           }
         } catch (error) {
           APP_LOGGER.error(`Error relaying job progress for ${jobId}:`, error);
+        }
+      });
+
+      events.on("completed", async ({ jobId }) => {
+        try {
+          const queue = new Queue(queueName, { connection: redisClient });
+          const job = await queue.getJob(jobId);
+          await queue.close();
+
+          if (job?.data?.dream_uuid) {
+            await redisClient.del(getJobProgressKey(job.data.dream_uuid));
+            await redisClient.del(`job:preview:${job.data.dream_uuid}`);
+          }
+        } catch (error) {
+          // Ignore errors during cleanup
+        }
+      });
+
+      events.on("failed", async ({ jobId }) => {
+        try {
+          const queue = new Queue(queueName, { connection: redisClient });
+          const job = await queue.getJob(jobId);
+          await queue.close();
+
+          if (job?.data?.dream_uuid) {
+            await redisClient.del(getJobProgressKey(job.data.dream_uuid));
+            await redisClient.del(`job:preview:${job.data.dream_uuid}`);
+          }
+        } catch (error) {
+          // Ignore
         }
       });
 

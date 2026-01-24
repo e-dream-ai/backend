@@ -56,13 +56,11 @@ export class JobProgressService {
             status,
             progress: rawProgress,
             countdown_ms: countdownMs,
-            preview_frame: previewFrame,
             output,
           } = data as JobProgressData;
 
           let progress = toNumber(rawProgress);
           let countdownMsFinal = countdownMs;
-          let previewFrameFinal = previewFrame;
 
           if (output && typeof output === "object") {
             const out = output as Record<string, unknown>;
@@ -72,17 +70,6 @@ export class JobProgressService {
               const cm = toNumber(out.countdown_ms);
               countdownMsFinal = cm;
             }
-            if (previewFrameFinal === undefined) {
-              previewFrameFinal = out.preview_frame as string;
-            }
-          }
-
-          if (dreamUuid && previewFrameFinal) {
-            const previewKey = `job:preview:${dreamUuid}`;
-            APP_LOGGER.info(
-              `[JobProgress] Saving preview for ${dreamUuid} (${previewFrameFinal.length} bytes)`,
-            );
-            await redisClient.set(previewKey, previewFrameFinal, "EX", 10800); // 3 hours TTL
           }
 
           if (dreamUuid && (progress !== undefined || status)) {

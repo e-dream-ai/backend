@@ -39,7 +39,7 @@ export class Report1740607649358 implements MigrationInterface {
     await Promise.all(
       TYPES.map((typeData) =>
         queryRunner.manager.save(
-          queryRunner.manager.create<ReportType>(ReportType, {
+          queryRunner.manager.create(ReportType, {
             description: typeData.type,
           }),
         ),

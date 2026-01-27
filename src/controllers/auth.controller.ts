@@ -174,7 +174,6 @@ export const handleSignUp = async (
   try {
     const isSignupCodeActive = await isFeatureActive(FEATURES.SIGNUP_WITH_CODE);
     const { email, password, code } = req.body;
-    const normalizedCode = code?.trim();
 
     const getUserCommand = new AdminGetUserCommand({
       UserPoolId: AWS_COGNITO_USER_POOL_ID,
@@ -199,11 +198,9 @@ export const handleSignUp = async (
       // User does not exist, continue to sign up
     }
 
-    const invite = normalizedCode
-      ? await validateAndUseCode(normalizedCode)
-      : undefined;
+    const invite = await validateAndUseCode(code!);
 
-    if (isSignupCodeActive && normalizedCode && !invite) {
+    if (isSignupCodeActive && !invite) {
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({
           success: false,
@@ -1109,14 +1106,11 @@ export const handleSignUpV2 = async (
   try {
     // const password = req.body.password!;
     const { email, firstname, lastname, code } = req.body;
-    const normalizedCode = code?.trim();
-    const invite = normalizedCode
-      ? await validateAndUseCode(normalizedCode)
-      : undefined;
+    const invite = await validateAndUseCode(code!);
 
     const isSignupCodeActive = await isFeatureActive(FEATURES.SIGNUP_WITH_CODE);
 
-    if (isSignupCodeActive && normalizedCode && !invite) {
+    if (isSignupCodeActive && !invite) {
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({
           success: false,

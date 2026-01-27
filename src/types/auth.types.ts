@@ -14,7 +14,7 @@ export type UserSignUpCredentials = {
   email: string;
   username?: string;
   password: string;
-  code: string;
+  code?: string;
 };
 
 export type UserVerifyCredentials = {
@@ -84,7 +84,7 @@ export type UserSignUpCredentialsV2 = {
   firstname: string;
   lastname: string;
   // password: string;
-  code: string;
+  code?: string;
 };
 
 export type CreatePasswordResetV2 = {

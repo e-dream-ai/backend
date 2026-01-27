@@ -25,8 +25,8 @@ export const signupSchema = {
     password: Joi.string().required().min(6),
     code: Joi.string().when("$isSignupCodeActive", {
       is: true,
-      then: Joi.required(),
-      otherwise: Joi.optional(),
+      then: Joi.optional().allow(""),
+      otherwise: Joi.optional().allow(""),
     }),
   }),
 };
@@ -113,8 +113,8 @@ export const signupSchemaV2 = {
     // password: Joi.string().required().min(10),
     code: Joi.string().when("$isSignupCodeActive", {
       is: true,
-      then: Joi.required(),
-      otherwise: Joi.optional(),
+      then: Joi.optional().allow(""),
+      otherwise: Joi.optional().allow(""),
     }),
   }),
 };

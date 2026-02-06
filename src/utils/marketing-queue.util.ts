@@ -10,7 +10,7 @@ const getMarketingQueue = () => {
     marketingQueue = new Queue(MARKETING_QUEUE_NAME, {
       connection: redisClient,
       defaultJobOptions: {
-        removeOnComplete: true,
+        removeOnComplete: 1000,
         removeOnFail: 1000,
       },
     });

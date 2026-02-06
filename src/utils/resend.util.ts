@@ -4,6 +4,16 @@ import { Resend } from "resend";
 
 const resend = new Resend(env.RESEND_API_KEY);
 
+export class ResendEmailError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode = 502) {
+    super(message);
+    this.name = "ResendEmailError";
+    this.statusCode = statusCode;
+  }
+}
+
 export const sendTemplateEmail = async ({
   to,
   from,
@@ -33,6 +43,10 @@ export const sendTemplateEmail = async ({
 
   if (error) {
     APP_LOGGER.error("Failed to send email with Resend:", error);
-    throw new Error(error.message);
+    const statusCode =
+      typeof (error as { statusCode?: unknown }).statusCode === "number"
+        ? ((error as { statusCode?: number }).statusCode as number)
+        : 502;
+    throw new ResendEmailError(error.message, statusCode);
   }
 };

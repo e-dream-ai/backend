@@ -13,7 +13,7 @@ import {
   createUnsubscribeToken,
   verifyUnsubscribeToken,
 } from "utils/marketing-unsubscribe.util";
-import { sendTemplateEmail } from "utils/resend.util";
+import { ResendEmailError, sendTemplateEmail } from "utils/resend.util";
 import Joi from "joi";
 import { mapValidatorErrors } from "middlewares/validator.middleware";
 
@@ -265,6 +265,14 @@ export const handleSendOneMarketingEmail = async (
       }),
     );
   } catch (error) {
+    if (error instanceof ResendEmailError) {
+      return res.status(error.statusCode).json(
+        jsonResponse({
+          success: false,
+          message: error.message,
+        }),
+      );
+    }
     return handleInternalServerError(error as Error, req, res);
   }
 };

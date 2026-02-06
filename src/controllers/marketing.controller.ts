@@ -254,7 +254,6 @@ export const handleSendOneMarketingEmail = async (
 
     await sendTemplateEmail({
       to: email,
-      from: env.RESEND_FROM_EMAIL,
       templateId,
       unsubscribeUrl,
     });

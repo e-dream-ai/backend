@@ -16,12 +16,10 @@ export class ResendEmailError extends Error {
 
 export const sendTemplateEmail = async ({
   to,
-  from,
   templateId,
   unsubscribeUrl,
 }: {
   to: string;
-  from: string;
   templateId: string;
   unsubscribeUrl?: string;
 }): Promise<void> => {
@@ -33,7 +31,6 @@ export const sendTemplateEmail = async ({
   }
 
   const { error } = await resend.emails.send({
-    from,
     to,
     template: {
       id: templateId,

@@ -3,13 +3,21 @@ import { redisClient } from "clients/redis.client";
 import { MARKETING_QUEUE_NAME } from "constants/marketing.constants";
 import { APP_LOGGER } from "shared/logger";
 
-const marketingQueue = new Queue(MARKETING_QUEUE_NAME, {
-  connection: redisClient,
-  defaultJobOptions: {
-    removeOnComplete: true,
-    removeOnFail: 1000,
-  },
-});
+let marketingQueue: Queue | null = null;
+
+const getMarketingQueue = () => {
+  if (!marketingQueue) {
+    marketingQueue = new Queue(MARKETING_QUEUE_NAME, {
+      connection: redisClient,
+      defaultJobOptions: {
+        removeOnComplete: true,
+        removeOnFail: 1000,
+      },
+    });
+  }
+
+  return marketingQueue;
+};
 
 export type MarketingJobData = {
   userId: number;
@@ -26,7 +34,7 @@ export const enqueueMarketingEmails = async (
       return { success: true, count: 0 };
     }
 
-    await marketingQueue.addBulk(
+    await getMarketingQueue().addBulk(
       jobs.map((job) => ({
         name: "send",
         data: job,

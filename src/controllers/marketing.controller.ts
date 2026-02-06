@@ -3,7 +3,8 @@ import httpStatus from "http-status";
 import { jsonResponse } from "utils/responses.util";
 import { handleInternalServerError } from "utils/responses.util";
 import { userRepository } from "database/repositories";
-import { IsNull, Not } from "typeorm";
+import { FindOperator, FindOptionsWhere, IsNull, Not } from "typeorm";
+import { User } from "entities";
 import { enqueueMarketingEmails } from "utils/marketing-queue.util";
 import { MARKETING_SEND_MAX_PER_RUN } from "constants/marketing.constants";
 import { APP_LOGGER } from "shared/logger";
@@ -21,7 +22,11 @@ const sendMarketingSchema = Joi.object({
   dryRun: Joi.boolean().default(false),
   limit: Joi.number().integer().min(0),
   offset: Joi.number().integer().min(0).default(0),
-}).required();
+  email: Joi.string().email(),
+  userId: Joi.number().integer().min(1),
+})
+  .nand("email", "userId")
+  .required();
 
 const sendOneMarketingSchema = Joi.object({
   email: Joi.string().email().required(),
@@ -63,12 +68,20 @@ export const handleSendMarketingEmails = async (
       );
     }
 
-    const { templateId, dryRun, limit, offset } = value;
+    const { templateId, dryRun, limit, offset, email, userId } = value;
 
-    const where = {
+    const where: FindOptionsWhere<User> = {
       enableMarketingEmails: true,
-      email: Not(IsNull()),
+      email: Not(IsNull()) as FindOperator<string>,
     };
+
+    if (email) {
+      where.email = email;
+    }
+
+    if (userId) {
+      where.id = userId;
+    }
 
     const totalEligible = await userRepository.count({ where });
     const requestedCount = limit ?? totalEligible;
@@ -106,6 +119,9 @@ export const handleSendMarketingEmails = async (
       select: {
         id: true,
         email: true,
+      },
+      order: {
+        id: "ASC",
       },
       skip: offset,
       take: targetCount,

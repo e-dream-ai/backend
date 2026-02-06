@@ -45,7 +45,6 @@ export const env = cleanEnv(process.env, {
    * Resend
    */
   RESEND_API_KEY: str(),
-  RESEND_FROM_EMAIL: str(),
 
   /**
    * Marketing

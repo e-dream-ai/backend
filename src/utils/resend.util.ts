@@ -17,16 +17,18 @@ export class ResendEmailError extends Error {
 export const sendTemplateEmail = async ({
   to,
   templateId,
-  unsubscribeUrl,
+  headerUnsubscribeUrl,
+  templateUnsubscribeUrl,
 }: {
   to: string;
   templateId: string;
-  unsubscribeUrl?: string;
+  headerUnsubscribeUrl?: string;
+  templateUnsubscribeUrl?: string;
 }): Promise<void> => {
   const headers: Record<string, string> = {};
 
-  if (unsubscribeUrl) {
-    headers["List-Unsubscribe"] = `<${unsubscribeUrl}>`;
+  if (headerUnsubscribeUrl) {
+    headers["List-Unsubscribe"] = `<${headerUnsubscribeUrl}>`;
     headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
   }
 
@@ -34,8 +36,8 @@ export const sendTemplateEmail = async ({
     to,
     template: {
       id: templateId,
-      variables: unsubscribeUrl
-        ? { UNSUBSCRIBE_URL: unsubscribeUrl }
+      variables: templateUnsubscribeUrl
+        ? { UNSUBSCRIBE_URL: templateUnsubscribeUrl }
         : undefined,
     },
     headers: Object.keys(headers).length ? headers : undefined,

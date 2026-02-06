@@ -34,6 +34,56 @@ const sendOneMarketingSchema = Joi.object({
   unsubscribeToken: Joi.string().required(),
 }).required();
 
+const getUnsubscribeToken = (req: RequestType): string | undefined => {
+  const bodyToken =
+    typeof req.body?.token === "string" ? req.body.token : undefined;
+  const queryToken =
+    typeof req.query?.token === "string" ? req.query.token : undefined;
+
+  return bodyToken || queryToken;
+};
+
+const unsubscribeByToken = async (token: string) => {
+  const verification = verifyUnsubscribeToken(token);
+  if (!verification.valid) {
+    return {
+      success: false as const,
+      message: "invalid or expired token",
+    };
+  }
+
+  const { userId, email } = verification.payload;
+
+  const user = await userRepository.findOne({
+    where: { id: userId, email },
+    select: { id: true, enableMarketingEmails: true },
+  });
+
+  if (!user) {
+    return {
+      success: false as const,
+      message: "invalid or expired token",
+    };
+  }
+
+  if (!user.enableMarketingEmails) {
+    return {
+      success: true as const,
+      status: "already_unsubscribed" as const,
+    };
+  }
+
+  await userRepository.update(
+    { id: user.id, email },
+    { enableMarketingEmails: false },
+  );
+
+  return {
+    success: true as const,
+    status: "unsubscribed" as const,
+  };
+};
+
 export const handleSendMarketingEmails = async (
   req: RequestType,
   res: ResponseType,
@@ -176,7 +226,7 @@ export const handleUnsubscribeMarketing = async (
   res: ResponseType,
 ) => {
   try {
-    const token = req.query?.token as string | undefined;
+    const token = getUnsubscribeToken(req);
     if (!token) {
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({
@@ -186,27 +236,23 @@ export const handleUnsubscribeMarketing = async (
       );
     }
 
-    const result = verifyUnsubscribeToken(token);
-    if (!result.valid) {
+    const result = await unsubscribeByToken(token);
+    if (!result.success) {
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({
           success: false,
-          message: "invalid or expired token",
+          message: result.message,
         }),
       );
     }
 
-    const { userId, email } = result.payload;
-
-    await userRepository.update(
-      { id: userId, email },
-      { enableMarketingEmails: false },
-    );
-
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        message: "unsubscribed",
+        data: {
+          status: result.status,
+        },
+        message: result.status,
       }),
     );
   } catch (error) {
@@ -250,12 +296,15 @@ export const handleSendOneMarketingEmail = async (
 
     const { email, templateId, unsubscribeToken } = value;
 
-    const unsubscribeUrl = `${env.BACKEND_DOMAIN}/v1/marketing/unsubscribe?token=${unsubscribeToken}`;
+    const encodedToken = encodeURIComponent(unsubscribeToken);
+    const headerUnsubscribeUrl = `${env.BACKEND_DOMAIN}/v1/marketing/unsubscribe?token=${encodedToken}`;
+    const templateUnsubscribeUrl = `${env.FRONTEND_URL}/unsubscribe?token=${encodedToken}`;
 
     await sendTemplateEmail({
       to: email,
       templateId,
-      unsubscribeUrl,
+      headerUnsubscribeUrl,
+      templateUnsubscribeUrl,
     });
 
     return res.status(httpStatus.OK).json(

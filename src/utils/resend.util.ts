@@ -34,6 +34,9 @@ export const sendTemplateEmail = async ({
     to,
     template: {
       id: templateId,
+      variables: unsubscribeUrl
+        ? { UNSUBSCRIBE_URL: unsubscribeUrl }
+        : undefined,
     },
     headers: Object.keys(headers).length ? headers : undefined,
   });

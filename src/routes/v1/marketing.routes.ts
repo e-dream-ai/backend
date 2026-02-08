@@ -1,4 +1,7 @@
+import { ROLES } from "constants/role.constants";
 import { Router } from "express";
+import { requireAuth } from "middlewares/require-auth.middleware";
+import { checkRoleMiddleware } from "middlewares/role.middleware";
 import {
   handleSendMarketingEmails,
   handleSendOneMarketingEmail,
@@ -7,9 +10,19 @@ import {
 
 const marketingRouter = Router();
 
-marketingRouter.post("/send", handleSendMarketingEmails);
+marketingRouter.post(
+  "/send",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  handleSendMarketingEmails,
+);
 
-marketingRouter.post("/send-one", handleSendOneMarketingEmail);
+marketingRouter.post(
+  "/send-one",
+  requireAuth,
+  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  handleSendOneMarketingEmail,
+);
 
 marketingRouter.post("/unsubscribe", handleUnsubscribeMarketing);
 

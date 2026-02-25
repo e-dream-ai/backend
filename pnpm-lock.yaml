@@ -42,8 +42,8 @@ importers:
         specifier: ^2.1456.0
         version: 2.1692.0
       axios:
-        specifier: ^1.6.5
-        version: 1.12.2
+        specifier: ^1.13.2
+        version: 1.13.2
       body-parser:
         specifier: ^1.20.2
         version: 1.20.3
@@ -1797,8 +1797,8 @@ packages:
     resolution: {integrity: sha512-x511uiJ/57FIsbgUe5csJ13k3uzu25uWQE+XqfBis/sB0SFoiElJWXRkgEAUh0U6n40eT3ay5Ue4oPkRMu1LYw==}
     engines: {node: '>= 10.0.0'}
 
-  axios@1.12.2:
-    resolution: {integrity: sha512-vMJzPewAlRyOgxV2dU0Cuz2O8zzzx9VYtbJOaBgXFeLc4IV/Eg50n4LowmehOOR61S8ZMpc2K5Sa7g6A4jfkUw==}
+  axios@1.13.2:
+    resolution: {integrity: sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==}
 
   babel-jest@30.2.0:
     resolution: {integrity: sha512-0YiBEOxWqKkSQWL9nNGGEgndoeL0ZpWrbLMNL5u/Kaxrli3Eaxlt3ZtIDktEvXt4L/R9r3ODr2zKwGM/2BjxVw==}
@@ -2449,6 +2449,10 @@ packages:
 
   form-data@4.0.4:
     resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}
+    engines: {node: '>= 6'}
+
+  form-data@4.0.5:
+    resolution: {integrity: sha512-8RipRLol37bNs2bhoV67fiTEvdTrbMUYcFTiy3+wuuOnUog2QBHCZWXDRijWQfAkhBj2Uf5UnVaiWwA5vdd82w==}
     engines: {node: '>= 6'}
 
   formidable@3.5.4:
@@ -6597,10 +6601,10 @@ snapshots:
       uuid: 8.0.0
       xml2js: 0.6.2
 
-  axios@1.12.2:
+  axios@1.13.2:
     dependencies:
       follow-redirects: 1.15.11
-      form-data: 4.0.4
+      form-data: 4.0.5
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
@@ -7340,6 +7344,14 @@ snapshots:
       signal-exit: 4.1.0
 
   form-data@4.0.4:
+    dependencies:
+      asynckit: 0.4.0
+      combined-stream: 1.0.8
+      es-set-tostringtag: 2.1.0
+      hasown: 2.0.2
+      mime-types: 2.1.35
+
+  form-data@4.0.5:
     dependencies:
       asynckit: 0.4.0
       combined-stream: 1.0.8
@@ -9018,7 +9030,7 @@ snapshots:
       cookiejar: 2.1.4
       debug: 4.4.3(supports-color@5.5.0)
       fast-safe-stringify: 2.1.1
-      form-data: 4.0.4
+      form-data: 4.0.5
       formidable: 3.5.4
       methods: 1.1.2
       mime: 2.6.0

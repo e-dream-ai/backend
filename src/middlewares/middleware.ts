@@ -13,8 +13,6 @@ import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
 import passport from "passport";
 import session from "express-session";
-import connectRedis from "connect-redis";
-import { redisClient } from "clients/redis.client";
 import configurePassport from "clients/passport.client";
 import cookieParser from "cookie-parser";
 import { handleCustomOrigin } from "utils/api.util";
@@ -90,14 +88,11 @@ export const registerMiddlewares = (app: express.Application) => {
   // pino-http express middleware
   app.use(pinoHttp());
 
-  const RedisStore = connectRedis(session);
-
   app.use(
     session({
-      store: new RedisStore({ client: redisClient }),
       secret: env.SESSION_SECRET,
       resave: false,
-      saveUninitialized: false,
+      saveUninitialized: true,
       cookie: workOSCookieConfig,
     }),
   );

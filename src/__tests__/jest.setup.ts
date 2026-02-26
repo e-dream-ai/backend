@@ -1,3 +1,8 @@
+import dotenv from "dotenv";
+
+dotenv.config({ path: ".env.test" });
+process.env.npm_package_version ||= "0.0.0-test";
+
 jest.mock("ioredis", () => {
   class MockRedis {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

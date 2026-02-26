@@ -42,6 +42,17 @@ export const env = cleanEnv(process.env, {
   OPS_EMAIL: str(),
 
   /**
+   * Resend
+   */
+  RESEND_API_KEY: str(),
+
+  /**
+   * Marketing
+   */
+  EMAIL_SECRET: str(),
+  MARKETING_UNSUBSCRIBE_SECRET: str(),
+
+  /**
    * Heroku
    */
   HEROKU_API_URL: str(),

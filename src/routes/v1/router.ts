@@ -14,6 +14,7 @@ import userRouter from "routes/v1/user.routes";
 import clientRouter from "routes/v1/client.routes";
 import inviteRouter from "routes/v1/invite.routes";
 import reportRouter from "routes/v1/report.routes";
+import marketingRouter from "routes/v1/marketing.routes";
 import authRouterV2 from "routes/v2/auth.routes";
 import webhooksRouterV2 from "routes/v2/webhooks.routes";
 import { jsonResponse } from "utils/responses.util";
@@ -515,6 +516,9 @@ export const registerRoutes = (app: express.Application) => {
 
   // register report router
   app.use("/api/v1/report", reportRouter);
+
+  // register marketing router
+  app.use("/api/v1/marketing", marketingRouter);
 
   // register v2 auth
   app.use("/api/v2/auth", authRouterV2);

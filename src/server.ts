@@ -102,14 +102,13 @@ function configureApp(app: express.Application, io: Server) {
   // Set up Socket.IO namespaces and handlers
   const remoteControlNamespace = io.of("remote-control");
 
-  // Set up connection handler to test
+  // Set up connection handler
   remoteControlNamespace.on("connection", (socket) => {
     const clientId = socket.id;
 
     APP_LOGGER.info(`Worker ${process.pid}: New client connected: ${clientId}`);
 
-    // Handle disconnect
-    remoteControlNamespace.on("disconnect", () => {
+    socket.on("disconnect", () => {
       APP_LOGGER.info(
         `Worker ${process.pid}: Client disconnected: ${clientId}`,
       );

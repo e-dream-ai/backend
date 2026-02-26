@@ -152,6 +152,12 @@ export class User {
   @Column({ nullable: true, type: "timestamp" })
   last_client_ping_at: Date | null;
 
+  /**
+   * last_client_version saves the last version seen from client headers
+   */
+  @Column({ nullable: true, type: "varchar", length: 64 })
+  last_client_version: string | null;
+
   @CreateDateColumn()
   created_at: Date;
 

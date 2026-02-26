@@ -87,6 +87,8 @@ export const getUserSelectedColumns = ({
     enableMarketingEmails: true,
     quota: true,
     last_login_at: true,
+    last_client_ping_at: true,
+    last_client_version: true,
     created_at: true,
     updated_at: true,
     deleted_at: true,
@@ -219,8 +221,19 @@ export const reduceUserQuota = async (user: User, quotaToReduce: number) => {
   await userRepository.update(user.id, { quota: newQuota });
 };
 
-export const setUserLastClientPingAt = async (user: User) => {
-  await userRepository.update(user.id, { last_client_ping_at: new Date() });
+export const setUserLastClientPingAt = async (
+  user: User,
+  clientVersion?: string | null,
+) => {
+  const updateData: Partial<User> = {
+    last_client_ping_at: new Date(),
+  };
+
+  if (clientVersion !== undefined) {
+    updateData.last_client_version = clientVersion;
+  }
+
+  await userRepository.update(user.id, updateData);
 };
 
 export const resetUserLastClientPingAt = async (user: User) => {

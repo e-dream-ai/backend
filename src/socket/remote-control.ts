@@ -129,7 +129,14 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
 
   socket.on(
     PING_EVENT,
-    handlePingEvent({ socket, user, roomId, sessionTracker, emitPresence }),
+    handlePingEvent({
+      socket,
+      user,
+      roomId,
+      sessionTracker,
+      emitPresence,
+      clientVersion: clientInfo.version,
+    }),
   );
 
   socket.on(WEB_CLIENT_STATUS_EVENT, async (payload?: { active?: boolean }) => {
@@ -490,18 +497,20 @@ export const handlePingEvent = ({
   roomId,
   sessionTracker,
   emitPresence,
+  clientVersion,
 }: {
   user: User;
   socket: Socket;
   roomId: string;
   sessionTracker: SessionTracker;
   emitPresence: () => Promise<void>;
+  clientVersion?: string;
 }) => {
   return async () => {
     /**
      * Save last client ping time
      */
-    await setUserLastClientPingAt(user);
+    await setUserLastClientPingAt(user, clientVersion);
 
     /**
      * Send event to GA

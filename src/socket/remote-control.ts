@@ -195,6 +195,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
 
   socket.on("disconnect", async () => {
     ignoredEarlyNextBySocket.delete(socket.id);
+    sessionTracker.endSession(socket.id);
     try {
       const room = socket.nsp.adapter.rooms.get(roomId);
       const hasActiveLocally = room

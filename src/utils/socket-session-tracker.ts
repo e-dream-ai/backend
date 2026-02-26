@@ -9,6 +9,11 @@ type SessionTrackerOptions = {
   cleanupInterval?: number;
 };
 
+type PingData = {
+  timestamp: number;
+  duration_seconds: number;
+};
+
 // Base session data
 type SessionData = {
   id: string;
@@ -20,8 +25,7 @@ type SessionData = {
   lastPing: number;
   totalTimeInSeconds: number;
   isActive: boolean;
-  pingCount: number;
-  totalPingDurationSeconds: number;
+  pings: PingData[];
   webClientActive?: boolean;
 };
 
@@ -85,8 +89,7 @@ export class SessionTracker extends EventEmitter {
       lastPing: Date.now(),
       totalTimeInSeconds: 0,
       isActive: true,
-      pingCount: 0,
-      totalPingDurationSeconds: 0,
+      pings: [],
       webClientActive: false,
     };
 
@@ -110,8 +113,10 @@ export class SessionTracker extends EventEmitter {
 
     if (timeSinceLastPing <= this.options.pingTimeout) {
       session.totalTimeInSeconds += timeSinceLastPing;
-      session.pingCount += 1;
-      session.totalPingDurationSeconds += Math.round(timeSinceLastPing / 1000);
+      session.pings.push({
+        timestamp: currentTime,
+        duration_seconds: Math.round(timeSinceLastPing / 1000),
+      });
     }
 
     session.lastPing = currentTime;
@@ -179,8 +184,13 @@ export class SessionTracker extends EventEmitter {
   }
 
   calculateAveragePingTime(session: SessionData): number {
-    if (session.pingCount < 2) return 0;
-    return Math.round(session.totalPingDurationSeconds / session.pingCount);
+    if (session.pings.length < 2) return 0;
+
+    const totalDuration = session.pings.reduce(
+      (sum, ping) => sum + ping.duration_seconds,
+      0,
+    );
+    return Math.round(totalDuration / session.pings.length);
   }
 
   cleanupInactiveSessions(): void {

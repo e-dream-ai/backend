@@ -21,10 +21,7 @@ import {
   setUserCurrentDream,
   setUserCurrentPlaylist,
 } from "utils/socket.util";
-import {
-  resetUserLastClientPingAt,
-  setUserLastClientPingAt,
-} from "utils/user.util";
+import { setUserLastClientPingAt } from "utils/user.util";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
 const PING_EVENT = "ping";
@@ -198,7 +195,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
     }
   });
 
-  socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, user, roomId }));
+  socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, roomId }));
 
   socket.on("disconnect", async () => {
     ignoredEarlyNextBySocket.delete(socket.id);
@@ -602,26 +599,18 @@ export const handlePingRedisEvent = () => {
  * Handles a goodbye event from a client.
  *
  * @param {Object} param0
- * @param {User} param0.user - User object.
  * @param {Socket} param0.socket - Socket instance.
  * @param {string} param0.roomId - Unique identifier of the room.
  * @returns void
  */
 export const handleGoodbyeEvent = ({
-  user,
   socket,
   roomId,
 }: {
-  user: User;
   socket: Socket;
   roomId: string;
 }) => {
   return async () => {
-    /**
-     * Save last client ping time
-     */
-    await resetUserLastClientPingAt(user);
-
     /**
      * Emit boradcast {PING_EVENT} event
      */

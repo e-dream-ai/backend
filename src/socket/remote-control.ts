@@ -265,6 +265,10 @@ export const handleNewControlEvent = ({
             ignoredEarlyNextBySocket.get(socket.id) === true;
           if (!alreadyIgnored) {
             ignoredEarlyNextBySocket.set(socket.id, true);
+            setTimeout(
+              () => ignoredEarlyNextBySocket.delete(socket.id),
+              EARLY_NEXT_WINDOW_MS,
+            );
             return;
           }
         }

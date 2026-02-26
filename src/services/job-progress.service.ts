@@ -39,11 +39,6 @@ export class JobProgressService {
     this.isInitialized = true;
 
     for (const queueName of QUEUES) {
-      this.queues.set(
-        queueName,
-        new Queue(queueName, { connection: redisClient }),
-      );
-
       const events = new QueueEvents(queueName, {
         connection: redisClient.duplicate(),
       });
@@ -107,7 +102,9 @@ export class JobProgressService {
 
       events.on("completed", async ({ jobId }) => {
         try {
-          const job = await this.queues.get(queueName)!.getJob(jobId);
+          const queue = new Queue(queueName, { connection: redisClient });
+          const job = await queue.getJob(jobId);
+          await queue.close();
           if (job?.data?.dream_uuid) {
             await redisClient.del(getJobProgressKey(job.data.dream_uuid));
             await redisClient.del(`job:preview:${job.data.dream_uuid}`);
@@ -119,7 +116,9 @@ export class JobProgressService {
 
       events.on("failed", async ({ jobId }) => {
         try {
-          const job = await this.queues.get(queueName)!.getJob(jobId);
+          const queue = new Queue(queueName, { connection: redisClient });
+          const job = await queue.getJob(jobId);
+          await queue.close();
           if (job?.data?.dream_uuid) {
             await redisClient.del(getJobProgressKey(job.data.dream_uuid));
             await redisClient.del(`job:preview:${job.data.dream_uuid}`);
@@ -134,10 +133,7 @@ export class JobProgressService {
   }
 
   public async stop() {
-    await Promise.all([
-      ...this.queueEvents.map((e) => e.close()),
-      ...Array.from(this.queues.values()).map((q) => q.close()),
-    ]);
+    await Promise.all(this.queueEvents.map((e) => e.close()));
   }
 }
 

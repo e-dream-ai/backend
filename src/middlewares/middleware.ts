@@ -13,6 +13,8 @@ import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
 import passport from "passport";
 import session from "express-session";
+import { RedisStore } from "connect-redis";
+import { redisClient } from "clients/redis.client";
 import configurePassport from "clients/passport.client";
 import cookieParser from "cookie-parser";
 import { handleCustomOrigin } from "utils/api.util";
@@ -90,9 +92,10 @@ export const registerMiddlewares = (app: express.Application) => {
 
   app.use(
     session({
+      store: new RedisStore({ client: redisClient }),
       secret: env.SESSION_SECRET,
       resave: false,
-      saveUninitialized: true,
+      saveUninitialized: false,
       cookie: workOSCookieConfig,
     }),
   );

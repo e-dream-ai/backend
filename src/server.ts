@@ -108,7 +108,7 @@ function configureApp(app: express.Application, io: Server) {
 
     APP_LOGGER.info(`Worker ${process.pid}: New client connected: ${clientId}`);
 
-    remoteControlNamespace.on("disconnect", () => {
+    socket.on("disconnect", () => {
       APP_LOGGER.info(
         `Worker ${process.pid}: Client disconnected: ${clientId}`,
       );

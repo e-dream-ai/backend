@@ -816,11 +816,11 @@ export const handleDeletePlaylist = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
-      // only need to query the user id
       select: { user: { id: true } },
       relations: {
         user: true,
         feedItem: true,
+        playlistItems: true,
       },
     });
 

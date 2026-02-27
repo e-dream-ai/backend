@@ -198,6 +198,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
   socket.on(GOOD_BYE_EVENT, handleGoodbyeEvent({ socket, roomId }));
 
   socket.on("disconnect", async () => {
+    sessionTracker.endSession(socket.id);
     ignoredEarlyNextBySocket.delete(socket.id);
     try {
       const room = socket.nsp.adapter.rooms.get(roomId);

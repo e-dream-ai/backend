@@ -391,6 +391,9 @@ clientRouter.get(
  *                      properties:
  *                        quota:
  *                          type: number
+ *                        quotaExpiresAt:
+ *                          type: string
+ *                          format: date-time
  *      '400':
  *        description: Bad request
  *        content:

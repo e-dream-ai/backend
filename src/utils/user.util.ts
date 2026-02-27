@@ -10,6 +10,7 @@ import type { User as WorkOSUser } from "@workos-inc/node";
 import { Role } from "entities/Role.entity";
 import {
   DAILY_USER_DEFAULT_QUOTA,
+  DAILY_USER_QUOTA_RESET_UTC_HOUR,
   MIN_USER_QUOTA,
 } from "constants/user.constants";
 import {
@@ -202,6 +203,26 @@ export const setDailyUsersQuota = async () => {
   for (const user of users) {
     await userRepository.update(user.id, { quota: DAILY_USER_DEFAULT_QUOTA });
   }
+};
+
+export const getNextQuotaResetAt = (now: Date = new Date()): Date => {
+  const nextResetAt = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      DAILY_USER_QUOTA_RESET_UTC_HOUR,
+      0,
+      0,
+      0,
+    ),
+  );
+
+  if (now >= nextResetAt) {
+    nextResetAt.setUTCDate(nextResetAt.getUTCDate() + 1);
+  }
+
+  return nextResetAt;
 };
 
 /**

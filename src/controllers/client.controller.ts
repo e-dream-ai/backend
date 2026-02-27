@@ -41,6 +41,7 @@ import {
   getUserDownvotedDreams,
   isAdmin,
   reduceUserQuota,
+  setUserLastClientPingAt,
 } from "utils/user.util";
 
 /**
@@ -57,6 +58,7 @@ import {
 export const handleHello = async (req: RequestType, res: ResponseType) => {
   const user = res.locals.user!;
   const quota: number = Number(user?.quota ?? 0);
+  const clientVersion = res.locals.requestContext?.version;
 
   /**
    * Count total user dislikes
@@ -74,6 +76,11 @@ export const handleHello = async (req: RequestType, res: ResponseType) => {
    * Send event to GA
    */
   tracker.sendEventWithRequestContext(res, user.uuid, "CLIENT_HELLO", {});
+
+  /**
+   * Save last seen client ping + version
+   */
+  await setUserLastClientPingAt(user, clientVersion);
 
   try {
     return res.status(httpStatus.OK).json(

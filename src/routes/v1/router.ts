@@ -369,6 +369,9 @@ export const registerRoutes = (app: express.Application) => {
    *       properties:
    *         quota:
    *           type: number
+   *         quotaExpiresAt:
+   *           type: string
+   *           format: date-time
    *         currentPlaylistUUID:
    *           type: string
    *         dislikesCount:

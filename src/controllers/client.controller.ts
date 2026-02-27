@@ -38,6 +38,7 @@ import {
   transformPlaylistWithSignedUrls,
 } from "utils/transform.util";
 import {
+  getNextQuotaResetAt,
   getUserDownvotedDreams,
   isAdmin,
   reduceUserQuota,
@@ -58,6 +59,7 @@ import {
 export const handleHello = async (req: RequestType, res: ResponseType) => {
   const user = res.locals.user!;
   const quota: number = Number(user?.quota ?? 0);
+  const quotaExpiresAt = getNextQuotaResetAt().toISOString();
   const clientVersion = res.locals.requestContext?.version;
 
   /**
@@ -88,6 +90,7 @@ export const handleHello = async (req: RequestType, res: ResponseType) => {
         success: true,
         data: {
           quota,
+          quotaExpiresAt,
           currentPlaylistUUID,
           dislikesCount,
         },
@@ -408,6 +411,7 @@ export const handleGetUserDislikes = async (
 export const handleQuota = async (req: RequestType, res: ResponseType) => {
   const user = res.locals.user!;
   const quota: number = Number(user?.quota ?? 0);
+  const quotaExpiresAt = getNextQuotaResetAt().toISOString();
 
   try {
     return res.status(httpStatus.OK).json(
@@ -415,6 +419,7 @@ export const handleQuota = async (req: RequestType, res: ResponseType) => {
         success: true,
         data: {
           quota,
+          quotaExpiresAt,
         },
       }),
     );

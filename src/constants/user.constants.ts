@@ -12,3 +12,8 @@ export const DAILY_USER_DEFAULT_QUOTA = 1 * 1024 * 1024 * 1024;
  * min user quouta is 0
  */
 export const MIN_USER_QUOTA = 0;
+
+/**
+ * UTC hour when the daily quota reset cron runs: `0 7 * * *`.
+ */
+export const DAILY_USER_QUOTA_RESET_UTC_HOUR = 7;

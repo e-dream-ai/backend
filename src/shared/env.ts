@@ -111,6 +111,12 @@ export const env = cleanEnv(process.env, {
   VIDEO_INGESTION_API_KEY: str(),
 
   /**
+   * HEAP_SNAPSHOT_API_KEY
+   * If not set, heap snapshot endpoint and scheduler are disabled
+   */
+  HEAP_SNAPSHOT_API_KEY: str({ default: "" }),
+
+  /**
    * SESSION_SECRET
    */
   SESSION_SECRET: str(),

@@ -18,6 +18,10 @@ import { handleCustomOrigin } from "utils/api.util";
 import { redisClient } from "clients/redis.client";
 import { setIo } from "socket/io";
 import { jobProgressService } from "services/job-progress.service";
+import {
+  startHeapSnapshotScheduler,
+  stopHeapSnapshotScheduler,
+} from "utils/heap-snapshot.util";
 
 export type ServerResources = {
   app: express.Application;
@@ -85,6 +89,7 @@ export async function startServer(): Promise<ServerResources> {
 function configureApp(app: express.Application, io: Server) {
   setIo(io);
   jobProgressService.start();
+  startHeapSnapshotScheduler();
   const bugsnagMiddleware = Bugsnag.getPlugin("express");
 
   if (env.NODE_ENV !== "development") {
@@ -150,6 +155,9 @@ export async function shutdownServer(
 
   // Stop BullMQ event listeners
   await jobProgressService.stop();
+
+  // Stop heap snapshot scheduler
+  stopHeapSnapshotScheduler();
 
   // Close Redis connections
   await Promise.all([pubClient.quit(), subClient.quit()]);

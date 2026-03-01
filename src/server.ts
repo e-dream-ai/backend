@@ -42,8 +42,8 @@ export async function startServer(): Promise<ServerResources> {
   const port = env.PORT ?? 8080;
   const version = env.npm_package_version;
 
-  // Create Redis clients for Socket.IO adapter
-  const pubClient = redisClient;
+  // Create dedicated Redis clients for Socket.IO adapter (must not share with app operations)
+  const pubClient = redisClient.duplicate();
   const subClient = redisClient.duplicate();
 
   // Initialize Socket.IO with Redis adapter
@@ -56,6 +56,9 @@ export async function startServer(): Promise<ServerResources> {
       allowedHeaders: ALLOWED_HEADERS,
     },
     adapter: createAdapter(pubClient, subClient),
+    pingTimeout: 10000,
+    pingInterval: 25000,
+    transports: ["websocket"],
   });
 
   // Database connection
@@ -106,19 +109,6 @@ function configureApp(app: express.Application, io: Server) {
 
   // Set up Socket.IO namespaces and handlers
   const remoteControlNamespace = io.of("remote-control");
-
-  // Set up connection handler
-  remoteControlNamespace.on("connection", (socket) => {
-    const clientId = socket.id;
-
-    APP_LOGGER.info(`Worker ${process.pid}: New client connected: ${clientId}`);
-
-    socket.on("disconnect", () => {
-      APP_LOGGER.info(
-        `Worker ${process.pid}: Client disconnected: ${clientId}`,
-      );
-    });
-  });
 
   socketRegisterMiddlewares(remoteControlNamespace);
   remoteControlNamespace.on("connection", remoteControlConnectionListener);

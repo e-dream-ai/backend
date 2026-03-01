@@ -8,7 +8,7 @@ import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 
 const SNAPSHOT_FOLDER = "heapsnapshots";
-const INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+const INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
 type SnapshotTrigger = "AUTOMATIC" | "MANUAL";
 

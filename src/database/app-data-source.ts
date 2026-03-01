@@ -18,6 +18,12 @@ const appDataSource = new DataSource({
   ssl: env.TYPEORM_SSL ?? {
     rejectUnauthorized: false,
   },
+  extra: {
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+    statement_timeout: 30000,
+  },
 });
 
 export default appDataSource;

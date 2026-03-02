@@ -39,6 +39,7 @@ export async function startServer(): Promise<ServerResources> {
   // Initialize express app
   const app: express.Application = express();
   const server = http.createServer(app);
+  server.timeout = 60000; // 60 seconds
   const port = env.PORT ?? 8080;
   const version = env.npm_package_version;
 

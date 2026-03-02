@@ -13,6 +13,7 @@ import {
   updateWorkOSCookie,
 } from "utils/workos.util";
 import env from "shared/env";
+import { APP_LOGGER } from "shared/logger";
 
 /**
  * Callback handler for passport authenticate strategies
@@ -74,21 +75,26 @@ const workOSAuth = async (
     req.headers.authorization?.split("Bearer ")[1] ||
     req.cookies["wos-session"];
 
-  const result = await authenticateWorkOS(authToken);
+  try {
+    const result = await authenticateWorkOS(authToken);
 
-  // Handle no result
-  if (!result) {
-    return handleWorkOSAuthFailure(res);
+    // Handle no result
+    if (!result) {
+      return handleWorkOSAuthFailure(res);
+    }
+
+    // Update cookie on request and response when session is refreshed
+    if (result.sealedSession) {
+      updateWorkOSCookie(res, result.sealedSession);
+      req.cookies["wos-session"] = result.sealedSession;
+    }
+
+    await setWorkOSUserContext(res, result.session.user);
+    return next();
+  } catch (e) {
+    APP_LOGGER.error("workOSAuth error", e);
+    return next(e);
   }
-
-  // Update cookie on request and response when session is refreshed
-  if (result.sealedSession) {
-    updateWorkOSCookie(res, result.sealedSession);
-    req.cookies["wos-session"] = result.sealedSession;
-  }
-
-  await setWorkOSUserContext(res, result.session.user);
-  return next();
 };
 
 const requireAuth = (

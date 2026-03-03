@@ -15,6 +15,21 @@ import {
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 
+const AUTH_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`Auth operation timed out after ${ms}ms`)),
+        ms,
+      );
+    }),
+  ]).finally(() => clearTimeout(timer!));
+}
+
 /**
  * Callback handler for passport authenticate strategies
  * @param req
@@ -76,7 +91,10 @@ const workOSAuth = async (
     req.cookies["wos-session"];
 
   try {
-    const result = await authenticateWorkOS(authToken);
+    const result = await withTimeout(
+      authenticateWorkOS(authToken),
+      AUTH_TIMEOUT_MS,
+    );
 
     // Handle no result
     if (!result) {
@@ -89,7 +107,10 @@ const workOSAuth = async (
       req.cookies["wos-session"] = result.sealedSession;
     }
 
-    await setWorkOSUserContext(res, result.session.user);
+    await withTimeout(
+      setWorkOSUserContext(res, result.session.user),
+      AUTH_TIMEOUT_MS,
+    );
     return next();
   } catch (e) {
     APP_LOGGER.error("workOSAuth error", e);

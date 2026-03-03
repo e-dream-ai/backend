@@ -21,7 +21,6 @@ import {
   socketRequestContextMiddleware,
 } from "./request-context-middleware";
 import { requestLogger } from "./request-logger.middleware";
-import { memoryMonitorMiddleware } from "./memory-monitor.middleware";
 
 const swaggerPath = "/api/v1/api-docs";
 
@@ -80,8 +79,6 @@ export const registerMiddlewares = (app: express.Application) => {
 
   // custom headers
   app.use(customHeaders);
-
-  app.use(memoryMonitorMiddleware);
 
   // pino-http express middleware
   app.use(pinoHttp());

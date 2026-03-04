@@ -55,6 +55,7 @@ import {
   findOnePlaylistWithoutItems,
   getPaginatedPlaylistItems,
   getPaginatedPlaylistKeyframes,
+  getPlaylistFindOptionsWhere,
   getPlaylistSelectedColumns,
   populateDefautPlaylist,
   refreshPlaylistUpdatedAtTimestamp,
@@ -420,29 +421,111 @@ export const handleGetPlaylistReferences = async (
   res: ResponseType,
 ) => {
   const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
 
   try {
-    const references = await playlistItemRepository.find({
-      where: {
-        playlistItem: {
-          uuid,
+    const playlist = await findOnePlaylistWithoutItems({
+      where: { uuid },
+      select: getPlaylistSelectedColumns(),
+    });
+
+    if (!playlist) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isOwner = playlist.user.id === user.id;
+    const isAllowed = canExecuteAction({
+      isOwner,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (playlist.hidden && !isAllowed) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    if (playlist.nsfw && !user?.nsfw && !isOwner && !isUserAdmin) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const where = getPlaylistFindOptionsWhere(user.id, isUserAdmin);
+    const unfilteredReferences = await playlistItemRepository.find({
+      where: Array.isArray(where)
+        ? where.map((playlistWhere) => ({
+          playlistItem: { uuid },
+          type: PlaylistItemType.PLAYLIST,
+          playlist: playlistWhere,
+        }))
+        : {
+          playlistItem: { uuid },
+          type: PlaylistItemType.PLAYLIST,
+          playlist: where,
         },
-      },
       select: {
+        id: true,
+        type: true,
+        order: true,
+        created_at: true,
+        updated_at: true,
         playlist: {
-          id: true,
-          uuid: true,
-          name: true,
+          ...getPlaylistSelectedColumns(),
         },
       },
       relations: {
-        playlist: true,
+        playlist: {
+          user: true,
+          displayedOwner: true,
+        },
       },
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { references } }));
+    const references = unfilteredReferences.filter((reference) => {
+      const parentPlaylist = reference.playlist;
+      if (!parentPlaylist) return false;
+      const isParentOwner = parentPlaylist.user.id === user.id;
+
+      if (
+        parentPlaylist.nsfw &&
+        !user?.nsfw &&
+        !isParentOwner &&
+        !isUserAdmin
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    for (const reference of references) {
+      if (reference.playlist && !reference.playlist.thumbnail) {
+        const fallbackThumbnail = await computePlaylistThumbnailRecursive(
+          reference.playlist.id,
+          {
+            userId: user.id,
+            isAdmin: isUserAdmin,
+            nsfw: user?.nsfw,
+            onlyProcessedDreams: true,
+          },
+        );
+        if (fallbackThumbnail) {
+          reference.playlist.thumbnail = fallbackThumbnail;
+        }
+      }
+    }
+
+    const transformedReferences =
+      await transformPlaylistItemsWithSignedUrls(references);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          references: transformedReferences,
+          count: transformedReferences.length,
+        },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

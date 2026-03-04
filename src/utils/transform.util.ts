@@ -357,6 +357,9 @@ export class TransformSession {
   }
 
   private addPlaylistItemKeys(playlistItem: PlaylistItem): void {
+    if (playlistItem.playlist) {
+      this.addEntityKeys(playlistItem.playlist, "playlist");
+    }
     if (playlistItem.dreamItem) {
       this.addEntityKeys(playlistItem.dreamItem, "dream");
     }
@@ -479,6 +482,13 @@ export class TransformSession {
   ): PlaylistItem {
     const transformed = { ...playlistItem };
 
+    if (playlistItem.playlist) {
+      transformed.playlist = this.applyToEntity(
+        playlistItem.playlist,
+        "playlist",
+        signedUrls,
+      );
+    }
     if (playlistItem.dreamItem) {
       transformed.dreamItem = this.applyToEntity(
         playlistItem.dreamItem,

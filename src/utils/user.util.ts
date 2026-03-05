@@ -10,7 +10,6 @@ import type { User as WorkOSUser } from "@workos-inc/node";
 import { Role } from "entities/Role.entity";
 import {
   DAILY_USER_DEFAULT_QUOTA,
-  DAILY_USER_QUOTA_RESET_UTC_HOUR,
   MIN_USER_QUOTA,
 } from "constants/user.constants";
 import {
@@ -211,8 +210,8 @@ export const getNextQuotaResetAt = (now: Date = new Date()): Date => {
       now.getUTCFullYear(),
       now.getUTCMonth(),
       now.getUTCDate(),
-      DAILY_USER_QUOTA_RESET_UTC_HOUR,
-      0,
+      16, // DAILY_USER_QUOTA_RESET_UTC_HOUR,
+      30, // 0,
       0,
       0,
     ),

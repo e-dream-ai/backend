@@ -1346,8 +1346,10 @@ export const handleUpdateDream = async (
       );
     }
 
-    // find start keyframe, if exists save it into the dream
-    if (req.body.startKeyframe) {
+    // find start keyframe, if exists save it into the dream; if null, remove it
+    if (req.body.startKeyframe === null) {
+      updateData = { ...updateData, startKeyframe: null };
+    } else if (req.body.startKeyframe) {
       startKeyframe = await keyframeRepository.findOne({
         where: {
           uuid: req.body.startKeyframe,
@@ -1362,8 +1364,10 @@ export const handleUpdateDream = async (
       updateData = { ...updateData, startKeyframe };
     }
 
-    // find end keyframe, if exists save it into the dream
-    if (req.body.endKeyframe) {
+    // find end keyframe, if exists save it into the dream; if null, remove it
+    if (req.body.endKeyframe === null) {
+      updateData = { ...updateData, endKeyframe: null };
+    } else if (req.body.endKeyframe) {
       endKeyframe = await keyframeRepository.findOne({
         where: {
           uuid: req.body.endKeyframe,

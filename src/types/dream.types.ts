@@ -32,8 +32,8 @@ export type UpdateDreamRequest = {
   featureRank?: number;
   displayedOwner?: number;
   user?: string;
-  startKeyframe?: string;
-  endKeyframe: string;
+  startKeyframe?: string | null;
+  endKeyframe?: string | null;
   render_duration?: number;
   nsfw?: boolean;
   hidden?: boolean;

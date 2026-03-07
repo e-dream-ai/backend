@@ -101,8 +101,8 @@ export const updateDreamSchema: RequestValidationSchema = {
       otherwise: Joi.forbidden(),
     }),
     ccbyLicense: Joi.boolean(),
-    startKeyframe: Joi.string().uuid(),
-    endKeyframe: Joi.string().uuid(),
+    startKeyframe: Joi.string().uuid().allow(null),
+    endKeyframe: Joi.string().uuid().allow(null),
     render_duration: Joi.number().integer(),
     mediaType: Joi.string()
       .valid(...Object.values(DreamMediaType))

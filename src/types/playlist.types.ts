@@ -20,6 +20,7 @@ export type CreatePlaylistRequest = {
   description?: string;
   nsfw?: boolean;
   hidden?: boolean;
+  loops?: number;
 };
 
 export type UpdatePlaylistRequest = {
@@ -29,6 +30,7 @@ export type UpdatePlaylistRequest = {
   displayedOwner?: number;
   nsfw?: boolean;
   hidden?: boolean;
+  loops?: number;
 };
 
 export type OrderPlaylist = {

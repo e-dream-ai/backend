@@ -38,6 +38,7 @@ export const createPlaylistSchema: RequestValidationSchema = {
       then: Joi.allow(),
       otherwise: Joi.forbidden(),
     }),
+    loops: Joi.number().integer().min(0),
   }),
 };
 
@@ -52,6 +53,7 @@ export const updatePlaylistSchema: RequestValidationSchema = {
       then: Joi.allow(),
       otherwise: Joi.forbidden(),
     }),
+    loops: Joi.number().integer().min(0),
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

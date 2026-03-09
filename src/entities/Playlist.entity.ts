@@ -115,6 +115,13 @@ export class Playlist {
   })
   hidden: boolean;
 
+  /**
+   * Number of times looping dreams replay before advancing.
+   * 0 = no special loop handling.
+   */
+  @Column({ type: "integer", default: 0 })
+  loops: number;
+
   @CreateDateColumn()
   created_at: Date;
 

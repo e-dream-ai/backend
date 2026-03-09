@@ -74,6 +74,7 @@ export const formatClientPlaylist = (playlist: Playlist): ClientPlaylist => ({
   artist: playlist?.displayedOwner?.name ?? playlist?.user?.name ?? null,
   thumbnail: playlist?.thumbnail ?? null,
   nsfw: playlist.nsfw,
+  loops: playlist.loops ?? 0,
   contents: flattenPlaylistItems(playlist?.items ?? []),
   timestamp: playlist.updated_at.getTime(),
 });

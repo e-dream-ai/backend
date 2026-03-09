@@ -38,6 +38,7 @@ export type ClientPlaylist = {
   artist?: string | null;
   thumbnail?: string | null;
   nsfw: boolean;
+  loops: number;
   contents: {
     uuid: string;
     timestamp: number;

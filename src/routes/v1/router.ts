@@ -533,7 +533,7 @@ export const registerRoutes = (app: express.Application) => {
   // register v2 webhooks
   app.use("/api/v2/webhooks", webhooksRouterV2);
 
-  app.all("*", (req, res) => {
+  app.all("/{*splat}", (req, res) => {
     res.status(httpStatus.NOT_FOUND);
     if (req.accepts("json")) {
       res.json(

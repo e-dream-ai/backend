@@ -73,9 +73,15 @@ export const handleWorkosError = (
   APP_LOGGER.error(error);
   let message: string | undefined;
 
+  // Transient WorkOS/network errors → 503 so clients know to retry
   if (error instanceof GenericServerException) {
     message = error.message;
-  } else if (error instanceof OauthException) {
+    return res
+      .status(httpStatus.SERVICE_UNAVAILABLE)
+      .json(jsonResponse({ success: false, message }));
+  }
+
+  if (error instanceof OauthException) {
     message = error.errorDescription;
   }
 

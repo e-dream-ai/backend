@@ -1,5 +1,5 @@
 import { ResponseType } from "types/express.types";
-import { WorkOS } from "@workos-inc/node";
+import { WorkOS, GenericServerException } from "@workos-inc/node";
 import env from "shared/env";
 import { CookieOptions } from "express";
 import { syncWorkOSUser } from "./user.util";
@@ -83,8 +83,15 @@ export const authenticateWorkOS = async (
     };
   } catch (e) {
     const error = e as Error;
-    console.error(error);
-    APP_LOGGER.error(error);
+    APP_LOGGER.error("authenticateWorkOS error", error);
+    if (
+      error instanceof GenericServerException ||
+      error.message?.includes("ECONNREFUSED") ||
+      error.message?.includes("ETIMEDOUT")
+    ) {
+      throw e;
+    }
+
     return null;
   }
 };

@@ -12,6 +12,7 @@ import {
   setWorkOSUserContext,
   updateWorkOSCookie,
 } from "utils/workos.util";
+import { GenericServerException } from "@workos-inc/node";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 
@@ -114,6 +115,23 @@ const workOSAuth = async (
     return next();
   } catch (e) {
     APP_LOGGER.error("workOSAuth error", e);
+
+    // Transient errors: return 503 without clearing the cookie
+    const err = e as Error;
+    if (
+      e instanceof GenericServerException ||
+      err.message?.includes("ECONNREFUSED") ||
+      err.message?.includes("ETIMEDOUT") ||
+      err.message?.includes("timed out")
+    ) {
+      return res.status(503).json(
+        jsonResponse({
+          success: false,
+          message: "Authentication service temporarily unavailable",
+        }),
+      );
+    }
+
     return next(e);
   }
 };

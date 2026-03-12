@@ -73,7 +73,7 @@ import {
   RefreshAndSealSessionDataFailureReason,
 } from "@workos-inc/node";
 import { tracker } from "clients/google-analytics";
-import { isAuthFailureSimulated } from "utils/simulate-auth-failure.util";
+import { applySimulatedAuthFailure } from "utils/simulate-auth-failure.util";
 import {
   findOnePlaylist,
   getPlaylistSelectedColumns,
@@ -1035,14 +1035,9 @@ export const logout = async (req: RequestType, res: ResponseType) => {
  *
  */
 export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
-  if (isAuthFailureSimulated()) {
-    APP_LOGGER.warn("Simulated auth failure triggered (refreshWorkOS)");
-    return res.status(httpStatus.SERVICE_UNAVAILABLE).json(
-      jsonResponse({
-        success: false,
-        message: "Authentication service temporarily unavailable",
-      }),
-    );
+  const simulatedAuthFailure = applySimulatedAuthFailure(res, "refreshWorkOS");
+  if (simulatedAuthFailure) {
+    return simulatedAuthFailure;
   }
 
   const authHeader = req.headers.authorization?.split("Bearer ")[1];

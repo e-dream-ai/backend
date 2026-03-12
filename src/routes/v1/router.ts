@@ -528,7 +528,7 @@ export const registerRoutes = (app: express.Application) => {
   // register heap snapshot router (internal, protected by x-snapshot-key header)
   app.use("/api/v1/internal/heap-snapshot", heapSnapshotRouter);
 
-  // register simulate auth failure router (internal, protected by x-snapshot-key header)
+  // register simulate auth failure router (internal, protected by x-internal-key header)
   app.use("/api/v1/internal/simulate-auth-failure", simulateAuthFailureRouter);
 
   // register v2 auth

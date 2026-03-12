@@ -15,6 +15,7 @@ import {
 import { GenericServerException } from "@workos-inc/node";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
+import { isAuthFailureSimulated } from "utils/simulate-auth-failure.util";
 
 const AUTH_TIMEOUT_MS = 10_000;
 
@@ -87,6 +88,16 @@ const workOSAuth = async (
   res: ResponseType,
   next: NextFunction,
 ) => {
+  if (isAuthFailureSimulated()) {
+    APP_LOGGER.warn("Simulated auth failure triggered (workOSAuth)");
+    return res.status(503).json(
+      jsonResponse({
+        success: false,
+        message: "Authentication service temporarily unavailable",
+      }),
+    );
+  }
+
   const authToken =
     req.headers.authorization?.split("Bearer ")[1] ||
     req.cookies["wos-session"];

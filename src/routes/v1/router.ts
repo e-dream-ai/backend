@@ -16,6 +16,7 @@ import inviteRouter from "routes/v1/invite.routes";
 import reportRouter from "routes/v1/report.routes";
 import marketingRouter from "routes/v1/marketing.routes";
 import heapSnapshotRouter from "routes/v1/heap-snapshot.routes";
+import simulateAuthFailureRouter from "routes/v1/simulate-auth-failure.routes";
 import authRouterV2 from "routes/v2/auth.routes";
 import webhooksRouterV2 from "routes/v2/webhooks.routes";
 import { jsonResponse } from "utils/responses.util";
@@ -526,6 +527,9 @@ export const registerRoutes = (app: express.Application) => {
 
   // register heap snapshot router (internal, protected by x-snapshot-key header)
   app.use("/api/v1/internal/heap-snapshot", heapSnapshotRouter);
+
+  // register simulate auth failure router (internal, protected by x-snapshot-key header)
+  app.use("/api/v1/internal/simulate-auth-failure", simulateAuthFailureRouter);
 
   // register v2 auth
   app.use("/api/v2/auth", authRouterV2);

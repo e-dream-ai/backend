@@ -12,7 +12,7 @@ import appDataSource from "database/app-data-source";
 import env from "shared/env";
 import axios from "axios";
 import { ContentType, getRequestHeaders } from "constants/api.constants";
-import { FindOptionsSelect, FindOptionsWhere } from "typeorm";
+import { FindOptionsSelect, FindOptionsWhere, ILike } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import { FeedItemType } from "types/feed-item.types";
 import { APP_LOGGER } from "shared/logger";
@@ -455,14 +455,28 @@ export const getVotedDreams = async (
     voteType?: VoteType;
     take: number;
     skip: number;
+    search?: string;
   },
 ) => {
   const voteType = options.voteType;
+  const search = options.search;
+  const searchILike = search ? ILike(`%${search}%`) : undefined;
+
+  const baseWhere = {
+    user: { uuid },
+    ...(voteType && { vote: voteType }),
+  };
+
+  const where = searchILike
+    ? [
+      { ...baseWhere, dream: { name: searchILike } },
+      { ...baseWhere, dream: { user: { name: searchILike } } },
+      { ...baseWhere, dream: { displayedOwner: { name: searchILike } } },
+    ]
+    : baseWhere;
+
   const [votes, count] = await voteRepository.findAndCount({
-    where: {
-      user: { uuid },
-      ...(voteType && { vote: voteType }),
-    },
+    where,
     relations: {
       dream: {
         user: true,

@@ -29,4 +29,5 @@ export type GetVotedDreamsRequest = {
   take?: number;
   skip?: number;
   type?: VoteType;
+  search?: string;
 };

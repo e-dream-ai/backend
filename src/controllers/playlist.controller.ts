@@ -551,13 +551,20 @@ export const handleGetPlaylists = async (
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const userUUID: string = req.query.userUUID!;
 
-  const search = req.query?.search
-    ? { name: ILike(`%${req.query.search}%`) }
-    : undefined;
+  const searchTerm = req.query?.search ? String(req.query.search) : undefined;
+  const searchILike = searchTerm ? ILike(`%${searchTerm}%`) : undefined;
+
+  const userCondition = { uuid: userUUID };
+  const where = searchILike
+    ? [
+      { user: userCondition, name: searchILike },
+      { user: userCondition, displayedOwner: { name: searchILike } },
+    ]
+    : { user: userCondition };
 
   try {
     const [playlists, count] = await playlistRepository.findAndCount({
-      where: { user: { uuid: userUUID }, ...search },
+      where,
       select: getPlaylistSelectedColumns(),
       order: { updated_at: "DESC" },
       relations: {},

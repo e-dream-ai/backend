@@ -35,28 +35,104 @@ type FeedItemFindOptionsWhere =
   | FindOptionsWhere<Playlist | Dream>;
 
 /**
+ * Build feed item conditions for dreams and playlists with proper hidden item handling
+ */
+const buildFeedConditions = (
+  feedItemOptions: FindOptionsWhere<FeedItem>,
+  dreamBase: FeedItemFindOptionsWhere,
+  playlistBase: FeedItemFindOptionsWhere,
+  opts: {
+    isAdmin: boolean;
+    onlyHidden: boolean;
+    ranked: boolean;
+    userId: number;
+  },
+): FindOptionsWhere<FeedItem>[] => {
+  const { isAdmin, onlyHidden, ranked, userId } = opts;
+
+  if (isAdmin) {
+    return [
+      { ...feedItemOptions, dreamItem: dreamBase, playlistItem: IsNull() },
+      {
+        ...feedItemOptions,
+        dreamItem: IsNull(),
+        playlistItem: ranked
+          ? { ...playlistBase, featureRank: MoreThanOrEqual(1) }
+          : playlistBase,
+      },
+    ];
+  }
+
+  const dreamItemsConditions: FeedItemFindOptionsWhere = [
+    {
+      ...dreamBase,
+      hidden: true,
+      user: Raw((alias) => `${alias} = :userId`, { userId }),
+      ...(ranked && { featureRank: MoreThanOrEqual(1) }),
+    },
+    ...(onlyHidden
+      ? []
+      : [
+        {
+          ...dreamBase,
+          hidden: false,
+          ...(ranked && { featureRank: MoreThanOrEqual(1) }),
+        },
+      ]),
+  ];
+
+  const playlistItemsConditions: FeedItemFindOptionsWhere = [
+    {
+      ...playlistBase,
+      hidden: true,
+      user: Raw((alias) => `${alias} = :userId`, { userId }),
+      ...(ranked && { featureRank: MoreThanOrEqual(1) }),
+    },
+    ...(onlyHidden
+      ? []
+      : [
+        {
+          ...playlistBase,
+          hidden: false,
+          ...(ranked && { featureRank: MoreThanOrEqual(1) }),
+        },
+      ]),
+  ];
+
+  return [
+    {
+      ...feedItemOptions,
+      dreamItem: dreamItemsConditions,
+      playlistItem: IsNull(),
+    },
+    {
+      ...feedItemOptions,
+      dreamItem: IsNull(),
+      playlistItem: playlistItemsConditions,
+    },
+  ];
+};
+
+/**
  * Get where conditions that properly handle where query
+ * Searches by item name and artist name (FeedItem.user.name)
  */
 export const getFeedFindOptionsWhere = (
   options?: FindOptionsWhere<FeedItem>,
   findOptions?: FeedItemFindOptions,
 ): FindOptionsWhere<FeedItem>[] => {
-  // Handle findOptions
-  const searchCondition = findOptions?.search
-    ? { name: ILike(`%${findOptions.search}%`) }
-    : undefined;
+  const search = findOptions?.search;
   const userId = findOptions?.userId;
   const isAdmin = findOptions?.isAdmin || false;
   const onlyHidden = findOptions?.onlyHidden || false;
   const ranked = findOptions?.ranked || false;
   const mediaType = findOptions?.mediaType;
 
-  // Base conditions for NSFW and search (shared by both dreams and playlists)
   const nsfwCondition = findOptions?.nsfw ? {} : { nsfw: false };
 
+  // Base conditions WITHOUT search (search is applied separately for name + artist)
   const baseConditions: FeedItemFindOptionsWhere = {
     ...nsfwCondition,
-    ...searchCondition,
     ...(onlyHidden ? { hidden: true } : {}),
     deleted_at: IsNull(),
   };
@@ -66,72 +142,42 @@ export const getFeedFindOptionsWhere = (
     ...(mediaType ? { mediaType } : {}),
   };
 
-  // For admins, no hidden filter is applied
-  if (isAdmin) {
-    return [
-      { ...options, dreamItem: dreamBaseConditions, playlistItem: IsNull() },
-      {
-        ...options,
-        dreamItem: IsNull(),
-        playlistItem: ranked
-          ? { ...baseConditions, featureRank: MoreThanOrEqual(1) }
-          : baseConditions,
-      },
-    ];
+  const conditionOpts = { isAdmin, onlyHidden, ranked, userId: userId ?? 0 };
+
+  if (!search) {
+    return buildFeedConditions(
+      options || {},
+      dreamBaseConditions,
+      baseConditions,
+      conditionOpts,
+    );
   }
 
-  // For normal users
-  // Handle hidden items with ownership
-  // Apply on both (dreams and playlists)
-  // Add base conditions (search and NSFW)
-  const dreamItemsConditions: FeedItemFindOptionsWhere = [
-    {
-      ...dreamBaseConditions,
-      hidden: true,
-      user: Raw((alias) => `${alias} = :userId`, { userId }),
-      ...(ranked && { featureRank: MoreThanOrEqual(1) }),
-    },
-    // If onlyHidden, skip adding not hidden items to the query
-    // If not onlyHidden, add visible items to the query
-    ...(onlyHidden
-      ? []
-      : [
-        {
-          ...dreamBaseConditions,
-          hidden: false,
-          ...(ranked && { featureRank: MoreThanOrEqual(1) }),
-        },
-      ]),
-  ];
+  const searchILike = ILike(`%${search}%`);
 
-  const playlistItemsConditions: FeedItemFindOptionsWhere = [
-    {
-      ...baseConditions,
-      hidden: true,
-      user: Raw((alias) => `${alias} = :userId`, { userId }),
-      ...(ranked && { featureRank: MoreThanOrEqual(1) }),
-    },
-    // If onlyHidden, skip adding not hidden items to the query
-    // If not onlyHidden, add visible items to the query
-    ...(onlyHidden
-      ? []
-      : [
-        {
-          ...baseConditions,
-          hidden: false,
-          ...(ranked && { featureRank: MoreThanOrEqual(1) }),
-        },
-      ]),
-  ];
+  // Match by item name (dream/playlist name)
+  const byItemName = buildFeedConditions(
+    options || {},
+    { ...dreamBaseConditions, name: searchILike },
+    { ...baseConditions, name: searchILike },
+    conditionOpts,
+  );
 
-  return [
-    { ...options, dreamItem: dreamItemsConditions, playlistItem: IsNull() },
-    {
-      ...options,
-      dreamItem: IsNull(),
-      playlistItem: playlistItemsConditions,
-    },
-  ];
+  // Match by artist name (FeedItem.user.name)
+  const userObj =
+    options?.user && typeof options.user === "object" ? options.user : {};
+  const artistOptions: FindOptionsWhere<FeedItem> = {
+    ...options,
+    user: { ...(userObj as Record<string, unknown>), name: searchILike },
+  };
+  const byArtistName = buildFeedConditions(
+    artistOptions,
+    dreamBaseConditions,
+    baseConditions,
+    conditionOpts,
+  );
+
+  return [...byItemName, ...byArtistName];
 };
 
 export const getFeedDreamItemSelectedColumns = (): FindOptionsSelect<Dream> => {

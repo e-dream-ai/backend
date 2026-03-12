@@ -55,6 +55,7 @@ export const requestVotedDreamsSchema: RequestValidationSchema = {
     take: Joi.number(),
     skip: Joi.number(),
     type: Joi.string().valid(...Object.values(VoteType)),
+    search: Joi.string().optional().allow(""),
   }),
 };
 

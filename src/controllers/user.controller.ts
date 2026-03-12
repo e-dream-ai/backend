@@ -254,12 +254,14 @@ export const handleGetVotedDreams = async (
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const type = req.query.type;
+  const search = req.query.search ? String(req.query.search) : undefined;
 
   try {
     const { count, dreams } = await getVotedDreams(uuid, {
       take,
       skip,
       voteType: type,
+      search,
     });
     const transformedDreams = await transformDreamsWithSignedUrls(dreams);
     return res.status(httpStatus.OK).json(

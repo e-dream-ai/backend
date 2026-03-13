@@ -49,6 +49,13 @@ export const authenticateAndGetWorkOSSession = async (authToken: string) => {
   });
 };
 
+// Deduplicates concurrent refresh attempts for the same expired session token.
+// WorkOS refresh tokens are single-use, so only one refresh per token should be made.
+const pendingRefreshes = new Map<
+  string,
+  Promise<{ authenticated: boolean; sealedSession?: string }>
+>();
+
 // Common authentication logic
 export const authenticateWorkOS = async (
   authToken: string | undefined,
@@ -64,7 +71,14 @@ export const authenticateWorkOS = async (
     let session = await authenticateAndGetWorkOSSession(authToken);
 
     if (!session) {
-      const refreshResult = await refreshWorkOSSession(authToken);
+      let refreshPromise = pendingRefreshes.get(authToken);
+      if (!refreshPromise) {
+        refreshPromise = refreshWorkOSSession(authToken).finally(() => {
+          pendingRefreshes.delete(authToken);
+        });
+        pendingRefreshes.set(authToken, refreshPromise);
+      }
+      const refreshResult = await refreshPromise;
       if (!refreshResult.authenticated || !refreshResult.sealedSession) {
         return null;
       }

@@ -240,24 +240,28 @@ export const getNextQuotaResetAt = (now: Date = new Date()): Date => {
 export const fillUserInteractiveQuota = async (
   user: User,
 ): Promise<bigint | number> => {
-  const currentQuota = user.quota ?? MIN_USER_QUOTA;
-  console.log(
-    `fillUserInteractiveQuota: user.id=${user.id}, user.uuid=${
-      user.uuid
-    }, currentQuota=${currentQuota}, INTERACTIVE_QUOTA=${INTERACTIVE_QUOTA}, willUpdate=${
-      currentQuota < INTERACTIVE_QUOTA
-    }`,
-  );
-  if (currentQuota < INTERACTIVE_QUOTA) {
-    const result = await userRepository.update(user.id, {
+  // Use conditional DB update to avoid overwriting a quota that's already higher.
+  // We can't trust user.quota here because socket.data.user is stale from connection time.
+  const result = await userRepository
+    .createQueryBuilder()
+    .update(User)
+    .set({ quota: INTERACTIVE_QUOTA })
+    .where("id = :id AND quota < :quota", {
+      id: user.id,
       quota: INTERACTIVE_QUOTA,
-    });
+    })
+    .execute();
+
+  if (result.affected && result.affected > 0) {
     console.log(
-      `fillUserInteractiveQuota: update result affected=${result.affected}`,
+      `fillUserInteractiveQuota: user ${user.uuid} quota filled to ${INTERACTIVE_QUOTA}`,
     );
     return INTERACTIVE_QUOTA;
   }
-  return currentQuota;
+
+  // Quota was already >= INTERACTIVE_QUOTA, fetch current value from DB
+  const freshUser = await userRepository.findOne({ where: { id: user.id } });
+  return freshUser?.quota ?? INTERACTIVE_QUOTA;
 };
 
 export const reduceUserQuota = async (user: User, quotaToReduce: number) => {

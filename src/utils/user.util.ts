@@ -241,8 +241,20 @@ export const fillUserInteractiveQuota = async (
   user: User,
 ): Promise<bigint | number> => {
   const currentQuota = user.quota ?? MIN_USER_QUOTA;
+  console.log(
+    `fillUserInteractiveQuota: user.id=${user.id}, user.uuid=${
+      user.uuid
+    }, currentQuota=${currentQuota}, INTERACTIVE_QUOTA=${INTERACTIVE_QUOTA}, willUpdate=${
+      currentQuota < INTERACTIVE_QUOTA
+    }`,
+  );
   if (currentQuota < INTERACTIVE_QUOTA) {
-    await userRepository.update(user.id, { quota: INTERACTIVE_QUOTA });
+    const result = await userRepository.update(user.id, {
+      quota: INTERACTIVE_QUOTA,
+    });
+    console.log(
+      `fillUserInteractiveQuota: update result affected=${result.affected}`,
+    );
     return INTERACTIVE_QUOTA;
   }
   return currentQuota;

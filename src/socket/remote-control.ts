@@ -21,7 +21,11 @@ import {
   setUserCurrentDream,
   setUserCurrentPlaylist,
 } from "utils/socket.util";
-import { setUserLastClientPingAt } from "utils/user.util";
+import {
+  fillUserInteractiveQuota,
+  getNextQuotaResetAt,
+  setUserLastClientPingAt,
+} from "utils/user.util";
 
 const NEW_REMOTE_CONTROL_EVENT = "new_remote_control_event";
 const PING_EVENT = "ping";
@@ -30,6 +34,7 @@ const GOOD_BYE_EVENT = "goodbye";
 const CLIENT_PRESENCE_EVENT = "client_presence";
 const WEB_CLIENT_STATUS_EVENT = "web_client_status";
 const STATE_SYNC_EVENT = "state_sync";
+const QUOTA_UPDATE_EVENT = "quota_update";
 const JOIN_DREAM_ROOM_EVENT = "join_dream_room";
 const LEAVE_DREAM_ROOM_EVENT = "leave_dream_room";
 
@@ -336,6 +341,15 @@ export const handleNewControlEvent = ({
           playlist_uuid: playlist.uuid,
         },
       );
+
+      // Fill quota to INTERACTIVE_QUOTA and notify the client
+      const newQuota = await fillUserInteractiveQuota(user);
+      const quotaPayload = {
+        quota: Number(newQuota),
+        quotaExpiresAt: getNextQuotaResetAt().toISOString(),
+      };
+      socket.emit(QUOTA_UPDATE_EVENT, quotaPayload);
+      socket.broadcast.to(roomId).emit(QUOTA_UPDATE_EVENT, quotaPayload);
 
       data = { ...data, name: playlist?.name };
     }

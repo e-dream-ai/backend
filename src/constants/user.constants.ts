@@ -9,6 +9,11 @@ export const NEW_USER_DEFAULT_QUOTA = 10 * 1024 * 1024 * 1024;
 export const DAILY_USER_DEFAULT_QUOTA = 1 * 1024 * 1024 * 1024;
 
 /**
+ * quota granted when a user starts interactive playback (e.g. plays a playlist)
+ */
+export const INTERACTIVE_QUOTA = 1 * 1024 * 1024 * 1024;
+
+/**
  * min user quouta is 0
  */
 export const MIN_USER_QUOTA = 0;

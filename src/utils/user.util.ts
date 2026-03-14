@@ -11,6 +11,7 @@ import { Role } from "entities/Role.entity";
 import {
   DAILY_USER_DEFAULT_QUOTA,
   DAILY_USER_QUOTA_RESET_UTC_HOUR,
+  INTERACTIVE_QUOTA,
   MIN_USER_QUOTA,
 } from "constants/user.constants";
 import {
@@ -231,6 +232,21 @@ export const getNextQuotaResetAt = (now: Date = new Date()): Date => {
  * @param quotaToReduce amount by which to reduce the user's quota
  * @returns void
  */
+
+/**
+ * Fills a user's quota up to INTERACTIVE_QUOTA if it is currently below that.
+ * Returns the resulting quota value.
+ */
+export const fillUserInteractiveQuota = async (
+  user: User,
+): Promise<bigint | number> => {
+  const currentQuota = user.quota ?? MIN_USER_QUOTA;
+  if (currentQuota < INTERACTIVE_QUOTA) {
+    await userRepository.update(user.id, { quota: INTERACTIVE_QUOTA });
+    return INTERACTIVE_QUOTA;
+  }
+  return currentQuota;
+};
 
 export const reduceUserQuota = async (user: User, quotaToReduce: number) => {
   // ensures that the user's quota can't be negative

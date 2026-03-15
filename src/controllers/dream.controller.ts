@@ -1,5 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
+import { presignClient } from "clients/presign.client";
 import { r2Client } from "clients/r2.client";
 import { redisClient } from "clients/redis.client";
 
@@ -1843,4 +1844,52 @@ export const handleGetDreamPreview = async (
     );
     return handleInternalServerError(error, req as RequestType, res);
   }
+};
+
+/**
+ * GET /v1/dream/:uuid/thumbnail
+ * Returns a 302 redirect to a freshly presigned thumbnail URL.
+ */
+export const handleGetDreamThumbnail = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const dreamUUID = req.params.uuid as string;
+  const user = res.locals.user;
+
+  const dream = await dreamRepository.findOne({
+    where: { uuid: dreamUUID },
+    relations: { user: true },
+    select: { uuid: true, thumbnail: true, hidden: true, user: { id: true } },
+  });
+
+  if (!dream) {
+    return handleNotFound(req, res);
+  }
+
+  const isOwner = dream.user.id === user?.id;
+  const isAllowed = canExecuteAction({
+    isOwner,
+    allowedRoles: [ROLES.ADMIN_GROUP],
+    userRole: user?.role?.name,
+  });
+
+  if (dream.hidden && !isAllowed) {
+    return handleNotFound(req, res);
+  }
+
+  if (!dream.thumbnail) {
+    return res
+      .status(httpStatus.NOT_FOUND)
+      .json(
+        jsonResponse({ success: false, message: "No thumbnail available" }),
+      );
+  }
+
+  const presignedUrls = await presignClient.generatePresignedUrls([
+    dream.thumbnail,
+  ]);
+  const presignedUrl = presignedUrls[dream.thumbnail];
+  res.set("Cache-Control", "private, max-age=1200");
+  return res.redirect(302, presignedUrl);
 };

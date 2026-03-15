@@ -8,6 +8,8 @@ import httpStatus from "http-status";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import type { SessionCookieData, User as WorkOSUser } from "@workos-inc/node";
 import { APP_LOGGER } from "shared/logger";
+import { roleRepository, userRepository } from "database/repositories";
+import { RoleType } from "types/role.types";
 
 const IS_DEVELOPMENT = env.NODE_ENV === "development";
 
@@ -127,6 +129,17 @@ export const setWorkOSUserContext = async (
     });
   const workOSRole = organizationMemberships.data[0]?.role.slug;
   const user = await syncWorkOSUser(workOSUser);
+
+  // Sync role from WorkOS if it differs from the database role
+  if (workOSRole && user.role?.name !== workOSRole) {
+    const matchedRole = await roleRepository.findOneBy({
+      name: workOSRole as RoleType,
+    });
+    if (matchedRole) {
+      await userRepository.update(user.id, { role: matchedRole });
+      user.role = matchedRole;
+    }
+  }
 
   res.locals.workosUser = workOSUser;
   res.locals.userRole = workOSRole;

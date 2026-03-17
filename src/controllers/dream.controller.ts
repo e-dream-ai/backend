@@ -1860,7 +1860,6 @@ export const handleGetDreamThumbnail = async (
   const dream = await dreamRepository.findOne({
     where: { uuid: dreamUUID },
     relations: { user: true },
-    select: { uuid: true, thumbnail: true, hidden: true, user: { id: true } },
   });
 
   if (!dream) {

@@ -146,4 +146,88 @@ describe("dream get endpoints", () => {
       });
     });
   });
+
+  describe("handleGetDreamThumbnail", () => {
+    it("returns 302 redirect with presigned URL when dream has thumbnail", async () => {
+      const mockPresignedUrl = "https://r2.example.com/signed-thumb?token=abc";
+      const thumbnailKey = "user1/dream-1/thumbnails/dream-1.jpg";
+
+      const { req, res } = createReqRes();
+      req.params = { uuid: "dream-1" };
+
+      const redirect = jest.fn();
+      const set = jest.fn();
+      (res as unknown as Record<string, jest.Mock>).redirect = redirect;
+      (res as unknown as Record<string, jest.Mock>).set = set;
+
+      await jest.isolateModulesAsync(async () => {
+        const dreamRepository = {
+          findOne: jest.fn().mockResolvedValue({
+            uuid: "dream-1",
+            thumbnail: thumbnailKey,
+            user: { id: 1 },
+            hidden: false,
+          }),
+        };
+        jest.mock("database/repositories", () => ({
+          __esModule: true,
+          dreamRepository,
+          reportRepository: { find: jest.fn().mockResolvedValue([]) },
+        }));
+        jest.mock("clients/presign.client", () => ({
+          __esModule: true,
+          presignClient: {
+            generatePresignedUrls: jest
+              .fn()
+              .mockResolvedValue({ [thumbnailKey]: mockPresignedUrl }),
+          },
+        }));
+        mockCommonUtils();
+
+        const { handleGetDreamThumbnail } = await import(
+          "controllers/dream.controller"
+        );
+        await handleGetDreamThumbnail(req, res);
+
+        expect(set).toHaveBeenCalledWith(
+          "Cache-Control",
+          "private, max-age=600",
+        );
+        expect(redirect).toHaveBeenCalledWith(302, mockPresignedUrl);
+      });
+    });
+
+    it("returns 404 when dream has no thumbnail", async () => {
+      const { req, res, status } = createReqRes();
+      req.params = { uuid: "dream-1" };
+
+      await jest.isolateModulesAsync(async () => {
+        const dreamRepository = {
+          findOne: jest.fn().mockResolvedValue({
+            uuid: "dream-1",
+            thumbnail: null,
+            user: { id: 1 },
+            hidden: false,
+          }),
+        };
+        jest.mock("database/repositories", () => ({
+          __esModule: true,
+          dreamRepository,
+          reportRepository: { find: jest.fn().mockResolvedValue([]) },
+        }));
+        jest.mock("clients/presign.client", () => ({
+          __esModule: true,
+          presignClient: { generatePresignedUrls: jest.fn() },
+        }));
+        mockCommonUtils();
+
+        const { handleGetDreamThumbnail } = await import(
+          "controllers/dream.controller"
+        );
+        await handleGetDreamThumbnail(req, res);
+
+        expect(status).toHaveBeenCalledWith(404);
+      });
+    });
+  });
 });

@@ -15,6 +15,7 @@ import {
 import { GenericServerException } from "@workos-inc/node";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
+import { applySimulatedAuthFailure } from "utils/simulate-auth-failure.util";
 
 const AUTH_TIMEOUT_MS = 10_000;
 
@@ -87,6 +88,11 @@ const workOSAuth = async (
   res: ResponseType,
   next: NextFunction,
 ) => {
+  const simulatedAuthFailure = applySimulatedAuthFailure(res, "workOSAuth");
+  if (simulatedAuthFailure) {
+    return simulatedAuthFailure;
+  }
+
   const authToken =
     req.headers.authorization?.split("Bearer ")[1] ||
     req.cookies["wos-session"];

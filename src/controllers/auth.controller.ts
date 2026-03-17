@@ -73,6 +73,7 @@ import {
   RefreshAndSealSessionDataFailureReason,
 } from "@workos-inc/node";
 import { tracker } from "clients/google-analytics";
+import { applySimulatedAuthFailure } from "utils/simulate-auth-failure.util";
 import {
   findOnePlaylist,
   getPlaylistSelectedColumns,
@@ -1034,6 +1035,11 @@ export const logout = async (req: RequestType, res: ResponseType) => {
  *
  */
 export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
+  const simulatedAuthFailure = applySimulatedAuthFailure(res, "refreshWorkOS");
+  if (simulatedAuthFailure) {
+    return simulatedAuthFailure;
+  }
+
   const authHeader = req.headers.authorization?.split("Bearer ")[1];
   const authToken = authHeader || req.cookies["wos-session"];
 

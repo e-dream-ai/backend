@@ -188,6 +188,11 @@ export const env = cleanEnv(process.env, {
   SHEEP_PLAYLIST_UUID: str(),
 
   /**
+   * Internal API key for protected internal endpoints
+   */
+  INTERNAL_API_KEY: str({ default: "" }),
+
+  /**
    * Routes to log
    */
   LOG_ROUTES: str(),

@@ -598,6 +598,17 @@ dreamRouter.get(
   dreamController.handleGetDreamPreview,
 );
 
+dreamRouter.get(
+  "/:uuid/thumbnail",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  dreamController.handleGetDreamThumbnail,
+);
+
 /**
  * @swagger
  * /dream/{uuid}/process-dream:

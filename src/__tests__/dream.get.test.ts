@@ -148,16 +148,16 @@ describe("dream get endpoints", () => {
   });
 
   describe("handleGetDreamThumbnail", () => {
-    it("returns 302 redirect with presigned URL when dream has thumbnail", async () => {
+    it("returns presigned URL as JSON when dream has thumbnail", async () => {
       const mockPresignedUrl = "https://r2.example.com/signed-thumb?token=abc";
       const thumbnailKey = "user1/dream-1/thumbnails/dream-1.jpg";
 
       const { req, res } = createReqRes();
       req.params = { uuid: "dream-1" };
 
-      const redirect = jest.fn();
+      const json = jest.fn();
       const set = jest.fn();
-      (res as unknown as Record<string, jest.Mock>).redirect = redirect;
+      (res as unknown as Record<string, jest.Mock>).json = json;
       (res as unknown as Record<string, jest.Mock>).set = set;
 
       await jest.isolateModulesAsync(async () => {
@@ -193,7 +193,11 @@ describe("dream get endpoints", () => {
           "Cache-Control",
           "private, max-age=600",
         );
-        expect(redirect).toHaveBeenCalledWith(302, mockPresignedUrl);
+        expect(json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: { url: mockPresignedUrl },
+          }),
+        );
       });
     });
 

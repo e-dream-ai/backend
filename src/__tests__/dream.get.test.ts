@@ -191,7 +191,7 @@ describe("dream get endpoints", () => {
 
         expect(set).toHaveBeenCalledWith(
           "Cache-Control",
-          "private, max-age=1200",
+          "private, max-age=600",
         );
         expect(redirect).toHaveBeenCalledWith(302, mockPresignedUrl);
       });

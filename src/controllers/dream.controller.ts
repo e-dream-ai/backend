@@ -1890,6 +1890,6 @@ export const handleGetDreamThumbnail = async (
     dream.thumbnail,
   ]);
   const presignedUrl = presignedUrls[dream.thumbnail];
-  res.set("Cache-Control", "private, max-age=1200");
+  res.set("Cache-Control", "private, max-age=600");
   return res.redirect(302, presignedUrl);
 };

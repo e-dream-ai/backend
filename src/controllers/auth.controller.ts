@@ -73,7 +73,10 @@ import {
   RefreshAndSealSessionDataFailureReason,
 } from "@workos-inc/node";
 import { tracker } from "clients/google-analytics";
-import { applySimulatedAuthFailure } from "utils/simulate-auth-failure.util";
+import {
+  applySimulatedAuthFailure,
+  applySimulatedAuthFailureForMagicValidate,
+} from "utils/simulate-auth-failure.util";
 import {
   findOnePlaylist,
   getPlaylistSelectedColumns,
@@ -872,6 +875,10 @@ export const loginWithMagicAuth = async (
   try {
     if (code) {
       // Authenticate using the code
+      const simulated = applySimulatedAuthFailureForMagicValidate(
+        res as ResponseType,
+      );
+      if (simulated !== null) return simulated;
 
       console.log({
         msg: "Workos request",

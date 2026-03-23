@@ -4,10 +4,14 @@ import env from "shared/env";
 import { jsonResponse } from "utils/responses.util";
 import {
   AUTH_FAILURE_SIMULATION_MODES,
+  AUTH_FAILURE_SIMULATION_TARGETS,
   AuthFailureSimulationMode,
+  AuthFailureSimulationTarget,
   getAuthFailureSimulationMode,
+  getAuthFailureSimulationTarget,
   isAuthFailureSimulated,
   isValidAuthFailureSimulationMode,
+  isValidAuthFailureSimulationTarget,
   setSimulateAuthFailure,
 } from "utils/simulate-auth-failure.util";
 
@@ -21,9 +25,10 @@ simulateAuthFailureRouter.post("/", (req: Request, res: Response) => {
       .json(jsonResponse({ success: false, message: "Unauthorized" }));
   }
 
-  const { enabled, mode } = req.body as {
+  const { enabled, mode, target } = req.body as {
     enabled?: unknown;
     mode?: unknown;
+    target?: unknown;
   };
 
   let nextMode: AuthFailureSimulationMode;
@@ -37,7 +42,6 @@ simulateAuthFailureRouter.post("/", (req: Request, res: Response) => {
         }),
       );
     }
-
     nextMode = mode;
   } else if (typeof enabled === "boolean") {
     nextMode = enabled
@@ -53,15 +57,32 @@ simulateAuthFailureRouter.post("/", (req: Request, res: Response) => {
     );
   }
 
-  setSimulateAuthFailure(nextMode);
+  let nextTarget: AuthFailureSimulationTarget =
+    AUTH_FAILURE_SIMULATION_TARGETS.ALL;
+
+  if (typeof target !== "undefined") {
+    if (!isValidAuthFailureSimulationTarget(target)) {
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message:
+            "Body \"target\" must be one of \"all\" | \"middleware\" | \"magic-validate\"",
+        }),
+      );
+    }
+    nextTarget = target;
+  }
+
+  setSimulateAuthFailure(nextMode, nextTarget);
 
   return res.status(httpStatus.OK).json(
     jsonResponse({
       success: true,
-      message: `Auth failure simulation mode set to ${nextMode}`,
+      message: `Auth failure simulation set to mode=${nextMode} target=${nextTarget}`,
       data: {
         enabled: nextMode !== AUTH_FAILURE_SIMULATION_MODES.OFF,
         mode: nextMode,
+        target: nextTarget,
       },
     }),
   );
@@ -81,6 +102,7 @@ simulateAuthFailureRouter.get("/", (req: Request, res: Response) => {
       data: {
         enabled: isAuthFailureSimulated(),
         mode: getAuthFailureSimulationMode(),
+        target: getAuthFailureSimulationTarget(),
       },
     }),
   );

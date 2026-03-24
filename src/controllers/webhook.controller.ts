@@ -23,7 +23,7 @@ export const handleWorkosWebhook = async (
   res: ResponseType,
 ) => {
   try {
-    const payload = req.body as unknown as Buffer;
+    const payloadBuffer = req.body as unknown as Buffer;
     const sigHeader: string | undefined = req.headers[
       "workos-signature"
     ] as string;
@@ -33,7 +33,10 @@ export const handleWorkosWebhook = async (
     }
 
     const webhook = await workos.webhooks.constructEvent({
-      payload: payload,
+      payload: JSON.parse(payloadBuffer.toString("utf8")) as Record<
+        string,
+        unknown
+      >,
       sigHeader: sigHeader,
       secret: env.WORKOS_WEBHOOK_SECRET,
     });

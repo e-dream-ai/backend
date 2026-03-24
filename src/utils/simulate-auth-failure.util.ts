@@ -91,7 +91,10 @@ const buildSimulatedResponse = (
   );
 
   if (mode === AUTH_FAILURE_SIMULATION_MODES.MALFORMED) {
-    return res.status(httpStatus.OK).json({ data: null });
+    return res.status(httpStatus.OK).json({
+      success: true,
+      data: { sealedSession: "test-sealed-session-abc123" },
+    });
   }
 
   if (mode === AUTH_FAILURE_SIMULATION_MODES.BAD_REQUEST) {

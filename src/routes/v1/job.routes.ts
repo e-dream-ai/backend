@@ -8,7 +8,7 @@ const jobRouter = Router();
 
 /**
  * @swagger
- * /job:
+ * /api/v1/job:
  *  get:
  *    tags:
  *      - job

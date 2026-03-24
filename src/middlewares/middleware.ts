@@ -36,14 +36,18 @@ const options: swaggerJSDoc.Options = {
     },
     servers: [
       {
-        url: `http://localhost:${env.PORT ?? 8080}/api/v1/`,
+        url: `http://localhost:${env.PORT ?? 8080}/`,
       },
       {
-        url: "https://e-dream-76c98b08cc5d.herokuapp.com/api/v1/",
+        url: "https://e-dream-76c98b08cc5d.herokuapp.com/",
       },
     ],
   },
-  apis: ["./src/routes/v1/*.routes.ts", "./src/routes/v1/router.ts"],
+  apis: [
+    "./src/routes/v1/*.routes.ts",
+    "./src/routes/v1/router.ts",
+    "./src/routes/v2/*.routes.ts",
+  ],
 };
 
 const swaggerSpec = swaggerJSDoc(options);

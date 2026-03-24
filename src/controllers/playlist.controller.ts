@@ -62,6 +62,7 @@ import {
   computePlaylistTotalDurationSeconds,
   computePlaylistThumbnailRecursive,
   computePlaylistTotalDreamCount,
+  getPlaylistPlaybackItems,
 } from "utils/playlist.util";
 import {
   handleNotFound,
@@ -334,6 +335,46 @@ export const handleGetPlaylistItems = async (
         },
       }),
     );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+export const handleGetPlaylistPlaybackItems = async (
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+
+  try {
+    const playlist = await playlistRepository.findOne({
+      where: { uuid },
+      select: { id: true, user: { id: true }, hidden: true },
+      relations: { user: true },
+    });
+
+    if (!playlist) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isOwner = playlist.user.id === user.id;
+    const isAllowed = canExecuteAction({
+      isOwner,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (playlist.hidden && !isAllowed) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const items = await getPlaylistPlaybackItems(playlist.id);
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { items } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

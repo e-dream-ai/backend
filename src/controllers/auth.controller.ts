@@ -78,8 +78,9 @@ import {
   applySimulatedAuthFailureForMagicValidate,
 } from "utils/simulate-auth-failure.util";
 import {
-  findOnePlaylist,
+  findOnePlaylistWithoutItems,
   getPlaylistSelectedColumns,
+  computePlaylistThumbnailRecursive,
 } from "utils/playlist.util";
 import {
   transformUserWithSignedUrls,
@@ -524,15 +525,24 @@ export const handleCurrentUserPlaylist = async (
   let playlist: Playlist | null = null;
 
   if (currentPlaylist) {
-    playlist = await findOnePlaylist({
+    playlist = await findOnePlaylistWithoutItems({
       where: { uuid: currentPlaylist?.uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
-      filter: {
-        userId: user.id,
-        isAdmin: isUserAdmin,
-        nsfw: user?.nsfw,
-      },
     });
+
+    if (playlist && !playlist.thumbnail) {
+      const fallbackThumbnail = await computePlaylistThumbnailRecursive(
+        playlist.id,
+        {
+          userId: user.id,
+          isAdmin: isUserAdmin,
+          nsfw: user?.nsfw,
+        },
+      );
+      if (fallbackThumbnail) {
+        playlist.thumbnail = fallbackThumbnail;
+      }
+    }
   }
 
   const transformedPlaylist = playlist

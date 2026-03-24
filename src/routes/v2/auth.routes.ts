@@ -17,10 +17,10 @@ const authRouter = Router();
 
 /**
  * @swagger
- * /user/authenticate:
+ * /api/v2/auth/authenticate:
  *  get:
  *    tags:
- *      - user
+ *      - auth-v2
  *    summary: Gets authenticated user
  *    description: Gets authenticated user
  *    responses:
@@ -61,10 +61,10 @@ authRouter.get(
 
 /**
  * @swagger
- * /auth/callback:
+ * /api/v2/auth/callback:
  *  get:
  *    tags:
- *      - auth
+ *      - auth-v2
  *    summary: Receives callbacks from workos
  *    description: Handles the callback and returns auth headers and sets cookies
  *    parameters:
@@ -96,10 +96,11 @@ authRouter.get(
 );
 
 /**
- * /auth/login:
+ * @swagger
+ * /api/v2/auth/login:
  *  post:
  *    tags:
- *      - auth
+ *      - auth-v2
  *    summary: Login user with email and password
  *    description: Handles login.
  *    requestBody:
@@ -145,10 +146,11 @@ authRouter.post(
 );
 
 /**
- * /auth/magic:
+ * @swagger
+ * /api/v2/auth/magic:
  *  post:
  *    tags:
- *      - auth
+ *      - auth-v2
  *    summary: Login user with magic code sent to email.
  *    description: Handles login with code. If no code is provided, sends an email with code.
  *    requestBody:
@@ -195,10 +197,10 @@ authRouter.post(
 
 /**
  * @swagger
- * /auth/logout:
+ * /api/v2/auth/logout:
  *  get:
  *    tags:
- *      - auth
+ *      - auth-v2
  *    summary: Logout user
  *    description: Handles the logout
  *    responses:
@@ -219,10 +221,10 @@ authRouter.get("/logout", requireAuth, authController.logout);
 
 /**
  * @swagger
- * /auth/refresh:
+ * /api/v2/auth/refresh:
  *  post:
  *    tags:
- *      - auth
+ *      - auth-v2
  *    summary: Refresh token
  *    description: Handles refresh token passed in via cookie or headers.
  *    responses:
@@ -246,10 +248,10 @@ authRouter.post("/refresh", authController.refreshWorkOS);
 
 /**
  * @swagger
- * /auth/signup:
+ * /api/v2/auth/signup:
  *   post:
  *     tags:
- *       - auth
+ *       - auth-v2
  *     summary: Signup user
  *     description: Handles the signup
  *     requestBody:
@@ -293,10 +295,10 @@ authRouter.post(
 
 /**
  * @swagger
- * /auth/create-password-reset:
+ * /api/v2/auth/create-password-reset:
  *   post:
  *     tags:
- *       - auth
+ *       - auth-v2
  *     summary: Create password reset
  *     description: Create password reset
  *     requestBody:
@@ -331,10 +333,10 @@ authRouter.post(
 
 /**
  * @swagger
- * /auth/user:
+ * /api/v2/auth/user:
  *  get:
  *    tags:
- *      - auth
+ *      - auth-v2
  *    summary: Gets current user
  *    description: Handles current user
  *    responses:
@@ -366,10 +368,10 @@ authRouter.get("/user", requireAuth, authController.handleUser);
 
 /**
  * @swagger
- * /auth/user/dream/current:
+ * /api/v2/auth/dream/current:
  *  get:
  *    tags:
- *      - auth
+ *      - auth-v2
  *    summary: Gets current dream
  *    description: Handles current dream
  *    responses:
@@ -405,10 +407,10 @@ authRouter.get(
 
 /**
  * @swagger
- * /auth/user/playlists/current:
+ * /api/v2/auth/playlist/current:
  *  get:
  *    tags:
- *      - auth
+ *      - auth-v2
  *    summary: Gets current playlist
  *    description: Handles current playlist
  *    responses:

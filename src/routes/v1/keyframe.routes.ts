@@ -16,7 +16,7 @@ const keyframeRouter = Router();
 
 /**
  * @swagger
- * /keyframe/{uuid}:
+ * /api/v1/keyframe/{uuid}:
  *  get:
  *    tags:
  *      - keyframe
@@ -68,7 +68,7 @@ keyframeRouter.get(
 
 /**
  * @swagger
- * /keyframe/{uuid}:
+ * /api/v1/keyframe/{uuid}:
  *  get:
  *    tags:
  *      - keyframe
@@ -125,7 +125,7 @@ keyframeRouter.get(
 
 /**
  * @swagger
- * /keyframe:
+ * /api/v1/keyframe:
  *  post:
  *    tags:
  *      - keyframe
@@ -176,7 +176,7 @@ keyframeRouter.post(
 
 /**
  * @swagger
- * /keyframe/{uuid}:
+ * /api/v1/keyframe/{uuid}:
  *  put:
  *    tags:
  *      - keyframe
@@ -234,7 +234,7 @@ keyframeRouter.put(
 
 /**
  * @swagger
- * /keyframe/:uuid/create-multipart-upload:
+ * /api/v1/keyframe/:uuid/create-multipart-upload:
  *  post:
  *    tags:
  *      - keyframe
@@ -296,7 +296,7 @@ keyframeRouter.post(
 
 /**
  * @swagger
- * /{uuid}/image/complete:
+ * /api/v1/keyframe/{uuid}/image/complete:
  *  post:
  *    tags:
  *      - keyframe
@@ -363,7 +363,7 @@ keyframeRouter.post(
 
 /**
  * @swagger
- * /keyframe/{uuid}/image:
+ * /api/v1/keyframe/{uuid}/image:
  *  delete:
  *    tags:
  *      - keyframe
@@ -408,7 +408,7 @@ keyframeRouter.delete(
 
 /**
  * @swagger
- * /keyframe/{uuid}:
+ * /api/v1/keyframe/{uuid}:
  *  delete:
  *    tags:
  *      - keyframe

@@ -15,7 +15,7 @@ const clientRouter = Router();
 
 /**
  * @swagger
- * /client/hello:
+ * /api/v1/client/hello:
  *  get:
  *    tags:
  *      - client
@@ -57,7 +57,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/playlist/default:
+ * /api/v1/client/playlist/default:
  *  get:
  *    tags:
  *      - client
@@ -108,7 +108,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/playlist/{uuid}:
+ * /api/v1/client/playlist/{uuid}:
  *  get:
  *    tags:
  *      - client
@@ -161,7 +161,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/dream/{uuid}/url:
+ * /api/v1/client/dream/{uuid}/url:
  *  get:
  *    tags:
  *      - client
@@ -213,7 +213,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/dream:
+ * /api/v1/client/dream:
  *  get:
  *    tags:
  *      - client
@@ -267,7 +267,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/dream:
+ * /api/v1/client/dream:
  *  post:
  *    tags:
  *      - client
@@ -325,7 +325,7 @@ clientRouter.post(
 
 /**
  * @swagger
- * /client/user/dislikes:
+ * /api/v1/client/user/dislikes:
  *  get:
  *    tags:
  *      - client
@@ -370,7 +370,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/quota:
+ * /api/v1/client/quota:
  *  get:
  *    tags:
  *      - client
@@ -417,7 +417,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/telemetry:
+ * /api/v1/client/telemetry:
  *  post:
  *    tags:
  *      - client

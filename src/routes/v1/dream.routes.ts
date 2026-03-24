@@ -27,7 +27,7 @@ dreamRouter.use("/job", jobRouter);
 
 /**
  * @swagger
- * /dream:
+ * /api/v1/dream:
  *   get:
  *     tags:
  *       - dream
@@ -97,7 +97,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/create-multipart-upload:
+ * /api/v1/dream/create-multipart-upload:
  *  post:
  *    tags:
  *      - dream
@@ -158,7 +158,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/:uuid/create-multipart-upload:
+ * /api/v1/dream/:uuid/create-multipart-upload:
  *  post:
  *    tags:
  *      - dream
@@ -232,7 +232,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /{uuid}/refresh-multipart-upload-url:
+ * /api/v1/dream/{uuid}/refresh-multipart-upload-url:
  *  post:
  *    tags:
  *      - dream
@@ -314,7 +314,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /{uuid}/complete-multipart-upload:
+ * /api/v1/dream/{uuid}/complete-multipart-upload:
  *  post:
  *    tags:
  *      - dream
@@ -391,7 +391,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /{uuid}/abort-multipart-upload:
+ * /api/v1/dream/{uuid}/abort-multipart-upload:
  *  post:
  *    tags:
  *      - dream
@@ -439,7 +439,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/my-dreams:
+ * /api/v1/dream/my-dreams:
  *  get:
  *    tags:
  *      - dream
@@ -496,7 +496,7 @@ dreamRouter.get(
 
 /**
  * @swagger
- * /dream/{uuid}/vote:
+ * /api/v1/dream/{uuid}/vote:
  *  get:
  *    tags:
  *      - dream
@@ -548,7 +548,7 @@ dreamRouter.get(
 
 /**
  * @swagger
- * /dream/{uuid}/preview:
+ * /api/v1/dream/{uuid}/preview:
  *  get:
  *    tags:
  *      - dream
@@ -611,7 +611,7 @@ dreamRouter.get(
 
 /**
  * @swagger
- * /dream/{uuid}/process-dream:
+ * /api/v1/dream/{uuid}/process-dream:
  *  put:
  *    tags:
  *      - dream
@@ -662,7 +662,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}/cancel-job:
+ * /api/v1/dream/{uuid}/cancel-job:
  *  post:
  *    tags:
  *      - dream
@@ -720,7 +720,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}/status/processing:
+ * /api/v1/dream/{uuid}/status/processing:
  *  post:
  *    tags:
  *      - dream
@@ -770,7 +770,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}/status/processed:
+ * /api/v1/dream/{uuid}/status/processed:
  *  post:
  *    tags:
  *      - dream
@@ -834,7 +834,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}/status/failed:
+ * /api/v1/dream/{uuid}/status/failed:
  *  post:
  *    tags:
  *      - dream
@@ -885,7 +885,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}:
+ * /api/v1/dream/{uuid}:
  *  get:
  *    tags:
  *      - dream
@@ -937,7 +937,7 @@ dreamRouter.get(
 
 /**
  * @swagger
- * /dream/{uuid}:
+ * /api/v1/dream/{uuid}:
  *  put:
  *    tags:
  *      - dream
@@ -1056,7 +1056,7 @@ dreamRouter.put(
 
 /**
  * @swagger
- * /dream/{uuid}:
+ * /api/v1/dream/{uuid}:
  *  delete:
  *    tags:
  *      - dream
@@ -1101,7 +1101,7 @@ dreamRouter.delete(
 
 /**
  * @swagger
- * /dream/{uuid}/upvote:
+ * /api/v1/dream/{uuid}/upvote:
  *  put:
  *    tags:
  *      - dream
@@ -1153,7 +1153,7 @@ dreamRouter.put(
 
 /**
  * @swagger
- * /dream/{uuid}/downvote:
+ * /api/v1/dream/{uuid}/downvote:
  *  put:
  *    tags:
  *      - dream
@@ -1205,7 +1205,7 @@ dreamRouter.put(
 
 /**
  * @swagger
- * /dream/{uuid}/unvote:
+ * /api/v1/dream/{uuid}/unvote:
  *  put:
  *    tags:
  *      - dream

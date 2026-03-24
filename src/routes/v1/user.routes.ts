@@ -17,7 +17,7 @@ const userRouter = Router();
 
 /**
  * @swagger
- * /user/me/playlist:
+ * /api/v1/user/me/playlist:
  *  get:
  *    tags:
  *      - user
@@ -61,7 +61,7 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/me/dislikes:
+ * /api/v1/user/me/dislikes:
  *  get:
  *    tags:
  *      - client
@@ -106,7 +106,7 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/me:
+ * /api/v1/user/me:
  *  get:
  *    tags:
  *      - user
@@ -150,7 +150,7 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/roles:
+ * /api/v1/user/roles:
  *  get:
  *    tags:
  *      - user
@@ -213,7 +213,7 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/{uuid}/votes:
+ * /api/v1/user/{uuid}/votes:
  *  get:
  *    tags:
  *      - user
@@ -265,7 +265,7 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/{uuid}:
+ * /api/v1/user/{uuid}:
  *  get:
  *    tags:
  *      - user
@@ -317,7 +317,7 @@ userRouter.get(
 
 /**
  * @swagger
- * /user:
+ * /api/v1/user:
  *  get:
  *    tags:
  *      - user
@@ -364,7 +364,7 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/{uuid}:
+ * /api/v1/user/{uuid}:
  *  put:
  *    tags:
  *      - user
@@ -423,7 +423,7 @@ userRouter.put(
 
 /**
  * @swagger
- * /user/{uuid}/avatar:
+ * /api/v1/user/{uuid}/avatar:
  *  put:
  *    tags:
  *      - user
@@ -487,7 +487,7 @@ userRouter.put(
 
 /**
  * @swagger
- * /user/{uuid}/role:
+ * /api/v1/user/{uuid}/role:
  *  put:
  *    tags:
  *      - user
@@ -544,7 +544,7 @@ userRouter.put(
 
 /**
  * @swagger
- * /user/{uuid}/apikey:
+ * /api/v1/user/{uuid}/apikey:
  *  get:
  *    tags:
  *      - user
@@ -600,7 +600,7 @@ userRouter.get(
 
 /**
  * @swagger
- * /user/{uuid}/apikey:
+ * /api/v1/user/{uuid}/apikey:
  *  put:
  *    tags:
  *      - user
@@ -646,7 +646,7 @@ userRouter.put(
 
 /**
  * @swagger
- * /user/{uuid}/apikey:
+ * /api/v1/user/{uuid}/apikey:
  *  delete:
  *    tags:
  *      - user

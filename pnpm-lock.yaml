@@ -36,8 +36,8 @@ importers:
         specifier: ^8.3.0
         version: 8.3.0(socket.io-adapter@2.5.5)
       '@workos-inc/node':
-        specifier: ^7.21.0
-        version: 7.71.0(express@5.2.1)
+        specifier: 8.9.0
+        version: 8.9.0
       aws-sdk:
         specifier: ^2.1456.0
         version: 2.1692.0
@@ -1015,17 +1015,6 @@ packages:
   '@paralleldrive/cuid2@2.2.2':
     resolution: {integrity: sha512-ZOBkgDwEdoYVlSeRbYYXs0S9MejQofiVYoTbKzy/6GQa39/q5tQU2IX46+shYnUkpEl3wc+J6wRlar7r2EK2xA==}
 
-  '@peculiar/asn1-schema@2.5.0':
-    resolution: {integrity: sha512-YM/nFfskFJSlHqv59ed6dZlLZqtZQwjRVJ4bBAiWV08Oc+1rSd5lDZcBEx0lGDHfSoH3UziI2pXt2UM33KerPQ==}
-
-  '@peculiar/json-schema@1.1.12':
-    resolution: {integrity: sha512-coUfuoMeIB7B8/NMekxaDzLhaYmp0HZNPEjYRm9goRou8UZIC3z21s0sL9AWoCw4EG876QyO3kYrc61WNF9B/w==}
-    engines: {node: '>=8.0.0'}
-
-  '@peculiar/webcrypto@1.5.0':
-    resolution: {integrity: sha512-BRs5XUAwiyCDQMsVA9IDvDa7UBR9gAvPHgugOeGng3YN6vJ9JYonyDc0lNczErgtCWtucjR5N7VtaonboD/ezg==}
-    engines: {node: '>=10.12.0'}
-
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
 
@@ -1363,9 +1352,6 @@ packages:
     peerDependencies:
       '@types/express': '*'
 
-  '@types/cookie@0.5.4':
-    resolution: {integrity: sha512-7z/eR6O859gyWIAjuvBWFzNURmf2oPBmJlfVWkwehU5nzIyjwBsTh7WMmEEV4JFnHuQ3ex4oyTvfKzcyJVDBNA==}
-
   '@types/cookiejar@2.1.5':
     resolution: {integrity: sha512-he+DHOWReW0nghN24E1WUqM0efK4kI9oTqDm6XmK8ZPe2djZ90BSNdGnIyCLzCPw7/pogPlGbzI2wHGGmi4O/Q==}
 
@@ -1411,9 +1397,6 @@ packages:
   '@types/koa-compose@3.2.9':
     resolution: {integrity: sha512-BroAZ9FTvPiCy0Pi8tjD1OfJ7bgU1gQf0eR6e1Vm+JJATy9eKOG3hQMFtMciMawiSOVnLMdmUOC46s7HBhSTsA==}
 
-  '@types/koa@2.15.0':
-    resolution: {integrity: sha512-7QFsywoE5URbuVnG3loe03QXuGajrnotr3gQkXcEBShORai23MePfFYdhz90FEtBBpkyIYQbVD+evKtloCgX3g==}
-
   '@types/koa@3.0.1':
     resolution: {integrity: sha512-VkB6WJUQSe0zBpR+Q7/YIUESGp5wPHcaXr0xueU5W0EOUWtlSbblsl+Kl31lyRQ63nIILh0e/7gXjQ09JXJIHw==}
 
@@ -1428,9 +1411,6 @@ packages:
 
   '@types/multer@1.4.13':
     resolution: {integrity: sha512-bhhdtPw7JqCiEfC9Jimx5LqX9BDIPJEh2q/fQ4bqbBPtyEZYr3cvF22NwG0DmPZNYA0CAf2CnqDB4KIGGpJcaw==}
-
-  '@types/node@17.0.45':
-    resolution: {integrity: sha512-w+tIMs3rq2afQdsPJlODhoUEKzFP1ayaoyl1CcnwtIlsVe7K7bA1NGm4s3PraqTLlXnbIN84zuBlxBWo1u9BLw==}
 
   '@types/node@24.10.4':
     resolution: {integrity: sha512-vnDVpYPMzs4wunl27jHrfmwojOGKya0xyM3sH+UE5iv5uPS6vX7UIoh6m+vQc5LGBq52HBKPIn/zcSZVzeDEZg==}
@@ -1672,9 +1652,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@workos-inc/node@7.71.0':
-    resolution: {integrity: sha512-fkNLGqVqEJ5KOMX6TsPUHbF3cQmWCoSdOv5nHzo76O7ZYIuQbVPfUcWjMRGuZLnjWJO0b4KKNyzR6AyWCVwGcQ==}
-    engines: {node: '>=16'}
+  '@workos-inc/node@8.9.0':
+    resolution: {integrity: sha512-io5D4Scoy7RwjNQGyWWVeljwQz4RSqGRILP1/tbv5vXUxJdhpcGqGwML4AHamgacEay+QyiDW9RvgfjiQN3KLw==}
+    engines: {node: '>=20.15.0'}
 
   '@zone-eu/mailsplit@5.4.8':
     resolution: {integrity: sha512-eEyACj4JZ7sjzRvy26QhLgKEMWwQbsw1+QZnlLX+/gihcNH07lVPOcnwf5U6UAL7gkc//J3jVd76o/WS+taUiA==}
@@ -1766,10 +1746,6 @@ packages:
 
   asap@2.0.6:
     resolution: {integrity: sha512-BSHWgDSAiKs50o2Re8ppvp3seVHXSRM44cdSsT9FfNEUUZLOGWVCsiWaRPWM1Znn+mqZ1OfVZ3z3DWEzSp7hRA==}
-
-  asn1js@3.0.6:
-    resolution: {integrity: sha512-UOCGPYbl0tv8+006qks/dTgV9ajs97X2p0FAbyS2iyCRrmLSRolDaHdp+v/CLgnzHc3fVB+CwYiUmei7ndFcgA==}
-    engines: {node: '>=12.0.0'}
 
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
@@ -2025,10 +2001,6 @@ packages:
   cookie-signature@1.2.2:
     resolution: {integrity: sha512-D76uU73ulSXrD1UXF4KE2TMxVVwhsnCgfAyTg9k8P6KGZjlXKrOLe4dJQKI3Bxi5wjesZoFXJWElNWBjPZMbhg==}
     engines: {node: '>=6.6.0'}
-
-  cookie@0.5.0:
-    resolution: {integrity: sha512-YZ3GUyn/o8gfKJlnlX7g7xq4gyO6OSuhGPKaaGssGB2qgDUS0gPgtTvoyZLTt9Ab6dC4hfc9dV5arkvc/OCmrw==}
-    engines: {node: '>= 0.6'}
 
   cookie@0.7.2:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
@@ -2645,24 +2617,6 @@ packages:
     resolution: {integrity: sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==}
     engines: {node: '>= 0.10'}
 
-  iron-session@6.3.1:
-    resolution: {integrity: sha512-3UJ7y2vk/WomAtEySmPgM6qtYF1cZ3tXuWX5GsVX4PJXAcs5y/sV9HuSfpjKS6HkTL/OhZcTDWJNLZ7w+Erx3A==}
-    engines: {node: '>=12'}
-    peerDependencies:
-      express: '>=4'
-      koa: '>=2'
-      next: '>=10'
-    peerDependenciesMeta:
-      express:
-        optional: true
-      koa:
-        optional: true
-      next:
-        optional: true
-
-  iron-webcrypto@0.2.8:
-    resolution: {integrity: sha512-YPdCvjFMOBjXaYuDj5tiHst5CEk6Xw84Jo8Y2+jzhMceclAnb3+vNPP/CTtb5fO2ZEuXEaO4N+w62Vfko757KA==}
-
   is-arguments@1.2.0:
     resolution: {integrity: sha512-7bVbi0huj/wrIAOzb8U1aszg9kdi3KN/CyU19CTI7tAoZYEZoL9yCDXpbXN+uPsuWnP02cyug1gleqq+TU+YCA==}
     engines: {node: '>= 0.4'}
@@ -2903,9 +2857,6 @@ packages:
   jose@4.15.9:
     resolution: {integrity: sha512-1vUQX+IdDMVPj4k8kOxgUqlcK518yluMuGZwqlr44FS1ppZB/5GWh4rZG89erpOBOJjU/OBsnCVFfapsRz6nEA==}
 
-  jose@5.6.3:
-    resolution: {integrity: sha512-1Jh//hEEwMhNYPDDLwXHa2ePWgWiFNNUadVmguAAw2IJ6sj9mNxV5tGXJNqlMkJAybF6Lgw1mISDxTePP/187g==}
-
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
@@ -2962,9 +2913,6 @@ packages:
 
   leac@0.6.0:
     resolution: {integrity: sha512-y+SqErxb8h7nE/fiEX07jsbuhrpO9lL8eca7/Y1nuWV2moNlXhyd59iDGcRf6moVyDMbmTNzL40SUyrFU/yDpg==}
-
-  leb@1.0.0:
-    resolution: {integrity: sha512-Y3c3QZfvKWHX60BVOQPhLCvVGmDYWyJEiINE3drOog6KCyN2AOwvuQQzlS3uJg1J85kzpILXIUwRXULWavir+w==}
 
   leven@3.1.0:
     resolution: {integrity: sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A==}
@@ -3468,10 +3416,6 @@ packages:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
 
-  pluralize@8.0.0:
-    resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
-    engines: {node: '>=4'}
-
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
@@ -3541,13 +3485,6 @@ packages:
 
   pure-rand@7.0.1:
     resolution: {integrity: sha512-oTUZM/NAZS8p7ANR3SHh30kXB+zK2r2BPcEn/awJIbOvq82WoMN4p62AWWp3Hhw50G0xMsw1mhIBLqHw64EcNQ==}
-
-  pvtsutils@1.3.6:
-    resolution: {integrity: sha512-PLgQXQ6H2FWCaeRak8vvk1GW462lMxB5s3Jm673N82zI4vqtVUPuZdffdZbPDFRoU8kAhItWFtPCWiPpp4/EDg==}
-
-  pvutils@1.1.5:
-    resolution: {integrity: sha512-KTqnxsgGiQ6ZAzZCVlJH5eOjSnvlyEgx1m8bkRJfOhmGRqfo5KLvmAlACQkrjEtOQ4B7wF9TdSLIs9O90MX9xA==}
-    engines: {node: '>=16.0.0'}
 
   qs@6.13.0:
     resolution: {integrity: sha512-+38qI9SOr8tfZ4QmJNplMUxqjbe7LKvvZgWdExBOmd+egZTtjLB67Gu0HRX3u/XOq7UU2Nx6nsjvS16Z9uwfpg==}
@@ -4247,9 +4184,6 @@ packages:
 
   walker@1.0.8:
     resolution: {integrity: sha512-ts/8E8l5b7kY0vlWLewOkDXMmPdLcVV4GmOQLyxuSswIJsweeFZtAsMF7k1Nszz+TYBQrlYRmzOnr398y1JemQ==}
-
-  webcrypto-core@1.8.1:
-    resolution: {integrity: sha512-P+x1MvlNCXlKbLSOY4cYrdreqPG5hbzkmawbcXLKN/mf6DZW0SdNNkZ+sjwsqVkI4A4Ko2sPZmkZtCKY58w83A==}
 
   which-typed-array@1.1.19:
     resolution: {integrity: sha512-rEvr90Bck4WZt9HHFC4DJMsjvu7x+r6bImz0/BrbWb7A2djJ8hnZMrWnHo9F8ssv0OMErasDhftrfROTyqSDrw==}
@@ -5656,24 +5590,6 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
 
-  '@peculiar/asn1-schema@2.5.0':
-    dependencies:
-      asn1js: 3.0.6
-      pvtsutils: 1.3.6
-      tslib: 2.8.1
-
-  '@peculiar/json-schema@1.1.12':
-    dependencies:
-      tslib: 2.8.1
-
-  '@peculiar/webcrypto@1.5.0':
-    dependencies:
-      '@peculiar/asn1-schema': 2.5.0
-      '@peculiar/json-schema': 1.1.12
-      pvtsutils: 1.3.6
-      tslib: 2.8.1
-      webcrypto-core: 1.8.1
-
   '@pinojs/redact@0.4.0': {}
 
   '@pkgjs/parseargs@0.11.0':
@@ -6131,8 +6047,6 @@ snapshots:
     dependencies:
       '@types/express': 4.17.24
 
-  '@types/cookie@0.5.4': {}
-
   '@types/cookiejar@2.1.5': {}
 
   '@types/cookies@0.9.2':
@@ -6192,17 +6106,6 @@ snapshots:
     dependencies:
       '@types/koa': 3.0.1
 
-  '@types/koa@2.15.0':
-    dependencies:
-      '@types/accepts': 1.3.7
-      '@types/content-disposition': 0.5.9
-      '@types/cookies': 0.9.2
-      '@types/http-assert': 1.5.6
-      '@types/http-errors': 2.0.5
-      '@types/keygrip': 1.0.6
-      '@types/koa-compose': 3.2.9
-      '@types/node': 24.10.4
-
   '@types/koa@3.0.1':
     dependencies:
       '@types/accepts': 1.3.7
@@ -6223,8 +6126,6 @@ snapshots:
   '@types/multer@1.4.13':
     dependencies:
       '@types/express': 4.17.24
-
-  '@types/node@17.0.45': {}
 
   '@types/node@24.10.4':
     dependencies:
@@ -6479,17 +6380,7 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
-  '@workos-inc/node@7.71.0(express@5.2.1)':
-    dependencies:
-      iron-session: 6.3.1(express@5.2.1)
-      jose: 5.6.3
-      leb: 1.0.0
-      pluralize: 8.0.0
-      qs: 6.14.0
-    transitivePeerDependencies:
-      - express
-      - koa
-      - next
+  '@workos-inc/node@8.9.0': {}
 
   '@zone-eu/mailsplit@5.4.8':
     dependencies:
@@ -6570,12 +6461,6 @@ snapshots:
   array-union@2.1.0: {}
 
   asap@2.0.6: {}
-
-  asn1js@3.0.6:
-    dependencies:
-      pvtsutils: 1.3.6
-      pvutils: 1.1.5
-      tslib: 2.8.1
 
   asynckit@0.4.0: {}
 
@@ -6882,8 +6767,6 @@ snapshots:
   cookie-signature@1.0.6: {}
 
   cookie-signature@1.2.2: {}
-
-  cookie@0.5.0: {}
 
   cookie@0.7.2: {}
 
@@ -7573,22 +7456,6 @@ snapshots:
 
   ipaddr.js@1.9.1: {}
 
-  iron-session@6.3.1(express@5.2.1):
-    dependencies:
-      '@peculiar/webcrypto': 1.5.0
-      '@types/cookie': 0.5.4
-      '@types/express': 4.17.24
-      '@types/koa': 2.15.0
-      '@types/node': 17.0.45
-      cookie: 0.5.0
-      iron-webcrypto: 0.2.8
-    optionalDependencies:
-      express: 5.2.1
-
-  iron-webcrypto@0.2.8:
-    dependencies:
-      buffer: 6.0.3
-
   is-arguments@1.2.0:
     dependencies:
       call-bound: 1.0.4
@@ -8018,8 +7885,6 @@ snapshots:
 
   jose@4.15.9: {}
 
-  jose@5.6.3: {}
-
   joycon@3.1.1: {}
 
   js-tokens@4.0.0: {}
@@ -8085,8 +7950,6 @@ snapshots:
       json-buffer: 3.0.1
 
   leac@0.6.0: {}
-
-  leb@1.0.0: {}
 
   leven@3.1.0: {}
 
@@ -8590,8 +8453,6 @@ snapshots:
     dependencies:
       find-up: 4.1.0
 
-  pluralize@8.0.0: {}
-
   possible-typed-array-names@1.1.0: {}
 
   postgres-array@2.0.0: {}
@@ -8641,12 +8502,6 @@ snapshots:
   punycode@2.3.1: {}
 
   pure-rand@7.0.1: {}
-
-  pvtsutils@1.3.6:
-    dependencies:
-      tslib: 2.8.1
-
-  pvutils@1.1.5: {}
 
   qs@6.13.0:
     dependencies:
@@ -9367,14 +9222,6 @@ snapshots:
   walker@1.0.8:
     dependencies:
       makeerror: 1.0.12
-
-  webcrypto-core@1.8.1:
-    dependencies:
-      '@peculiar/asn1-schema': 2.5.0
-      '@peculiar/json-schema': 1.1.12
-      asn1js: 3.0.6
-      pvtsutils: 1.3.6
-      tslib: 2.8.1
 
   which-typed-array@1.1.19:
     dependencies:

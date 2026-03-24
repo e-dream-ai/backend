@@ -38,7 +38,8 @@ simulateAuthFailureRouter.post("/", (req: Request, res: Response) => {
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({
           success: false,
-          message: "Body \"mode\" must be one of \"off\" | \"503\" | \"400\" | \"hang\"",
+          message:
+            "Body \"mode\" must be one of \"off\" | \"503\" | \"400\" | \"hang\" | \"malformed\"",
         }),
       );
     }

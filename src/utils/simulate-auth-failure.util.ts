@@ -8,6 +8,7 @@ export const AUTH_FAILURE_SIMULATION_MODES = {
   SERVICE_UNAVAILABLE: "503",
   BAD_REQUEST: "400",
   HANG: "hang",
+  MALFORMED: "malformed",
 } as const;
 
 export const AUTH_FAILURE_SIMULATION_TARGETS = {
@@ -88,6 +89,10 @@ const buildSimulatedResponse = (
   APP_LOGGER.warn(
     `Simulated auth failure triggered (${context}) with mode: ${mode}`,
   );
+
+  if (mode === AUTH_FAILURE_SIMULATION_MODES.MALFORMED) {
+    return res.status(httpStatus.OK).json({ data: null });
+  }
 
   if (mode === AUTH_FAILURE_SIMULATION_MODES.BAD_REQUEST) {
     return res.status(httpStatus.BAD_REQUEST).json(

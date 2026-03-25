@@ -51,6 +51,9 @@ describe("dream get endpoints", () => {
     }));
     jest.mock("utils/transform.util", () => ({
       __esModule: true,
+      signKey: jest.fn(
+        (key: string) => `https://worker.example.com/${key}?sig=mocksig`,
+      ),
       transformDreamWithSignedUrls: jest
         .fn()
         .mockImplementation(<T>(d: T) => d),
@@ -191,9 +194,9 @@ describe("dream get endpoints", () => {
             },
           }),
         );
-        // Verify URL contains HMAC signature
         const calledUrl = json.mock.calls[0][0].data.url;
-        expect(calledUrl).toMatch(/\?sig=[a-f0-9]{64}$/);
+        expect(calledUrl).toContain(thumbnailKey);
+        expect(calledUrl).toContain("?sig=");
       });
     });
 

@@ -79,6 +79,12 @@ export const env = cleanEnv(process.env, {
   PRESIGN_SERVICE_API_KEY: str(),
 
   /**
+   * Image Worker (CF Worker serving R2 files directly)
+   */
+  IMAGE_WORKER_URL: str(),
+  IMAGE_WORKER_SIGNING_SECRET: str(),
+
+  /**
    * TYPEORM
    */
   TYPEORM_CONNECTION: str(),

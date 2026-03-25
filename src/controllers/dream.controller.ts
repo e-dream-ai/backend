@@ -1,6 +1,5 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
-import { presignClient } from "clients/presign.client";
 import { r2Client } from "clients/r2.client";
 import { redisClient } from "clients/redis.client";
 
@@ -82,6 +81,7 @@ import { truncateString } from "utils/string.util";
 import { getUserIdentifier, isAdmin } from "utils/user.util";
 import { framesToSeconds } from "utils/video.utils";
 import {
+  signKey,
   transformDreamWithSignedUrls,
   transformDreamsWithSignedUrls,
 } from "utils/transform.util";
@@ -1885,11 +1885,8 @@ export const handleGetDreamThumbnail = async (
       );
   }
 
-  const presignedUrls = await presignClient.generatePresignedUrls([
-    dream.thumbnail,
-  ]);
-  const presignedUrl = presignedUrls[dream.thumbnail];
+  const url = signKey(dream.thumbnail);
 
-  res.set("Cache-Control", "private, max-age=600");
-  return res.json(jsonResponse({ success: true, data: { url: presignedUrl } }));
+  res.set("Cache-Control", "private, max-age=3600");
+  return res.json(jsonResponse({ success: true, data: { url } }));
 };

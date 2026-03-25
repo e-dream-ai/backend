@@ -1,4 +1,13 @@
 import type { Dream } from "entities/Dream.entity";
+import { createHmac } from "crypto";
+
+const WORKER_URL = "https://worker.example.com";
+const SIGNING_SECRET = "test-signing-secret";
+
+function expectedUrl(key: string): string {
+  const sig = createHmac("sha256", SIGNING_SECRET).update(key).digest("hex");
+  return `${WORKER_URL}/${key}?sig=${sig}`;
+}
 
 describe("transform.util", () => {
   beforeEach(() => {
@@ -7,137 +16,75 @@ describe("transform.util", () => {
   });
 
   it("collects keys and applies signed urls immutably for dream", async () => {
-    await jest.isolateModulesAsync(async () => {
-      const dream = {
-        video: "u/d/d.mp4",
-        original_video: "u/d/o.mp4",
-        thumbnail: "u/d/t.jpg",
-        filmstrip: [
-          { frameNumber: 1, url: "u/d/filmstrip/frame-1.jpg" },
-          { frameNumber: 2, url: "u/d/filmstrip/frame-2.jpg" },
-        ],
-        user: { avatar: "u/a.jpg" },
-      } as Record<string, unknown>;
+    const { transformDreamWithSignedUrls } = await import(
+      "utils/transform.util"
+    );
 
-      const signed: Record<string, string> = {
-        "u/d/d.mp4": "S1",
-        "u/d/o.mp4": "S2",
-        "u/d/t.jpg": "S3",
-        "u/d/filmstrip/frame-1.jpg": "F1",
-        "u/d/filmstrip/frame-2.jpg": "F2",
-        "u/a.jpg": "A1",
-      };
+    const dream = {
+      video: "u/d/d.mp4",
+      original_video: "u/d/o.mp4",
+      thumbnail: "u/d/t.jpg",
+      filmstrip: [
+        { frameNumber: 1, url: "u/d/filmstrip/frame-1.jpg" },
+        { frameNumber: 2, url: "u/d/filmstrip/frame-2.jpg" },
+      ],
+      user: { avatar: "u/a.jpg" },
+    } as Record<string, unknown>;
 
-      const presigned = jest.fn().mockResolvedValue(signed);
-      jest.doMock("clients/presign.client", () => ({
-        __esModule: true,
-        presignClient: { generatePresignedUrls: presigned },
-      }));
+    const out = await transformDreamWithSignedUrls(dream as unknown as Dream);
 
-      const { transformDreamWithSignedUrls } = await import(
-        "utils/transform.util"
-      );
-      const out = await transformDreamWithSignedUrls(dream as unknown as Dream);
-
-      expect(out).not.toBe(dream);
-      expect(out.video).toBe("S1");
-      expect(out.original_video).toBe("S2");
-      expect(out.thumbnail).toBe("S3");
-      const fs0 = out.filmstrip[0] as unknown as { url?: string };
-      const fs1 = out.filmstrip[1] as unknown as { url?: string };
-      expect(fs0.url).toBe("F1");
-      expect(fs1.url).toBe("F2");
-      expect(out.user.avatar).toBe("A1");
-    });
+    expect(out).not.toBe(dream);
+    expect(out.video).toBe(expectedUrl("u/d/d.mp4"));
+    expect(out.original_video).toBe(expectedUrl("u/d/o.mp4"));
+    expect(out.thumbnail).toBe(expectedUrl("u/d/t.jpg"));
+    const fs0 = out.filmstrip[0] as unknown as { url?: string };
+    const fs1 = out.filmstrip[1] as unknown as { url?: string };
+    expect(fs0.url).toBe(expectedUrl("u/d/filmstrip/frame-1.jpg"));
+    expect(fs1.url).toBe(expectedUrl("u/d/filmstrip/frame-2.jpg"));
+    expect(out.user.avatar).toBe(expectedUrl("u/a.jpg"));
   });
 
   it("returns entity unchanged when no keys to sign", async () => {
-    await jest.isolateModulesAsync(async () => {
-      const dream = { name: "no urls" } as Record<string, unknown>;
-      const presigned = jest.fn();
-      jest.doMock("clients/presign.client", () => ({
-        __esModule: true,
-        presignClient: { generatePresignedUrls: presigned },
-      }));
+    const { transformDreamWithSignedUrls } = await import(
+      "utils/transform.util"
+    );
 
-      const { transformDreamWithSignedUrls } = await import(
-        "utils/transform.util"
-      );
-      const out = await transformDreamWithSignedUrls(dream as unknown as Dream);
-      expect(out).toBe(dream);
-      expect(presigned).not.toHaveBeenCalled();
-    });
+    const dream = { name: "no urls" } as Record<string, unknown>;
+    const out = await transformDreamWithSignedUrls(dream as unknown as Dream);
+    expect(out).toBe(dream);
   });
 
   it("transformEntities batches unique keys and maps results", async () => {
-    await jest.isolateModulesAsync(async () => {
-      const dreams = [
-        { video: "k1", thumbnail: "t1", user: { avatar: "a1" } },
-        { video: "k2", thumbnail: "t2", user: { avatar: "a2" } },
-      ] as Array<Record<string, unknown>>;
+    const { transformDreamsWithSignedUrls } = await import(
+      "utils/transform.util"
+    );
 
-      const mapping: Record<string, string> = {
-        k1: "K1",
-        t1: "T1",
-        a1: "A1",
-        k2: "K2",
-        t2: "T2",
-        a2: "A2",
-      };
+    const dreams = [
+      { video: "k1", thumbnail: "t1", user: { avatar: "a1" } },
+      { video: "k2", thumbnail: "t2", user: { avatar: "a2" } },
+    ] as Array<Record<string, unknown>>;
 
-      const presigned = jest.fn().mockResolvedValue(mapping);
-      jest.doMock("clients/presign.client", () => ({
-        __esModule: true,
-        presignClient: { generatePresignedUrls: presigned },
-      }));
-
-      const { transformDreamsWithSignedUrls } = await import(
-        "utils/transform.util"
-      );
-      const out = await transformDreamsWithSignedUrls(
-        dreams as unknown as Dream[],
-      );
-      expect(presigned).toHaveBeenCalledWith([
-        "k1",
-        "t1",
-        "a1",
-        "k2",
-        "t2",
-        "a2",
-      ]);
-      expect(out[0].video).toBe("K1");
-      expect(out[1].thumbnail).toBe("T2");
-    });
+    const out = await transformDreamsWithSignedUrls(
+      dreams as unknown as Dream[],
+    );
+    expect(out[0].video).toBe(expectedUrl("k1"));
+    expect(out[0].thumbnail).toBe(expectedUrl("t1"));
+    expect(out[1].video).toBe(expectedUrl("k2"));
+    expect(out[1].thumbnail).toBe(expectedUrl("t2"));
   });
 
-  it("TransformSession.executeBatch aggregates partial failures", async () => {
-    await jest.isolateModulesAsync(async () => {
-      const calls: Array<"fail" | "ok"> = ["fail", "ok"];
-      const presigned = jest
-        .fn()
-        .mockImplementation(async (batch: string[]) => {
-          const mode = calls.shift();
-          if (mode === "fail") throw new Error("x");
-          return Object.fromEntries(batch.map((k) => [k, k.toUpperCase()]));
-        });
+  it("TransformSession.executeBatch generates signed urls for all keys", async () => {
+    const { TransformSession } = await import("utils/transform.util");
+    const session = new TransformSession();
 
-      jest.doMock("clients/presign.client", () => ({
-        __esModule: true,
-        presignClient: { generatePresignedUrls: presigned },
-      }));
+    session["allKeys"].add("key1");
+    session["allKeys"].add("key2");
+    session["allKeys"].add("key3");
 
-      const ce = jest.spyOn(console, "error").mockImplementation(() => {});
-      const cw = jest.spyOn(console, "warn").mockImplementation(() => {});
-
-      const { TransformSession } = await import("utils/transform.util");
-      const session = new TransformSession();
-      for (let i = 0; i < 600; i++) session["allKeys"].add(`k${i}`);
-
-      const signed = await session.executeBatch();
-      expect(Object.keys(signed).length).toBeGreaterThan(0);
-
-      ce.mockRestore();
-      cw.mockRestore();
-    });
+    const signed = await session.executeBatch();
+    expect(Object.keys(signed)).toHaveLength(3);
+    expect(signed["key1"]).toBe(expectedUrl("key1"));
+    expect(signed["key2"]).toBe(expectedUrl("key2"));
+    expect(signed["key3"]).toBe(expectedUrl("key3"));
   });
 });

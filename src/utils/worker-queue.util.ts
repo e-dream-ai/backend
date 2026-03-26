@@ -10,6 +10,12 @@ interface JobData {
   [key: string]: unknown;
 }
 
+interface VideoIngestJobData {
+  type: "video" | "image" | "md5" | "filmstrip";
+  dream_uuid: string;
+  extension?: string;
+}
+
 export const queueWorkerJob = async (
   queueName: string,
   jobData: JobData,
@@ -39,6 +45,44 @@ export const queueWorkerJob = async (
     };
   } catch (error) {
     APP_LOGGER.error(`Failed to queue job to ${queueName}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};
+
+export const queueVideoIngestJob = async (
+  jobData: VideoIngestJobData,
+): Promise<{ success: boolean; jobId?: string; error?: string }> => {
+  try {
+    const queue = new Queue("videoingest", {
+      connection: redisClient,
+    });
+
+    const job = await queue.add("message", jobData);
+
+    await job.updateProgress({
+      dream_uuid: jobData.dream_uuid,
+      status: "IN_QUEUE",
+      progress: 0,
+    });
+
+    await queue.close();
+
+    APP_LOGGER.info(
+      `Queued videoingest job ${job.id} (${jobData.type}) for dream ${jobData.dream_uuid}`,
+    );
+
+    return {
+      success: true,
+      jobId: job.id,
+    };
+  } catch (error) {
+    APP_LOGGER.error(
+      `Failed to queue videoingest job for dream ${jobData.dream_uuid}:`,
+      error,
+    );
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",

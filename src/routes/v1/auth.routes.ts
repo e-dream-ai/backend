@@ -13,7 +13,7 @@ import {
 const authRouter = Router();
 
 /**
- * /auth/login-with-code:
+ * /api/v1/auth/login-with-code:
  *  post:
  *    tags:
  *      - auth
@@ -56,7 +56,7 @@ authRouter.post(
 );
 
 /**
- * /auth/confirm-login-with-code:
+ * /api/v1/auth/confirm-login-with-code:
  *  post:
  *    tags:
  *      - auth
@@ -102,7 +102,7 @@ authRouter.post(
 
 /**
  * @swagger
- * /auth/signup:
+ * /api/v1/auth/signup:
  *   post:
  *     tags:
  *       - auth
@@ -142,7 +142,7 @@ authRouter.post("/signup", validateSignupSchema, authController.handleSignUp);
 
 /**
  * @swagger
- * /auth/code:
+ * /api/v1/auth/code:
  *  post:
  *     tags:
  *       - auth
@@ -182,7 +182,7 @@ authRouter.post(
 
 /**
  * @swagger
- * /auth/login:
+ * /api/v1/auth/login:
  *    post:
  *      tags:
  *        - auth
@@ -227,7 +227,7 @@ authRouter.post(
 
 /**
  * @swagger
- * /auth/user:
+ * /api/v1/auth/user:
  *  get:
  *    tags:
  *      - auth
@@ -262,7 +262,7 @@ authRouter.get("/user", requireAuth, authController.handleUser);
 
 /**
  * @swagger
- * /auth/logout:
+ * /api/v1/auth/logout:
  *  post:
  *    tags:
  *      - auth
@@ -294,7 +294,7 @@ authRouter.post("/logout", authController.handleLogout);
 
 /**
  * @swagger
- * /auth/refresh:
+ * /api/v1/auth/refresh:
  *  post:
  *    tags:
  *      - auth
@@ -329,7 +329,7 @@ authRouter.post("/refresh", authController.handleRefresh);
 
 /**
  * @swagger
- * /auth/change-password:
+ * /api/v1/auth/change-password:
  *  post:
  *    tags:
  *      - auth
@@ -371,7 +371,7 @@ authRouter.post(
 );
 
 /**
- * /auth/forgot-password:
+ * /api/v1/auth/forgot-password:
  *  post:
  *    tags:
  *      - auth
@@ -404,7 +404,7 @@ authRouter.post("/forgot-password", authController.handleForgotPassword);
 
 /**
  * @swagger
- * /auth/confirm-forgot-password:
+ * /api/v1/auth/confirm-forgot-password:
  *  post:
  *    tags:
  *      - auth

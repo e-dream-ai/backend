@@ -21,7 +21,7 @@ const playlistRouter = Router();
 
 /**
  * @swagger
- * /playlist/default:
+ * /api/v1/playlist/default:
  *  get:
  *    tags:
  *      - playlist
@@ -65,7 +65,7 @@ playlistRouter.get(
 
 /**
  * @swagger
- * /playlist/{uuid}/references:
+ * /api/v1/playlist/{uuid}/references:
  *  get:
  *    tags:
  *      - playlist
@@ -117,7 +117,7 @@ playlistRouter.get(
 
 /**
  * @swagger
- * /playlist/{uuid}:
+ * /api/v1/playlist/{uuid}:
  *  get:
  *    tags:
  *      - playlist
@@ -169,7 +169,7 @@ playlistRouter.get(
 
 /**
  * @swagger
- * /playlist/{uuid}/items:
+ * /api/v1/playlist/{uuid}/items:
  *  get:
  *    tags:
  *      - playlist
@@ -244,7 +244,60 @@ playlistRouter.get(
 
 /**
  * @swagger
- * /playlist/{uuid}/keyframes:
+ * /api/v1/playlist/{uuid}/playback-items:
+ *  get:
+ *    tags:
+ *      - playlist
+ *    summary: Gets playlist items for web player playback
+ *    parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Playlist UUID
+ *    responses:
+ *      '200':
+ *        description: Playlist playback items
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        items:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/PlaylistItem'
+ *      '404':
+ *        description: Playlist not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+playlistRouter.get(
+  "/:uuid/playback-items",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(requestPlaylistSchema),
+  playlistController.handleGetPlaylistPlaybackItems,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/keyframes:
  *  get:
  *    tags:
  *      - playlist
@@ -319,7 +372,7 @@ playlistRouter.get(
 
 /**
  * @swagger
- * /playlist/{uuid}:
+ * /api/v1/playlist/{uuid}:
  *  get:
  *    tags:
  *      - playlist
@@ -376,7 +429,7 @@ playlistRouter.get(
 
 /**
  * @swagger
- * /playlist:
+ * /api/v1/playlist:
  *  post:
  *    tags:
  *      - playlist
@@ -427,7 +480,7 @@ playlistRouter.post(
 
 /**
  * @swagger
- * /playlist/{uuid}:
+ * /api/v1/playlist/{uuid}:
  *  put:
  *    tags:
  *      - playlist
@@ -485,7 +538,7 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{uuid}/thumbnail:
+ * /api/v1/playlist/{uuid}/thumbnail:
  *  put:
  *    tags:
  *      - playlist
@@ -549,7 +602,7 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{uuid}:
+ * /api/v1/playlist/{uuid}:
  *  delete:
  *    tags:
  *      - playlist
@@ -594,7 +647,7 @@ playlistRouter.delete(
 
 /**
  * @swagger
- * /playlist/{uuid}/order:
+ * /api/v1/playlist/{uuid}/order:
  *  put:
  *    tags:
  *      - playlist
@@ -672,7 +725,7 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{uuid}/add-item:
+ * /api/v1/playlist/{uuid}/add-item:
  *  put:
  *    tags:
  *      - playlist
@@ -735,7 +788,7 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{uuid}/remove-item/{itemId}:
+ * /api/v1/playlist/{uuid}/remove-item/{itemId}:
  *  delete:
  *    tags:
  *      - playlist
@@ -794,7 +847,7 @@ playlistRouter.delete(
 
 /**
  * @swagger
- * /playlist/{uuid}/keyframe:
+ * /api/v1/playlist/{uuid}/keyframe:
  *  put:
  *    tags:
  *      - playlist
@@ -857,7 +910,7 @@ playlistRouter.post(
 
 /**
  * @swagger
- * /playlist/{uuid}/keyframe/{playlistKeyframeId}:
+ * /api/v1/playlist/{uuid}/keyframe/{playlistKeyframeId}:
  *  delete:
  *    tags:
  *      - playlist

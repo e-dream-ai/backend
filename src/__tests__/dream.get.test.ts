@@ -51,6 +51,9 @@ describe("dream get endpoints", () => {
     }));
     jest.mock("utils/transform.util", () => ({
       __esModule: true,
+      signKey: jest.fn(
+        (key: string) => `https://worker.example.com/${key}?sig=mocksig`,
+      ),
       transformDreamWithSignedUrls: jest
         .fn()
         .mockImplementation(<T>(d: T) => d),
@@ -148,8 +151,7 @@ describe("dream get endpoints", () => {
   });
 
   describe("handleGetDreamThumbnail", () => {
-    it("returns presigned URL as JSON when dream has thumbnail", async () => {
-      const mockPresignedUrl = "https://r2.example.com/signed-thumb?token=abc";
+    it("returns signed worker URL as JSON when dream has thumbnail", async () => {
       const thumbnailKey = "user1/dream-1/thumbnails/dream-1.jpg";
 
       const { req, res } = createReqRes();
@@ -174,14 +176,6 @@ describe("dream get endpoints", () => {
           dreamRepository,
           reportRepository: { find: jest.fn().mockResolvedValue([]) },
         }));
-        jest.mock("clients/presign.client", () => ({
-          __esModule: true,
-          presignClient: {
-            generatePresignedUrls: jest
-              .fn()
-              .mockResolvedValue({ [thumbnailKey]: mockPresignedUrl }),
-          },
-        }));
         mockCommonUtils();
 
         const { handleGetDreamThumbnail } = await import(
@@ -191,13 +185,18 @@ describe("dream get endpoints", () => {
 
         expect(set).toHaveBeenCalledWith(
           "Cache-Control",
-          "private, max-age=600",
+          "private, max-age=3600",
         );
         expect(json).toHaveBeenCalledWith(
           expect.objectContaining({
-            data: { url: mockPresignedUrl },
+            data: {
+              url: expect.stringContaining(thumbnailKey),
+            },
           }),
         );
+        const calledUrl = json.mock.calls[0][0].data.url;
+        expect(calledUrl).toContain(thumbnailKey);
+        expect(calledUrl).toContain("?sig=");
       });
     });
 
@@ -218,10 +217,6 @@ describe("dream get endpoints", () => {
           __esModule: true,
           dreamRepository,
           reportRepository: { find: jest.fn().mockResolvedValue([]) },
-        }));
-        jest.mock("clients/presign.client", () => ({
-          __esModule: true,
-          presignClient: { generatePresignedUrls: jest.fn() },
         }));
         mockCommonUtils();
 

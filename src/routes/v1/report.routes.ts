@@ -14,7 +14,7 @@ const reportRouter = Router();
 
 /**
  * @swagger
- * /report/type:
+ * /api/v1/report/type:
  *  get:
  *    tags:
  *      - report
@@ -58,7 +58,7 @@ reportRouter.get(
 
 /**
  * @swagger
- * /report/{uuid}:
+ * /api/v1/report/{uuid}:
  *  get:
  *    tags:
  *      - report
@@ -106,7 +106,7 @@ reportRouter.get(
 
 /**
  * @swagger
- * /report/{uuid}:
+ * /api/v1/report/{uuid}:
  *  get:
  *    tags:
  *      - report
@@ -159,7 +159,7 @@ reportRouter.get(
 
 /**
  * @swagger
- * /report:
+ * /api/v1/report:
  *  post:
  *    tags:
  *      - report
@@ -210,7 +210,7 @@ reportRouter.post(
 
 /**
  * @swagger
- * /report/{uuid}:
+ * /api/v1/report/{uuid}:
  *  put:
  *    tags:
  *      - report
@@ -264,7 +264,7 @@ reportRouter.put(
 
 /**
  * @swagger
- * /report/{uuid}:
+ * /api/v1/report/{uuid}:
  *  delete:
  *    tags:
  *      - report

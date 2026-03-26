@@ -14,7 +14,8 @@ const IS_DEVELOPMENT = env.NODE_ENV === "development";
 /**
  * WorkOS client
  */
-export const workos = new WorkOS(env.WORKOS_API_KEY, {
+export const workos = new WorkOS({
+  apiKey: env.WORKOS_API_KEY,
   clientId: env.WORKOS_CLIENT_ID,
 });
 
@@ -34,7 +35,13 @@ export const workOSCookieConfig: CookieOptions = {
  * @param authToken - Authentication token from the request
  * @returns WorkOS session if authenticated, null otherwise
  */
-export const authenticateAndGetWorkOSSession = async (authToken: string) => {
+export const authenticateAndGetWorkOSSession = async (
+  authToken: string | undefined,
+) => {
+  if (!authToken) {
+    return null;
+  }
+
   const { authenticated } =
     await workos.userManagement.authenticateWithSessionCookie({
       sessionData: authToken,
@@ -102,7 +109,7 @@ export const authenticateWorkOS = async (
  * @returns Refresh response containing a new sealed session if successful
  */
 export const refreshWorkOSSession = async (authToken: string) => {
-  const session = await workos.userManagement.loadSealedSession({
+  const session = workos.userManagement.loadSealedSession({
     sessionData: authToken,
     cookiePassword: env.WORKOS_COOKIE_PASSWORD,
   });

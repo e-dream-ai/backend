@@ -10,7 +10,7 @@ const feedRouter = Router();
 
 /**
  * @swagger
- * /feed/ranked:
+ * /api/v1/feed/ranked:
  *  get:
  *    tags:
  *      - feed
@@ -81,7 +81,7 @@ feedRouter.get(
 
 /**
  * @swagger
- * /feed/:
+ * /api/v1/feed/:
  *  get:
  *    tags:
  *      - feed
@@ -145,7 +145,7 @@ feedRouter.get(
 
 /**
  * @swagger
- * /feed/grouped:
+ * /api/v1/feed/grouped:
  *  get:
  *    tags:
  *      - feed
@@ -213,7 +213,7 @@ feedRouter.get(
 
 /**
  * @swagger
- * /feed/my-dreams:
+ * /api/v1/feed/my-dreams:
  *  get:
  *    tags:
  *      - feed

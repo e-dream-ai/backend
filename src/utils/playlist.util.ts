@@ -8,6 +8,7 @@ import {
 import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
 import { DreamMediaType, DreamStatusType } from "types/dream.types";
+import { PlaylistItemType } from "types/playlist.types";
 import { playlistKeyframeRepository } from "database/repositories";
 import { framesToSeconds } from "./video.utils";
 
@@ -541,6 +542,74 @@ export const getPaginatedPlaylistKeyframes = async ({
     keyframes,
     totalCount,
   };
+};
+
+export const getPlaylistPlaybackItems = async (
+  playlistId: number,
+): Promise<PlaylistItem[]> => {
+  const rows = await playlistItemRepository
+    .createQueryBuilder("item")
+    .select([
+      "item.id",
+      "item.order",
+      "dreamItem.id",
+      "dreamItem.uuid",
+      "dreamItem.video",
+      "dreamItem.thumbnail",
+      "dreamItem.name",
+      "dreamItem.activityLevel",
+      "startKeyframe.uuid",
+      "endKeyframe.uuid",
+    ])
+    .leftJoin("item.dreamItem", "dreamItem")
+    .leftJoin("dreamItem.startKeyframe", "startKeyframe")
+    .leftJoin("dreamItem.endKeyframe", "endKeyframe")
+    .where("item.playlistId = :playlistId", { playlistId })
+    .andWhere("item.deleted_at IS NULL")
+    .andWhere("item.type = :type", { type: PlaylistItemType.DREAM })
+    .andWhere("dreamItem.status = :status", {
+      status: DreamStatusType.PROCESSED,
+    })
+    .andWhere(
+      "(dreamItem.mediaType IS NULL OR dreamItem.mediaType != :imageType)",
+      { imageType: DreamMediaType.IMAGE },
+    )
+    .orderBy("item_order", "ASC")
+    .getRawMany<{
+      item_id: number;
+      item_order: number;
+      dreamItem_id: number;
+      dreamItem_uuid: string;
+      dreamItem_video: string;
+      dreamItem_thumbnail: string;
+      dreamItem_name: string;
+      dreamItem_activityLevel: number;
+      startKeyframe_uuid: string | null;
+      endKeyframe_uuid: string | null;
+    }>();
+
+  return rows.map(
+    (row) =>
+      ({
+        id: row.item_id,
+        order: row.item_order,
+        type: PlaylistItemType.DREAM,
+        dreamItem: {
+          id: row.dreamItem_id,
+          uuid: row.dreamItem_uuid,
+          video: row.dreamItem_video,
+          thumbnail: row.dreamItem_thumbnail,
+          name: row.dreamItem_name,
+          activityLevel: row.dreamItem_activityLevel,
+          startKeyframe: row.startKeyframe_uuid
+            ? { uuid: row.startKeyframe_uuid }
+            : null,
+          endKeyframe: row.endKeyframe_uuid
+            ? { uuid: row.endKeyframe_uuid }
+            : null,
+        },
+      }) as unknown as PlaylistItem,
+  );
 };
 
 export const refreshPlaylistUpdatedAtTimestamp = (id: number) =>

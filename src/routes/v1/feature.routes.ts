@@ -10,7 +10,7 @@ const featureRouter = Router();
 
 /**
  * @swagger
- * /feature:
+ * /api/v1/feature:
  *  get:
  *    tags:
  *      - feature
@@ -61,7 +61,7 @@ featureRouter.get("/", featureController.handleGetFeatures);
 
 /**
  * @swagger
- * /feature:
+ * /api/v1/feature:
  *  put:
  *    tags:
  *      - feature

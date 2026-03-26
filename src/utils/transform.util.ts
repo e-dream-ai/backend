@@ -1,4 +1,5 @@
-import { presignClient } from "clients/presign.client";
+import { createHmac } from "crypto";
+import { env } from "shared/env";
 import { Dream } from "entities/Dream.entity";
 import { Keyframe } from "entities/Keyframe.entity";
 import { Playlist } from "entities/Playlist.entity";
@@ -7,6 +8,13 @@ import { User } from "entities/User.entity";
 import { PlaylistItem } from "entities/PlaylistItem.entity";
 import { PlaylistKeyframe } from "entities/PlaylistKeyframe";
 import { Frame } from "types/dream.types";
+
+export function signKey(key: string): string {
+  const sig = createHmac("sha256", env.IMAGE_WORKER_SIGNING_SECRET)
+    .update(key)
+    .digest("hex");
+  return `${env.IMAGE_WORKER_URL}/${key}?sig=${sig}`;
+}
 
 interface FieldMapping {
   field: string;
@@ -256,22 +264,12 @@ class UnifiedTransformer {
       return entity;
     }
 
-    try {
-      const signedUrls = await presignClient.generatePresignedUrls(keysToSign);
-      const cache = new WeakMap<object, unknown>();
-      return this.applySignedUrlsToEntity(
-        entity,
-        config,
-        signedUrls,
-        cache,
-      ) as T;
-    } catch (error) {
-      console.error(
-        `Failed to transform ${entityType} with signed URLs:`,
-        error,
-      );
-      return entity;
+    const signedUrls: Record<string, string> = {};
+    for (const key of keysToSign) {
+      signedUrls[key] = signKey(key);
     }
+    const cache = new WeakMap<object, unknown>();
+    return this.applySignedUrlsToEntity(entity, config, signedUrls, cache) as T;
   }
 
   async transformEntities<T>(
@@ -295,22 +293,15 @@ class UnifiedTransformer {
       return entities;
     }
 
-    try {
-      const signedUrls = await presignClient.generatePresignedUrls(
-        Array.from(keysToSign),
-      );
-
-      return entities.map((entity) => {
-        const cache = new WeakMap<object, unknown>();
-        return this.applySignedUrlsToEntity(entity, config, signedUrls, cache);
-      }) as T[];
-    } catch (error) {
-      console.error(
-        `Failed to transform ${entityType}s with signed URLs:`,
-        error,
-      );
-      return entities;
+    const signedUrls: Record<string, string> = {};
+    for (const key of keysToSign) {
+      signedUrls[key] = signKey(key);
     }
+
+    return entities.map((entity) => {
+      const cache = new WeakMap<object, unknown>();
+      return this.applySignedUrlsToEntity(entity, config, signedUrls, cache);
+    }) as T[];
   }
 }
 
@@ -318,7 +309,6 @@ const transformer = new UnifiedTransformer();
 
 export class TransformSession {
   private allKeys = new Set<string>();
-  private readonly MAX_BATCH_SIZE = 500;
 
   addEntityKeys<T>(entity: T, entityType: keyof typeof ENTITY_CONFIGS): void {
     const config = ENTITY_CONFIGS[entityType];
@@ -369,49 +359,11 @@ export class TransformSession {
   }
 
   async executeBatch(): Promise<Record<string, string>> {
-    const keysToSign = Array.from(this.allKeys);
-
-    if (keysToSign.length === 0) {
-      return {};
-    }
-
-    const batches = this.chunkArray(keysToSign, this.MAX_BATCH_SIZE);
-    const errors: Error[] = [];
     const signedUrls: Record<string, string> = {};
-
-    for (const batch of batches) {
-      try {
-        const batchUrls = await presignClient.generatePresignedUrls(batch);
-        Object.assign(signedUrls, batchUrls);
-      } catch (error) {
-        console.error(
-          `Failed to presign batch of ${batch.length} keys:`,
-          error,
-        );
-        errors.push(error as Error);
-      }
+    for (const key of this.allKeys) {
+      signedUrls[key] = signKey(key);
     }
-
-    if (errors.length === batches.length) {
-      throw errors[0];
-    }
-
-    if (errors.length > 0) {
-      console.warn(
-        `${errors.length} out of ${batches.length} presign batches failed. ` +
-          `${Object.keys(signedUrls).length} URLs were successfully signed.`,
-      );
-    }
-
     return signedUrls;
-  }
-
-  private chunkArray<T>(array: T[], chunkSize: number): T[][] {
-    const chunks: T[][] = [];
-    for (let i = 0; i < array.length; i += chunkSize) {
-      chunks.push(array.slice(i, i + chunkSize));
-    }
-    return chunks;
   }
 
   applyToEntity<T>(

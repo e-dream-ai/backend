@@ -53,12 +53,6 @@ export const env = cleanEnv(process.env, {
   MARKETING_UNSUBSCRIBE_SECRET: str(),
 
   /**
-   * Heroku
-   */
-  HEROKU_API_URL: str(),
-  VIDEO_SERVICE_APP_ID_OR_NAME: str(),
-
-  /**
    * REDIS
    */
   // REDISCLOUD_URL is set by heroku automatically
@@ -66,11 +60,6 @@ export const env = cleanEnv(process.env, {
   REDIS_HOST: str(),
   REDIS_PORT: port(),
   REDIS_PASSWORD: str(),
-
-  /**
-   * PROCESS VIDEO SERVER
-   */
-  PROCESS_VIDEO_SERVER_URL: str(),
 
   /**
    * Presign Service
@@ -112,11 +101,6 @@ export const env = cleanEnv(process.env, {
   API_KEYS: json(),
 
   /**
-   * VIDEO_INGESTION_API_KEY
-   */
-  VIDEO_INGESTION_API_KEY: str(),
-
-  /**
    * HEAP_SNAPSHOT_API_KEY
    * If not set, heap snapshot endpoint and scheduler are disabled
    */
@@ -131,11 +115,6 @@ export const env = cleanEnv(process.env, {
    * CIPHER_KEY
    */
   CIPHER_KEY: str(),
-
-  /**
-   * HEROKU_APIKEY
-   */
-  HEROKU_APIKEY: str(),
 
   /**
    * WORKOS_CLIENT_ID

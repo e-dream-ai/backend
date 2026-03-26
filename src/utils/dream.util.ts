@@ -1,17 +1,5 @@
 import { Dream, FeedItem, PlaylistItem, User, Vote } from "entities";
-import {
-  SendMessageCommand,
-  SendMessageCommandInput,
-} from "@aws-sdk/client-sqs";
-import { sqsClient } from "clients/sqs.client";
-import {
-  PROCESS_VIDEO_QUEUE_ATTRIBUTES,
-  SQS_DATA_TYPES,
-} from "constants/sqs.constants";
 import appDataSource from "database/app-data-source";
-import env from "shared/env";
-import axios from "axios";
-import { ContentType, getRequestHeaders } from "constants/api.constants";
 import { FindOptionsSelect, FindOptionsWhere, ILike } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import { FeedItemType } from "types/feed-item.types";
@@ -26,47 +14,12 @@ import {
   isValidAlgorithm,
   mapAlgorithmToQueue,
 } from "./prompt.util";
-import { queueWorkerJob } from "./worker-queue.util";
-
-const queueUrl = ""; // env.AWS_SQS_URL;
-
-const PROCESS_VIDEO_SERVER_URL = env.PROCESS_VIDEO_SERVER_URL;
-const VIDEO_INGESTION_API_KEY = env.VIDEO_INGESTION_API_KEY;
+import { queueWorkerJob, queueVideoIngestJob } from "./worker-queue.util";
 
 const dreamRepository = appDataSource.getRepository(Dream);
 const feedRepository = appDataSource.getRepository(FeedItem);
 const voteRepository = appDataSource.getRepository(Vote);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
-
-/**
- * @deprecated Currently unused due to sqs queue being replaced by redis queue
- * Send dream to sqs queue
- * @param dream - dream should include contain user data
- */
-export const processDreamSQS = async (dream: Dream) => {
-  const input: SendMessageCommandInput = {
-    QueueUrl: queueUrl,
-    MessageGroupId: dream.uuid,
-    MessageBody: dream.uuid,
-    MessageAttributes: {
-      [PROCESS_VIDEO_QUEUE_ATTRIBUTES.UUID]: {
-        StringValue: dream.uuid,
-        DataType: SQS_DATA_TYPES.STRING,
-      },
-      [PROCESS_VIDEO_QUEUE_ATTRIBUTES.VIDEO]: {
-        StringValue: dream.video ?? "",
-        DataType: SQS_DATA_TYPES.STRING,
-      },
-      [PROCESS_VIDEO_QUEUE_ATTRIBUTES.USER_UUID]: {
-        StringValue: dream.user.cognitoId ?? "",
-        DataType: SQS_DATA_TYPES.STRING,
-      },
-    },
-  };
-
-  const command = new SendMessageCommand(input);
-  await sqsClient.send(command);
-};
 
 export const processDreamRequest = async (
   dream: Dream,
@@ -119,70 +72,47 @@ export const processDreamRequest = async (
   }
 
   const extension = getFileExtension(dream.original_video || "");
-  const data = {
-    dream_uuid: dream.uuid,
-    extension,
-  };
-
   const mediaType = dream.mediaType ?? DreamMediaType.VIDEO;
-  const endpoint =
-    mediaType === DreamMediaType.IMAGE ? "/process-image" : "/process-video";
+  const jobType = mediaType === DreamMediaType.IMAGE ? "image" : "video";
 
   APP_LOGGER.info(
-    `Processing dream ${dream.uuid} with mediaType ${mediaType} via ${endpoint}`,
+    `Processing dream ${dream.uuid} with mediaType ${mediaType} via videoingest queue (${jobType})`,
   );
 
-  return axios
-    .post(`${PROCESS_VIDEO_SERVER_URL}${endpoint}`, data, {
-      headers: {
-        Authorization: `Api-Key ${VIDEO_INGESTION_API_KEY}`,
-        ...getRequestHeaders({ contentType: ContentType.json }),
-      },
-    })
-    .then((res) => {
-      return res.data;
-    })
-    .catch((error) => APP_LOGGER.error(error));
+  const result = await queueVideoIngestJob({
+    type: jobType,
+    dream_uuid: dream.uuid,
+    extension,
+  });
+
+  if (result.success) {
+    return { id: result.jobId, status: "queued", isPromptBased: false };
+  } else {
+    APP_LOGGER.error(
+      `Failed to queue videoingest job for dream ${dream.uuid}: ${result.error}`,
+    );
+    return { status: "failed", isPromptBased: false };
+  }
 };
 
 /**
- * Send dream md5 process request to video server
+ * Send dream md5 process request via videoingest queue
  */
 export const processDreamMd5Request = async (dream: Dream) => {
-  const data = {
+  return queueVideoIngestJob({
+    type: "md5",
     dream_uuid: dream.uuid,
-  };
-  return axios
-    .post(`${PROCESS_VIDEO_SERVER_URL}/video/md5`, data, {
-      headers: {
-        Authorization: `Api-Key ${VIDEO_INGESTION_API_KEY}`,
-        ...getRequestHeaders({ contentType: ContentType.json }),
-      },
-    })
-    .then((res) => {
-      return res.data;
-    })
-    .catch((error) => APP_LOGGER.error(error));
+  });
 };
 
 /**
- * Send dream filmstrip process request to video server
+ * Send dream filmstrip process request via videoingest queue
  */
 export const processDreamFilmstripRequest = async (dream: Dream) => {
-  const data = {
+  return queueVideoIngestJob({
+    type: "filmstrip",
     dream_uuid: dream.uuid,
-  };
-  return axios
-    .post(`${PROCESS_VIDEO_SERVER_URL}/video/filmstrip`, data, {
-      headers: {
-        Authorization: `Api-Key ${VIDEO_INGESTION_API_KEY}`,
-        ...getRequestHeaders({ contentType: ContentType.json }),
-      },
-    })
-    .then((res) => {
-      return res.data;
-    })
-    .catch((error) => APP_LOGGER.error(error));
+  });
 };
 
 export const getDreamSelectedColumns = ({

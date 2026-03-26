@@ -399,10 +399,10 @@ export const getVotedDreams = async (
 
   const where = searchILike
     ? [
-        { ...baseWhere, dream: { name: searchILike } },
-        { ...baseWhere, dream: { user: { name: searchILike } } },
-        { ...baseWhere, dream: { displayedOwner: { name: searchILike } } },
-      ]
+      { ...baseWhere, dream: { name: searchILike } },
+      { ...baseWhere, dream: { user: { name: searchILike } } },
+      { ...baseWhere, dream: { displayedOwner: { name: searchILike } } },
+    ]
     : baseWhere;
 
   const [votes, count] = await voteRepository.findAndCount({

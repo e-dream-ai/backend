@@ -17,6 +17,7 @@ import reportRouter from "routes/v1/report.routes";
 import marketingRouter from "routes/v1/marketing.routes";
 import heapSnapshotRouter from "routes/v1/heap-snapshot.routes";
 import simulateAuthFailureRouter from "routes/v1/simulate-auth-failure.routes";
+import simulateHelloRouter from "routes/v1/simulate-hello.routes";
 import authRouterV2 from "routes/v2/auth.routes";
 import webhooksRouterV2 from "routes/v2/webhooks.routes";
 import { jsonResponse } from "utils/responses.util";
@@ -530,6 +531,9 @@ export const registerRoutes = (app: express.Application) => {
 
   // register simulate auth failure router (internal, protected by x-internal-key header)
   app.use("/api/v1/internal/simulate-auth-failure", simulateAuthFailureRouter);
+
+  // register simulate hello router (internal, protected by x-internal-key header)
+  app.use("/api/v1/internal/simulate-hello", simulateHelloRouter);
 
   // register v2 auth
   app.use("/api/v2/auth", authRouterV2);

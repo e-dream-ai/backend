@@ -44,6 +44,7 @@ import {
   reduceUserQuota,
   setUserLastClientPingAt,
 } from "utils/user.util";
+import { applySimulatedHello } from "utils/simulate-hello.util";
 
 /**
  * Handles hello
@@ -57,6 +58,9 @@ import {
  *
  */
 export const handleHello = async (req: RequestType, res: ResponseType) => {
+  const simulated = applySimulatedHello(res);
+  if (simulated !== null) return simulated;
+
   const user = res.locals.user!;
   const quota: number = Number(user?.quota ?? 0);
   const quotaExpiresAt = getNextQuotaResetAt().toISOString();

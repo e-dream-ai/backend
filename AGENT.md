@@ -10,7 +10,7 @@ Main API server for infinidream.ai. Handles authentication, dream CRUD, job orch
 - **Framework:** Express
 - **Database:** PostgreSQL via TypeORM (entities in `src/entities/`, migrations in `src/migrations/`)
 - **Queue:** BullMQ + Redis (via ioredis)
-- **Auth:** AWS Cognito (Passport.js with JWT bearer, API key, and local strategies)
+- **Auth:** WorkOS (session cookies + Bearer tokens), Passport.js (API key strategy)
 - **Real-time:** Socket.IO with Redis adapter
 - **Storage:** AWS S3 + Cloudflare R2 (via @aws-sdk)
 - **Monitoring:** Bugsnag
@@ -28,7 +28,7 @@ src/
   socket/         # Socket.IO namespaces & handlers
   middlewares/     # Auth, error handling, etc.
   schemas/        # Request validation schemas
-  clients/        # External service clients (S3, Cognito, etc.)
+  clients/        # External service clients (R2, Redis, WorkOS, etc.)
   shared/         # Shared types and utilities
   __tests__/      # Test files
 ```

@@ -197,8 +197,6 @@ Browser → Cloudflare Worker (image-worker) → R2 Bucket
 5. Partial content (`Range` requests) is supported for video streaming (returns `206 Partial Content`).
 6. All responses carry `Cache-Control: public, max-age=86400` so Cloudflare's CDN caches the transformed image for 24 hours — subsequent requests for the same key+params are served from the edge without hitting R2 again.
 
-````
-
 ## Socket.io
 
 ### Remote control namespace
@@ -239,7 +237,7 @@ Active http-session-affinity on stage:
 
 ```sh
 heroku features:enable http-session-affinity -a e-dream
-````
+```
 
 #### Redis Adapter
 

@@ -180,6 +180,25 @@ To show all migrations and whether they've been run or not use following command
 pnpm run migration:show
 ```
 
+## Image Worker & Caching
+
+Every image/video URL served to the frontend goes through this worker. The worker sits at a Cloudflare Workers URL; the R2 bucket is **never exposed directly to the public**.
+
+```
+Browser → Cloudflare Worker (image-worker) → R2 Bucket
+```
+
+#### Request flow
+
+1. The browser requests `https://<worker-host>/<r2-key>?sig=<hmac>&w=800&h=600&fit=cover&format=webp&q=85`
+2. The worker validates the HMAC-SHA-256 **signature** (`sig`) over the R2 key using a shared `SIGNING_SECRET`. Requests without a valid signature get `403 Forbidden`.
+3. If resize/format query params are present (`w`, `h`, `format`), the worker re-fetches the raw object via its own `/_raw/<key>` endpoint and passes a `cf.image` transform to Cloudflare's Image Resizing service before returning the result.
+4. If no transform params are present the worker streams the raw R2 object directly.
+5. Partial content (`Range` requests) is supported for video streaming (returns `206 Partial Content`).
+6. All responses carry `Cache-Control: public, max-age=86400` so Cloudflare's CDN caches the transformed image for 24 hours — subsequent requests for the same key+params are served from the edge without hitting R2 again.
+
+````
+
 ## Socket.io
 
 ### Remote control namespace
@@ -196,7 +215,7 @@ Verifies the identity of clients connecting to the server via sockets and adds u
 
 ### Autoscaling
 
-> [!WARNING]  
+> [!WARNING]
 > Consider this works only for [scaling](https://devcenter.heroku.com/articles/autoscaling), not vertical scale (change dyno type)
 
 In order to enable autoscaling on Heroku, the project needs to handle websocket messages while having multiple NodeJS instances running.
@@ -220,7 +239,7 @@ Active http-session-affinity on stage:
 
 ```sh
 heroku features:enable http-session-affinity -a e-dream
-```
+````
 
 #### Redis Adapter
 

@@ -949,13 +949,13 @@ export const loginWithMagicAuth = async (
   const email = req.body.email!;
   const code = req.body.code;
   try {
+    const simulated = applySimulatedAuthFailureForMagicValidate(
+      res as ResponseType,
+    );
+    if (simulated !== null) return simulated;
+
     if (code) {
       // Authenticate using the code
-      const simulated = applySimulatedAuthFailureForMagicValidate(
-        res as ResponseType,
-      );
-      if (simulated !== null) return simulated;
-
       const workOSResponse =
         await workos.userManagement.authenticateWithMagicAuth({
           clientId: env.WORKOS_CLIENT_ID,

@@ -8,11 +8,6 @@ import {
   MYME_TYPES,
   MYME_TYPES_EXTENSIONS,
 } from "constants/file.constants";
-import {
-  DEFAULT_QUEUE,
-  TURN_OFF_QUANTITY,
-  TURN_ON_QUANTITY,
-} from "constants/job.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
@@ -55,7 +50,6 @@ import {
   processDreamRequest,
 } from "utils/dream.util";
 import { isImageGenerationAlgorithm } from "utils/prompt.util";
-import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
   refreshPlaylistUpdatedAtTimestampFromPlaylistItems,
@@ -199,12 +193,6 @@ export const handleCreateDream = async (
     dream.status = DreamStatusType.QUEUE;
 
     await dreamRepository.save(dream);
-
-    const processResult = await processDreamRequest(dream);
-
-    if (!processResult?.isPromptBased) {
-      await updateVideoServiceWorker(TURN_ON_QUANTITY);
-    }
 
     const [savedDream] = await dreamRepository.find({
       where: { uuid: dream.uuid },
@@ -652,14 +640,7 @@ export const handleCompleteMultipartUpload = async (
       /**
        * process dream requests: it needs to provide updated dream with originalVideo value
        */
-      const processResult = await processDreamRequest(updatedDream);
-
-      /**
-       * turn on video service worker only if not prompt-based
-       */
-      if (!processResult?.isPromptBased) {
-        await updateVideoServiceWorker(TURN_ON_QUANTITY);
-      }
+      await processDreamRequest(updatedDream);
     }
 
     tracker.sendEventWithRequestContext(res, user.uuid, "USER_NEW_UPLOAD", {});
@@ -983,11 +964,7 @@ export const handleProcessDream = async (
     // Store the current status before processing so we can restore it on cancel
     const previousStatus = dream.status;
 
-    const processResult = await processDreamRequest(dream, previousStatus);
-
-    if (!processResult?.isPromptBased) {
-      await updateVideoServiceWorker(TURN_ON_QUANTITY);
-    }
+    await processDreamRequest(dream, previousStatus);
 
     const updatedDream = await dreamRepository.save({
       ...dream,
@@ -1161,18 +1138,6 @@ export const handleSetDreamStatusProcessed = async (
     await refreshPlaylistUpdatedAtTimestampFromPlaylistItems(
       updatedDream.playlistItems?.map((pi) => pi.id),
     );
-
-    /**
-     * get jobs queue on video service
-     */
-    const jobs = await getQueueValues(DEFAULT_QUEUE);
-
-    /**
-     * if there are not jobs on queue, turn off video service workers
-     */
-    if (!jobs.length) {
-      await updateVideoServiceWorker(TURN_OFF_QUANTITY);
-    }
 
     tracker.sendEventWithRequestContext(res, user.uuid, "DREAM_UPLOADED", {
       size_bytes: processedVideoSize,

@@ -4,8 +4,6 @@ import appDataSource from "database/app-data-source";
 import { Dream } from "entities";
 import { processDreamFilmstripRequest } from "utils/dream.util";
 import { DreamStatusType } from "types/dream.types";
-import { updateVideoServiceWorker } from "utils/job.util";
-import { TURN_ON_QUANTITY } from "constants/job.constants";
 
 const main = async () => {
   // Initialize the data source
@@ -27,10 +25,6 @@ const main = async () => {
     },
   });
 
-  if (dreams.length) {
-    await updateVideoServiceWorker(TURN_ON_QUANTITY);
-  }
-
   const promises = dreams.map(async (dream) => {
     return processDreamFilmstripRequest(dream);
   });
@@ -39,11 +33,13 @@ const main = async () => {
   const queuedDreams: string[] = [];
 
   results.forEach((result, index) => {
-    if (result.status === "fulfilled" && result?.value?.id) {
+    const dream = dreams[index];
+
+    if (result.status === "fulfilled" && result.value.success && dream) {
       console.log(
         `Dream process filmstrip request promise ${index} fulfilled:`,
       );
-      queuedDreams.push(dreams?.[index]?.uuid);
+      queuedDreams.push(dream.uuid);
     } else {
       console.error(
         `Dream process filmstrip request promise ${index} rejected:`,

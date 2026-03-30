@@ -13,7 +13,7 @@ This is the backend application server. It works with these other parts of the s
 
 - [frontend](https://github.com/e-dream-ai/frontend) Web UI
 - [video](https://github.com/e-dream-ai/video) Video Ingestion with FFMPEG
-- [presign-service](https://github.com/e-dream-ai/presign-service) small backend service for presigning URLs
+- ~~[presign-service](https://github.com/e-dream-ai/presign-service) small backend service for presigning URLs~~ (**deprecated**)
 - [cf-image-worker](https://github.com/e-dream-ai/cf-image-worker) edge worker for secure image access
 
 And these client repos:

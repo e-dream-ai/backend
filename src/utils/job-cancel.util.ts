@@ -130,6 +130,7 @@ export const cancelJobAcrossQueues = async (
     "wani2v",
     "wani2vlora",
     "qwenimage",
+    "zimageturbo",
   ];
 
   for (const queueName of queueNames) {

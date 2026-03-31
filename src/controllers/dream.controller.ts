@@ -200,6 +200,10 @@ export const handleCreateDream = async (
       select: getDreamSelectedColumns(),
     });
 
+    if (prompt) {
+      await processDreamRequest(savedDream);
+    }
+
     tracker.sendEventWithRequestContext(
       res,
       user.uuid,

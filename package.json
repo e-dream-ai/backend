@@ -64,7 +64,7 @@
     "@socket.io/redis-adapter": "^8.3.0",
     "@workos-inc/node": "^8.9.0",
     "aws-sdk": "^2.1456.0",
-    "axios": "^1.6.5",
+    "axios": "^1.13.5",
     "body-parser": "^1.20.2",
     "bullmq": "^5.0.0",
     "cookie-parser": "^1.4.6",
@@ -78,7 +78,7 @@
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.0",
-    "multer": ">=2.0.2",
+    "multer": ">=2.1.1",
     "node-cache": "^5.1.2",
     "passport": "^0.7.0",
     "passport-headerapikey": "^1.2.2",
@@ -132,6 +132,24 @@
   },
   "peerDependencies": {
     "socket.io-adapter": "^2.5.4"
+  },
+  "pnpm": {
+    "overrides": {
+      "handlebars": ">=4.7.9",
+      "fast-xml-parser": ">=5.5.7",
+      "flatted": ">=3.4.2",
+      "socket.io-parser": ">=4.2.6",
+      "minimatch": ">=9.0.7",
+      "serialize-javascript": ">=7.0.5",
+      "picomatch": ">=4.0.4",
+      "lodash": ">=4.17.23",
+      "brace-expansion": ">=2.0.3",
+      "@babel/runtime": ">=7.26.10",
+      "validator": ">=13.15.22",
+      "glob": ">=10.5.0",
+      "qs": ">=6.14.2",
+      "path-to-regexp": ">=8.4.0"
+    }
   },
   "lint-staged": {
     "*.{js,ts}": "eslint --cache --fix",

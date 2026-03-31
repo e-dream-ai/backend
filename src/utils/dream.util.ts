@@ -1,84 +1,118 @@
-import { Dream, FeedItem, User, Vote } from "entities";
-import {
-  SendMessageCommand,
-  SendMessageCommandInput,
-} from "@aws-sdk/client-sqs";
-import { sqsClient } from "clients/sqs.client";
-import {
-  PROCESS_VIDEO_QUEUE_ATTRIBUTES,
-  SQS_DATA_TYPES,
-} from "constants/sqs.constants";
+import { Dream, FeedItem, PlaylistItem, User, Vote } from "entities";
 import appDataSource from "database/app-data-source";
-import env from "shared/env";
-import axios from "axios";
-import { ContentType, getRequestHeaders } from "constants/api.constants";
-import { FindOptionsSelect, FindOptionsWhere } from "typeorm";
+import { FindOptionsSelect, FindOptionsWhere, ILike } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import { FeedItemType } from "types/feed-item.types";
 import { APP_LOGGER } from "shared/logger";
 import { VOTE_FIELDS, VoteType } from "types/vote.types";
-
-const queueUrl = ""; // env.AWS_SQS_URL;
-
-const PROCESS_VIDEO_SERVER_URL = env.PROCESS_VIDEO_SERVER_URL;
-const VIDEO_INGESTION_API_KEY = env.VIDEO_INGESTION_API_KEY;
+import { DreamMediaType, DreamStatusType } from "types/dream.types";
+import { getKeyframeSelectedColumns } from "./keyframe.util";
+import { getPlaylistFindOptionsWhere } from "./playlist.util";
+import {
+  parsePromptJson,
+  getAlgorithmFromPrompt,
+  isValidAlgorithm,
+  mapAlgorithmToQueue,
+} from "./prompt.util";
+import { queueWorkerJob, queueVideoIngestJob } from "./worker-queue.util";
 
 const dreamRepository = appDataSource.getRepository(Dream);
 const feedRepository = appDataSource.getRepository(FeedItem);
 const voteRepository = appDataSource.getRepository(Vote);
+const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 
-/**
- * @deprecated Currently unused due to sqs queue being replaced by redis queue
- * Send dream to sqs queue
- * @param dream - dream should include contain user data
- */
-export const processDreamSQS = async (dream: Dream) => {
-  const input: SendMessageCommandInput = {
-    QueueUrl: queueUrl,
-    MessageGroupId: dream.uuid,
-    MessageBody: dream.uuid,
-    MessageAttributes: {
-      [PROCESS_VIDEO_QUEUE_ATTRIBUTES.UUID]: {
-        StringValue: dream.uuid,
-        DataType: SQS_DATA_TYPES.STRING,
-      },
-      [PROCESS_VIDEO_QUEUE_ATTRIBUTES.VIDEO]: {
-        StringValue: dream.video ?? "",
-        DataType: SQS_DATA_TYPES.STRING,
-      },
-      [PROCESS_VIDEO_QUEUE_ATTRIBUTES.USER_UUID]: {
-        StringValue: dream.user.cognitoId ?? "",
-        DataType: SQS_DATA_TYPES.STRING,
-      },
-    },
-  };
+export const processDreamRequest = async (
+  dream: Dream,
+  previousStatus?: string,
+) => {
+  const promptJson = parsePromptJson(dream);
 
-  const command = new SendMessageCommand(input);
-  await sqsClient.send(command);
+  if (promptJson) {
+    const algorithm = getAlgorithmFromPrompt(promptJson);
+
+    if (algorithm && isValidAlgorithm(algorithm)) {
+      const queueName = mapAlgorithmToQueue(algorithm);
+
+      if (queueName) {
+        APP_LOGGER.info(
+          `Processing dream ${dream.uuid} with algorithm ${algorithm}`,
+        );
+
+        const jobData = {
+          dream_uuid: dream.uuid,
+          user_id: dream.user.id,
+          auto_upload: true,
+          previous_dream_status: previousStatus,
+          ...promptJson,
+        };
+
+        const result = await queueWorkerJob(queueName, jobData);
+
+        if (result.success) {
+          return { id: result.jobId, status: "queued", isPromptBased: true };
+        } else {
+          APP_LOGGER.error(
+            `Failed to queue worker job for dream ${dream.uuid}: ${result.error}`,
+          );
+        }
+      }
+    } else {
+      APP_LOGGER.warn(
+        `Unsupported algorithm ${algorithm} for dream ${dream.uuid}, falling back to video service`,
+      );
+    }
+  }
+
+  // Skip processing if there's no file to process
+  if (!dream.original_video) {
+    APP_LOGGER.info(
+      `Skipping processing for dream ${dream.uuid}: no file or prompt provided`,
+    );
+    return { status: "skipped", isPromptBased: false };
+  }
+
+  const extension = getFileExtension(dream.original_video || "");
+  const mediaType = dream.mediaType ?? DreamMediaType.VIDEO;
+  const jobType = mediaType === DreamMediaType.IMAGE ? "image" : "video";
+
+  APP_LOGGER.info(
+    `Processing dream ${dream.uuid} with mediaType ${mediaType} via videoingest queue (${jobType})`,
+  );
+
+  const result = await queueVideoIngestJob({
+    type: jobType,
+    dream_uuid: dream.uuid,
+    extension,
+  });
+
+  if (result.success) {
+    return { id: result.jobId, status: "queued", isPromptBased: false };
+  } else {
+    APP_LOGGER.error(
+      `Failed to queue videoingest job for dream ${dream.uuid}: ${result.error}`,
+    );
+    return { status: "failed", isPromptBased: false };
+  }
 };
 
 /**
- * Send dream process request to video server
- * @param dream - dream should include contain user data
+ * Send dream md5 process request via videoingest queue
  */
-export const processDreamRequest = async (dream: Dream) => {
-  const extension = getFileExtension(dream.original_video || "");
-  const data = {
-    user_uuid: dream.user.cognitoId,
+export const processDreamMd5Request = async (dream: Dream) => {
+  return queueVideoIngestJob({
+    type: "md5",
     dream_uuid: dream.uuid,
-    extension,
-  };
-  return axios
-    .post(`${PROCESS_VIDEO_SERVER_URL}/process-video`, data, {
-      headers: {
-        Authorization: `Api-Key ${VIDEO_INGESTION_API_KEY}`,
-        ...getRequestHeaders({ contentType: ContentType.json }),
-      },
-    })
-    .then((res) => {
-      return res.data;
-    })
-    .catch((error) => APP_LOGGER.error(error));
+  });
+};
+
+/**
+ * Send dream filmstrip process request via videoingest queue
+ */
+export const processDreamFilmstripRequest = async (dream: Dream) => {
+  return queueVideoIngestJob({
+    type: "filmstrip",
+    dream_uuid: dream.uuid,
+  });
 };
 
 export const getDreamSelectedColumns = ({
@@ -86,11 +120,17 @@ export const getDreamSelectedColumns = ({
   featureRank,
   userEmail,
   playlistItems,
+  startKeyframe,
+  endKeyframe,
+  filmstrip = true,
 }: {
   originalVideo?: boolean;
   featureRank?: boolean;
   userEmail?: boolean;
   playlistItems?: boolean;
+  startKeyframe?: boolean;
+  endKeyframe?: boolean;
+  filmstrip?: boolean;
 } = {}): FindOptionsSelect<Dream> => {
   return {
     id: true,
@@ -102,11 +142,22 @@ export const getDreamSelectedColumns = ({
     downvotes: true,
     activityLevel: true,
     status: true,
+    mediaType: true,
     processedVideoSize: true,
     processedVideoFrames: true,
     processedVideoFPS: true,
+    processedMediaWidth: true,
+    processedMediaHeight: true,
+    render_duration: true,
     nsfw: true,
-    filmstrip: true,
+    hidden: true,
+    filmstrip: filmstrip,
+    description: true,
+    error: true,
+    prompt: true,
+    sourceUrl: true,
+    ccbyLicense: true,
+    md5: true,
     processed_at: true,
     created_at: true,
     updated_at: true,
@@ -116,6 +167,8 @@ export const getDreamSelectedColumns = ({
     playlistItems: playlistItems,
     user: getUserSelectedColumns({ userEmail }),
     displayedOwner: getUserSelectedColumns(),
+    startKeyframe: startKeyframe ? getKeyframeSelectedColumns() : undefined,
+    endKeyframe: endKeyframe ? getKeyframeSelectedColumns() : undefined,
   };
 };
 
@@ -166,6 +219,32 @@ export const createFeedItem = async (dream: Dream) => {
   }
 
   return feedItem;
+};
+
+/**
+ * Fetches playlist items for a dream
+ *
+ * @param dreamUUID UUID of the dream to fetch playlist items for
+ * @param userId id of the current user
+ * @param isAdmin Boolean to verify if user is an admin
+ * @returns Array of playlist items the user has permission to see
+ */
+export const findDreamPlaylistItems = async (
+  dreamUUID: string,
+  userId: number,
+  isAdmin: boolean,
+): Promise<PlaylistItem[]> => {
+  return await playlistItemRepository.find({
+    where: {
+      dreamItem: {
+        uuid: dreamUUID,
+      },
+      playlist: getPlaylistFindOptionsWhere(userId, isAdmin),
+    },
+    relations: {
+      playlist: { user: true, displayedOwner: true },
+    },
+  });
 };
 
 /**
@@ -277,10 +356,74 @@ export const handleDownvoteDream = async ({
  * @returns {string[]} dreams uuids
  */
 export const getTopDreams = async (take: number = 50) => {
-  const dreams = await dreamRepository.find({
-    take,
-    order: { upvotes: "DESC" },
+  const dreams = await dreamRepository
+    .createQueryBuilder()
+    .where("Dream.deleted_at IS NULL")
+    .andWhere("Dream.status = :status", { status: DreamStatusType.PROCESSED })
+    .andWhere(
+      "(Dream.mediaType IS NULL OR Dream.mediaType != :imageMediaType)",
+      {
+        imageMediaType: DreamMediaType.IMAGE,
+      },
+    )
+    .orderBy("Dream.upvotes", "DESC")
+    .addOrderBy("RANDOM()")
+    .take(take)
+    .getMany();
+
+  return dreams.map((dream: Dream) => dream.uuid);
+};
+
+/**
+ * get voted dreams
+ * @param {string} uuid - user uuid
+ * @returns {Dream[]} dreams
+ */
+export const getVotedDreams = async (
+  uuid: string,
+  options: {
+    voteType?: VoteType;
+    take: number;
+    skip: number;
+    search?: string;
+  },
+) => {
+  const voteType = options.voteType;
+  const search = options.search;
+  const searchILike = search ? ILike(`%${search}%`) : undefined;
+
+  const baseWhere = {
+    user: { uuid },
+    ...(voteType && { vote: voteType }),
+  };
+
+  const where = searchILike
+    ? [
+      { ...baseWhere, dream: { name: searchILike } },
+      { ...baseWhere, dream: { user: { name: searchILike } } },
+      { ...baseWhere, dream: { displayedOwner: { name: searchILike } } },
+    ]
+    : baseWhere;
+
+  const [votes, count] = await voteRepository.findAndCount({
+    where,
+    relations: {
+      dream: {
+        user: true,
+        displayedOwner: true,
+      },
+    },
+    select: {
+      dream: getDreamSelectedColumns(),
+    },
+    take: options.take,
+    skip: options.skip,
   });
 
-  return dreams.map((dream) => dream.uuid);
+  const dreams = votes.map((vote: Vote) => vote.dream);
+
+  return {
+    dreams,
+    count,
+  };
 };

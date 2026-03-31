@@ -4,7 +4,10 @@ import { Router } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
-import { clientDreamsSchema } from "schemas/client.schema";
+import {
+  clientDreamsRequestSchema,
+  clientDreamsSchema,
+} from "schemas/client.schema";
 import { requestDreamSchema } from "schemas/dream.schema";
 import { requestPlaylistSchema } from "schemas/playlist.schema";
 
@@ -12,7 +15,7 @@ const clientRouter = Router();
 
 /**
  * @swagger
- * /client/hello:
+ * /api/v1/client/hello:
  *  get:
  *    tags:
  *      - client
@@ -54,7 +57,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/playlist/default:
+ * /api/v1/client/playlist/default:
  *  get:
  *    tags:
  *      - client
@@ -105,7 +108,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/playlist/{uuid}:
+ * /api/v1/client/playlist/{uuid}:
  *  get:
  *    tags:
  *      - client
@@ -158,7 +161,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/dream/{uuid}/url:
+ * /api/v1/client/dream/{uuid}/url:
  *  get:
  *    tags:
  *      - client
@@ -210,7 +213,7 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/dream:
+ * /api/v1/client/dream:
  *  get:
  *    tags:
  *      - client
@@ -264,7 +267,65 @@ clientRouter.get(
 
 /**
  * @swagger
- * /client/user/dislikes:
+ * /api/v1/client/dream:
+ *  post:
+ *    tags:
+ *      - client
+ *    summary: Gets dreams
+ *    description: Gets dreams
+ *    requestBody:
+ *      required: true
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            properties:
+ *              uuids:
+ *                type: array
+ *                items:
+ *                  type: string
+ *    responses:
+ *      '200':
+ *        description: Gets dreams
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dreams:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/ClientDream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+clientRouter.post(
+  "/dream",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(clientDreamsRequestSchema),
+  clientController.handleDreamsRequest,
+);
+
+/**
+ * @swagger
+ * /api/v1/client/user/dislikes:
  *  get:
  *    tags:
  *      - client
@@ -305,6 +366,101 @@ clientRouter.get(
     ROLES.ADMIN_GROUP,
   ]),
   clientController.handleGetUserDislikes,
+);
+
+/**
+ * @swagger
+ * /api/v1/client/quota:
+ *  get:
+ *    tags:
+ *      - client
+ *    summary: Gets user quota
+ *    description: Gets user quota
+ *    responses:
+ *      '200':
+ *        description: Gets user quota
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        quota:
+ *                          type: number
+ *                        quotaExpiresAt:
+ *                          type: string
+ *                          format: date-time
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+clientRouter.get(
+  "/quota",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  clientController.handleQuota,
+);
+
+/**
+ * @swagger
+ * /api/v1/client/telemetry:
+ *  post:
+ *    tags:
+ *      - client
+ *    summary: Receives telemetry
+ *    description: Receives telemetry
+ *    requestBody:
+ *      required: true
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            properties:
+ *    responses:
+ *      '200':
+ *        description: Telemetry received
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+clientRouter.post(
+  "/telemetry",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  clientController.handleTelemetry,
 );
 
 export default clientRouter;

@@ -2,7 +2,14 @@ import httpStatus from "http-status";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { APP_LOGGER } from "shared/logger";
 import { JsonResponse } from "types/responses.types";
-import { RequestType, ResponseType } from "types/express.types";
+import {
+  RequestType,
+  ResponseOptions,
+  ResponseType,
+} from "types/express.types";
+import { GenericServerException, OauthException } from "@workos-inc/node";
+import { AUTH_MESSAGES } from "constants/messages/auth.constant";
+import { User } from "entities";
 
 export const jsonResponse: (response: JsonResponse) => JsonResponse = (
   response,
@@ -24,11 +31,15 @@ export const handleInternalServerError = (
 };
 
 // Not Found Handler
-export const handleNotFound = (req: RequestType, res: ResponseType) => {
+export const handleNotFound = (
+  req: RequestType,
+  res: ResponseType,
+  options: ResponseOptions = {},
+) => {
   res.status(httpStatus.NOT_FOUND).json(
     jsonResponse({
       success: false,
-      message: GENERAL_MESSAGES.NOT_FOUND,
+      message: options?.message ?? GENERAL_MESSAGES.NOT_FOUND,
     }),
   );
 };
@@ -49,6 +60,51 @@ export const handleForbidden = (req: RequestType, res: ResponseType) => {
     jsonResponse({
       success: false,
       message: GENERAL_MESSAGES.FORBIDDEN,
+    }),
+  );
+};
+
+// Workos Error Handler
+export const handleWorkosError = (
+  error: unknown,
+  req: RequestType,
+  res: ResponseType,
+) => {
+  APP_LOGGER.error(error);
+  let message: string | undefined;
+
+  if (error instanceof GenericServerException) {
+    message = error.message;
+    const status =
+      error.status >= 500
+        ? httpStatus.SERVICE_UNAVAILABLE
+        : httpStatus.BAD_REQUEST;
+    return res.status(status).json(jsonResponse({ success: false, message }));
+  }
+
+  if (error instanceof OauthException) {
+    message = error.errorDescription;
+  }
+
+  return res
+    .status(httpStatus.BAD_REQUEST)
+    .json(jsonResponse({ success: false, message }));
+};
+
+// Workos Authenticated Response Handler
+export const handleWorkosAuthenticatedResponse = (
+  req: RequestType,
+  res: ResponseType,
+  data: {
+    sealedSession?: string;
+    user: User;
+  },
+) => {
+  return res.status(httpStatus.OK).json(
+    jsonResponse({
+      success: true,
+      message: AUTH_MESSAGES.USER_LOGGED_IN,
+      data: data,
     }),
   );
 };

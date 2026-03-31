@@ -8,7 +8,7 @@ const jobRouter = Router();
 
 /**
  * @swagger
- * /job:
+ * /api/v1/job:
  *  get:
  *    tags:
  *      - job
@@ -55,19 +55,5 @@ jobRouter.get(
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
   jobController.handleGetJobs,
 );
-
-// jobRouter.post(
-//   "/turn-on",
-//   requireAuth,
-//   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
-//   jobController.handleTurnOn,
-// );
-
-// jobRouter.post(
-//   "/turn-off",
-//   requireAuth,
-//   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
-//   jobController.handleTurnOff,
-// );
 
 export default jobRouter;

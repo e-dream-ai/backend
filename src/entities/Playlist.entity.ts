@@ -1,5 +1,4 @@
 import {
-  AfterLoad,
   Column,
   CreateDateColumn,
   DeleteDateColumn,
@@ -16,6 +15,7 @@ import {
 import { FeedItem } from "./FeedItem.entity";
 import { PlaylistItem } from "./PlaylistItem.entity";
 import { User } from "./User.entity";
+import { PlaylistKeyframe } from "./PlaylistKeyframe";
 
 @Entity()
 export class Playlist {
@@ -29,6 +29,7 @@ export class Playlist {
 
   @ManyToOne(() => User, (user) => user.playlists)
   @JoinColumn()
+  @Index()
   user: User;
 
   /**
@@ -36,6 +37,7 @@ export class Playlist {
    */
   @ManyToOne(() => User, (user) => user.dreams, { nullable: true })
   @JoinColumn()
+  @Index()
   displayedOwner?: User | null;
 
   /**
@@ -48,6 +50,9 @@ export class Playlist {
 
   @Column({ nullable: true, type: "varchar" })
   name?: string | null;
+
+  @Column({ nullable: true, type: "text" })
+  description?: string | null;
 
   @Column({ nullable: true, type: "varchar" })
   thumbnail?: string | null;
@@ -65,6 +70,18 @@ export class Playlist {
   items: PlaylistItem[];
 
   /**
+   * Keyframes which belong to current playlist
+   */
+  @OneToMany(() => PlaylistKeyframe, (playlistItem) => playlistItem.playlist, {
+    /**
+     * soft-remove - helps to delete keyframes items in cascade when a playlist is deleted
+     * update - helps to update keyframes items in cascade (to update playlist order in case is needed)
+     */
+    cascade: ["soft-remove", "update"],
+  })
+  playlistKeyframes: PlaylistKeyframe[];
+
+  /**
    * Playlist where is included current playlist
    */
   @OneToMany(() => PlaylistItem, (playlistItem) => playlistItem.playlistItem, {
@@ -77,6 +94,7 @@ export class Playlist {
    * default 0
    */
   @Column({ type: "integer", default: 0 })
+  @Index()
   featureRank?: number;
 
   /**
@@ -87,6 +105,22 @@ export class Playlist {
     default: false,
   })
   nsfw: boolean;
+
+  /**
+   * hidden flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  hidden: boolean;
+
+  /**
+   * Number of times looping dreams replay before advancing.
+   * 0 = no special loop handling.
+   */
+  @Column({ type: "integer", default: 0 })
+  loops: number;
 
   @CreateDateColumn()
   created_at: Date;
@@ -103,28 +137,4 @@ export class Playlist {
 
   @DeleteDateColumn()
   deleted_at: Date;
-
-  /**
-   * take child item thumbnail if is not set on current playlist
-   */
-  @AfterLoad()
-  computeThumbnail() {
-    if (this.thumbnail) {
-      return;
-    }
-
-    const itemWithThumbnail = this?.items?.find(
-      (item) =>
-        Boolean(item?.dreamItem?.thumbnail) ||
-        Boolean(item?.playlistItem?.thumbnail),
-    );
-
-    const newThumbnail =
-      itemWithThumbnail?.dreamItem?.thumbnail ??
-      itemWithThumbnail?.playlistItem?.thumbnail;
-
-    if (newThumbnail) {
-      this.thumbnail = newThumbnail;
-    }
-  }
 }

@@ -21,9 +21,12 @@ export const AUTH_MESSAGES = {
   UNEXPECTED_ERROR: "An unexpected error occurred.",
   CODE_MISMATCH: "Invalid verification code provided.",
   EXPIRED_CODE: "Invalid code provided, please request a code again.",
+  PASSWORD_RESET_CREATED:
+    "Password reset created, wait for email instructions.",
   PASSWORD_RESET_REQUIRED: "Password reset required.",
   FORGOT_PASSWORD_REQUEST: "Forgot password request successfully created.",
   NOT_AUTHORIZED: "Not authorized.",
+  SENT_CODE_TO_EMAIL: "Sent an authorization code to your email.",
 };
 
 export const SOCKET_AUTH_ERROR_MESSAGES = {

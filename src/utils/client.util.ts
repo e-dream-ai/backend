@@ -1,11 +1,12 @@
 import appDataSource from "database/app-data-source";
-import { Dream, Playlist } from "entities";
-import { In } from "typeorm";
+import { Dream, Playlist, PlaylistItem } from "entities";
+import { In, Not } from "typeorm";
 import {
   ClientDream,
   ClientPlaylist,
   PartialClientDream,
 } from "types/client.types";
+import { DreamMediaType } from "types/dream.types";
 
 /**
  * Repositories
@@ -30,9 +31,38 @@ export const formatClientDream = (dream: Dream): ClientDream => ({
   nsfw: dream.nsfw,
   frontendUrl: dream.frontendUrl,
   activityLevel: dream?.activityLevel ?? null,
+  md5: dream?.md5,
   video_timestamp: dream?.processed_at ? dream?.processed_at.getTime() : null,
   timestamp: dream.updated_at.getTime(),
 });
+
+/**
+ * Flattens a nested structure of playlist items into a single array of dream items.
+ * @param {PlaylistItem[]} playlistItems
+ * @returns {Array<{uuid: string, timestamp: number}>} An array of flattened dream items
+ */
+const flattenPlaylistItems = (
+  items: PlaylistItem[],
+): Array<{ uuid: string; timestamp: number }> => {
+  return items.flatMap((item) => {
+    if (item.dreamItem) {
+      return [
+        {
+          uuid: item.dreamItem.uuid,
+          timestamp: item.dreamItem.updated_at.getTime(),
+          // start_keyframe and end_keyframe will be skipped instead of sending null if dream doesn't have them
+          // https://github.com/e-dream-ai/backend/issues/22#issuecomment-2649658596
+          start_keyframe: item?.dreamItem?.startKeyframe?.uuid,
+          end_keyframe: item?.dreamItem?.endKeyframe?.uuid,
+        },
+      ];
+    } else if (item.playlistItem) {
+      // Recursively flatten nested playlist items
+      return flattenPlaylistItems(item.playlistItem.items ?? []);
+    }
+    return [];
+  });
+};
 
 /**
  *@param {Playlist} dream
@@ -44,12 +74,8 @@ export const formatClientPlaylist = (playlist: Playlist): ClientPlaylist => ({
   artist: playlist?.displayedOwner?.name ?? playlist?.user?.name ?? null,
   thumbnail: playlist?.thumbnail ?? null,
   nsfw: playlist.nsfw,
-  contents: playlist?.items
-    ?.filter((item) => Boolean(item?.dreamItem))
-    .map((item) => ({
-      uuid: item.dreamItem.uuid,
-      timestamp: item.dreamItem.updated_at.getTime(),
-    })),
+  loops: playlist.loops ?? 0,
+  contents: flattenPlaylistItems(playlist?.items ?? []),
   timestamp: playlist.updated_at.getTime(),
 });
 
@@ -66,12 +92,19 @@ export const populateDefautPlaylist = async (
   }
 
   const dreams = await dreamRepository.find({
-    where: { uuid: In(uuids) },
+    where: {
+      uuid: In(uuids),
+      mediaType: Not(DreamMediaType.IMAGE),
+    },
     relations: { user: true, playlistItems: true },
     select: ["uuid", "updated_at"],
   });
 
-  const clientDreams: PartialClientDream[] = dreams.map((dream) => ({
+  const orderedDreams = uuids.map(
+    (uuid) => dreams.find((d) => uuid == d.uuid)!,
+  );
+
+  const clientDreams: PartialClientDream[] = orderedDreams.map((dream) => ({
     uuid: dream.uuid,
     timestamp: dream?.updated_at?.getTime(),
   }));

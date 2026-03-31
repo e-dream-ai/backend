@@ -15,19 +15,19 @@ export class Role1701813035391 implements MigrationInterface {
     );
 
     await queryRunner.manager.save(
-      queryRunner.manager.create<Role>(Role, {
+      queryRunner.manager.create(Role, {
         name: ROLES.ADMIN_GROUP,
       }),
     );
 
     await queryRunner.manager.save(
-      queryRunner.manager.create<Role>(Role, {
+      queryRunner.manager.create(Role, {
         name: ROLES.USER_GROUP,
       }),
     );
 
     await queryRunner.manager.save(
-      queryRunner.manager.create<Role>(Role, {
+      queryRunner.manager.create(Role, {
         name: ROLES.CREATOR_GROUP,
       }),
     );

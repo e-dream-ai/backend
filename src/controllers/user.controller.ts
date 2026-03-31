@@ -1,28 +1,34 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { s3Client } from "clients/s3.client";
-import { BUCKET_ACL } from "constants/aws/s3.constants";
+import { r2Client } from "clients/r2.client";
+
 import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
 import { AVATAR } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
-import appDataSource from "database/app-data-source";
-import { Playlist, User } from "entities";
+import {
+  apiKeyRepository,
+  roleRepository,
+  userRepository,
+} from "database/repositories";
+import { User } from "entities";
 import { ApiKey } from "entities/ApiKey.entity";
 import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
-import { FindOptionsWhere, ILike, IsNull, Not } from "typeorm";
+import { FindOptionsWhere, ILike, In } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import {
   GetUsersQuery,
+  GetVotedDreamsRequest,
   UpdateUserRequest,
   UpdateUserRoleRequest,
+  UserParamsRequest,
 } from "types/user.types";
-import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import { decrypt } from "utils/crypto.util";
+import { getVotedDreams } from "utils/dream.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
-  getPlaylistFindOptionsRelations,
+  findOnePlaylist,
   getPlaylistSelectedColumns,
 } from "utils/playlist.util";
 import {
@@ -33,15 +39,18 @@ import {
 } from "utils/responses.util";
 import {
   getRoleSelectedColumns,
+  getUserDownvotedDreams,
   getUserFindOptionsRelations,
+  getUserIdentifier,
   getUserSelectedColumns,
   isAdmin,
 } from "utils/user.util";
-
-const userRepository = appDataSource.getRepository(User);
-const roleRepository = appDataSource.getRepository(Role);
-const playlistRepository = appDataSource.getRepository(Playlist);
-const apiKeyRepository = appDataSource.getRepository(ApiKey);
+import { workos } from "utils/workos.util";
+import {
+  transformUsersWithSignedUrls,
+  transformUserWithSignedUrls,
+  transformDreamsWithSignedUrls,
+} from "utils/transform.util";
 
 /**
  * Handles get roles
@@ -109,15 +118,40 @@ export const handleGetUsers = async (
      * users with a registered last login are verified users
      * this will find users with not null last_login_at
      */
-    const whereSentence = {
-      name: search ? ILike(`%${search}%`) : undefined,
-      last_login_at: Not(IsNull()),
-      role: role
-        ? {
-          name: role,
-        }
-        : undefined,
-    } as FindOptionsWhere<User>;
+    let roleFilter: FindOptionsWhere<Role> | undefined;
+    if (role) {
+      if (role === ROLES.ADMIN_GROUP) {
+        roleFilter = { name: role };
+      } else if (role === ROLES.CREATOR_GROUP) {
+        roleFilter = { name: In([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]) };
+      } else if (role === ROLES.USER_GROUP) {
+        roleFilter = {
+          name: In([ROLES.USER_GROUP, ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+        };
+      } else {
+        roleFilter = { name: role };
+      }
+    } else {
+      roleFilter = {
+        name: In([ROLES.USER_GROUP, ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+      };
+    }
+    const baseConditions = {
+      verified: true,
+      role: roleFilter,
+    };
+    const whereSentence = search
+      ? [
+        {
+          ...baseConditions,
+          name: ILike(`%${search}%`),
+        },
+        {
+          ...baseConditions,
+          email: ILike(`%${search}%`),
+        },
+      ]
+      : (baseConditions as FindOptionsWhere<User>);
     const [users, count] = await userRepository.findAndCount({
       where: whereSentence,
       select: getUserSelectedColumns(),
@@ -126,9 +160,14 @@ export const handleGetUsers = async (
       skip,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { users, count } }));
+    const transformedUsers = await transformUsersWithSignedUrls(users);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { users: transformedUsers, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -146,18 +185,21 @@ export const handleGetUsers = async (
  * BAD_REQUEST 400 - error getting user
  *
  */
-export const handleGetUser = async (req: RequestType, res: ResponseType) => {
+export const handleGetUser = async (
+  req: RequestType<unknown, unknown, UserParamsRequest>,
+  res: ResponseType,
+) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const user = res.locals.user;
     const foundUser = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns({ userEmail: true }),
       relations: getUserFindOptionsRelations(),
     });
 
     if (!foundUser) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowedView = canExecuteAction({
@@ -166,13 +208,16 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
       userRole: user?.role?.name,
     });
 
+    // Transform user to include signed URLs first
+    const transformedUser = await transformUserWithSignedUrls(foundUser);
+
     /**
      * remove user email if is not admin or owner
      */
     const responseUser = {
-      ...foundUser,
-      email: isAllowedView ? foundUser.email : undefined,
-      signupInvite: isAllowedView ? foundUser.signupInvite : undefined,
+      ...transformedUser,
+      email: isAllowedView ? transformedUser.email : undefined,
+      signupInvite: isAllowedView ? transformedUser.signupInvite : undefined,
     };
 
     return res.status(httpStatus.OK).json(
@@ -183,7 +228,51 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
     );
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handles get dreams voted by user
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - dreams
+ * BAD_REQUEST 400 - error getting dreams
+ *
+ */
+export const handleGetVotedDreams = async (
+  req: RequestType<unknown, GetVotedDreamsRequest, UserParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid = req.params.uuid!;
+  const take = Math.min(
+    Number(req.query.take) || PAGINATION.TAKE,
+    PAGINATION.MAX_TAKE,
+  );
+  const skip = Number(req.query.skip) || PAGINATION.SKIP;
+  const type = req.query.type;
+  const search = req.query.search ? String(req.query.search) : undefined;
+
+  try {
+    const { count, dreams } = await getVotedDreams(uuid, {
+      take,
+      skip,
+      voteType: type,
+      search,
+    });
+    const transformedDreams = await transformDreamsWithSignedUrls(dreams);
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { count, dreams: transformedDreams },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -198,27 +287,31 @@ export const handleGetUser = async (req: RequestType, res: ResponseType) => {
  * BAD_REQUEST 400 - error getting users
  *
  */
-export const handleGetCurrentUser = async (
+export const handleGetAuthenticatedUser = async (
   req: RequestType,
   res: ResponseType,
 ) => {
   try {
-    const user = res.locals.user;
+    const user = res.locals.user!;
+
+    // Transform user to include signed URLs
+    const transformedUser = await transformUserWithSignedUrls(user);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { user },
+        data: { user: transformedUser },
       }),
     );
   } catch (err) {
     const error = err as Error;
+    console.error(error);
     return handleInternalServerError(error, req, res);
   }
 };
 
 /**
- * Handles get user current playlist
+ * Handles get user authenticated playlist
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object
@@ -229,22 +322,27 @@ export const handleGetCurrentUser = async (
  * BAD_REQUEST 400 - error getting playlist
  *
  */
-export const handleGetCurrentPlaylist = async (
+export const handleGetAuthenticatedUserPlaylist = async (
   req: RequestType,
   res: ResponseType,
 ) => {
   try {
     const user = res.locals.user;
+    const isUserAdmin = isAdmin(user);
     const currentPlaylistId = user?.currentPlaylist?.id;
 
     if (!currentPlaylistId) {
       return handleNotFound(req, res);
     }
 
-    const playlist = await playlistRepository.findOne({
+    const playlist = await findOnePlaylist({
       where: { id: currentPlaylistId },
       select: getPlaylistSelectedColumns(),
-      relations: getPlaylistFindOptionsRelations(),
+      filter: {
+        userId: user.id,
+        isAdmin: isUserAdmin,
+        nsfw: user?.nsfw,
+      },
     });
 
     if (!playlist) {
@@ -264,6 +362,42 @@ export const handleGetCurrentPlaylist = async (
 };
 
 /**
+ * Handles get list of dream dislikes
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - disliked dreams
+ * BAD_REQUEST 400 - error getting disliked dreams
+ *
+ */
+export const handleGetUserDislikes = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const user = res.locals.user!;
+  /**
+   * Calculate downvoted uuids
+   */
+  const dislikes = await getUserDownvotedDreams(user);
+
+  try {
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          dislikes,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
  * Handles update user
  *
  * @param {RequestType} req - Request object
@@ -275,19 +409,19 @@ export const handleGetCurrentPlaylist = async (
  *
  */
 export const handleUpdateUser = async (
-  req: RequestType<UpdateUserRequest>,
+  req: RequestType<UpdateUserRequest, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestUser = res.locals.user;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isOwner = user.id === requestUser?.id;
@@ -298,7 +432,7 @@ export const handleUpdateUser = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     const updateData: Partial<User> = {
@@ -312,6 +446,31 @@ export const handleUpdateUser = async (
 
       if (role) {
         updateData.role = role;
+      }
+
+      if (role && user.workOSId) {
+        const list = await workos.userManagement.listOrganizationMemberships({
+          organizationId: env.WORKOS_ORGANIZATION_ID,
+          userId: user.workOSId,
+        });
+
+        let organizationMembership = list?.data[0];
+
+        if (!organizationMembership) {
+          organizationMembership =
+            await workos.userManagement.createOrganizationMembership({
+              userId: user.workOSId,
+              organizationId: env.WORKOS_ORGANIZATION_ID,
+              roleSlug: role.name,
+            });
+        }
+
+        await workos.userManagement.updateOrganizationMembership(
+          organizationMembership.id,
+          {
+            roleSlug: role.name,
+          },
+        );
       }
     }
 
@@ -336,7 +495,7 @@ export const handleUpdateUser = async (
       .json(jsonResponse({ success: true, data: { user: responseUser } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -352,20 +511,20 @@ export const handleUpdateUser = async (
  *
  */
 export const handleUpdateUserAvatar = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
-  const id: number = Number(req.params.id) || 0;
+  const uuid = req.params.uuid!;
   const requestUser = res.locals.user;
 
   try {
     const user = await userRepository.findOne({
-      where: { id: id! },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isAllowed = canExecuteAction({
@@ -375,33 +534,33 @@ export const handleUpdateUserAvatar = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
 
     // update playlist
     const avatarBuffer = req.file?.buffer;
-    const bucketName = env.AWS_BUCKET_NAME;
+    const bucketName = env.R2_BUCKET_NAME;
     const fileMymeType = req.file?.mimetype;
     const fileExtension =
       MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
     const fileName = `${AVATAR}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${fileName}`;
+    const filePath = `${getUserIdentifier(user)}/${fileName}`;
 
     if (avatarBuffer) {
       const command = new PutObjectCommand({
         Bucket: bucketName,
         Key: filePath,
         Body: avatarBuffer,
-        ACL: BUCKET_ACL,
+        ContentType: fileMymeType || "image/jpeg",
         CacheControl: "no-store",
         Expires: new Date(),
       });
-      await s3Client.send(command);
+      await r2Client.send(command);
     }
 
     const updatedUser = await userRepository.save({
       ...user,
-      avatar: avatarBuffer ? generateBucketObjectURL(filePath) : null,
+      avatar: avatarBuffer ? filePath : null,
     });
 
     return res
@@ -409,7 +568,7 @@ export const handleUpdateUserAvatar = async (
       .json(jsonResponse({ success: true, data: { user: updatedUser } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -425,20 +584,20 @@ export const handleUpdateUserAvatar = async (
  *
  */
 export const handleUpdateRole = async (
-  req: RequestType<UpdateUserRoleRequest>,
+  req: RequestType<UpdateUserRoleRequest, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestRole = req.body.role;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
       relations: getUserFindOptionsRelations(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const role = await roleRepository.findOneBy({ name: requestRole });
@@ -451,7 +610,7 @@ export const handleUpdateRole = async (
       .json(jsonResponse({ success: true, data: { user: updatedUser } }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -466,17 +625,20 @@ export const handleUpdateRole = async (
  * BAD_REQUEST 400 - error getting apikey
  *
  */
-export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
+export const handleGetApiKey = async (
+  req: RequestType<unknown, unknown, UserParamsRequest>,
+  res: ResponseType,
+) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestUser = res.locals.user;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isOwner = user.id === requestUser?.id;
@@ -487,7 +649,7 @@ export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
     const apikey = await apiKeyRepository.findOne({
       where: {
@@ -498,7 +660,7 @@ export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
     });
 
     if (!apikey) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     /**
@@ -521,7 +683,7 @@ export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
     );
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -537,19 +699,19 @@ export const handleGetApiKey = async (req: RequestType, res: ResponseType) => {
  *
  */
 export const handleGenerateApiKey = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestUser = res.locals.user;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isOwner = user.id === requestUser?.id;
@@ -560,7 +722,7 @@ export const handleGenerateApiKey = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
     const foundApikey = await apiKeyRepository.findOne({
       where: {
@@ -581,7 +743,7 @@ export const handleGenerateApiKey = async (
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };
 
@@ -597,19 +759,19 @@ export const handleGenerateApiKey = async (
  *
  */
 export const handleRevokeApiKey = async (
-  req: RequestType,
+  req: RequestType<unknown, unknown, UserParamsRequest>,
   res: ResponseType,
 ) => {
   try {
-    const id = Number(req.params.id) || 0;
+    const uuid = req.params.uuid!;
     const requestUser = res.locals.user;
     const user = await userRepository.findOne({
-      where: { id },
+      where: { uuid },
       select: getUserSelectedColumns(),
     });
 
     if (!user) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     const isOwner = user.id === requestUser?.id;
@@ -620,7 +782,7 @@ export const handleRevokeApiKey = async (
     });
 
     if (!isAllowed) {
-      return handleForbidden(req, res);
+      return handleForbidden(req as RequestType, res);
     }
     const foundApikey = await apiKeyRepository.findOne({
       where: {
@@ -631,7 +793,7 @@ export const handleRevokeApiKey = async (
     });
 
     if (!foundApikey) {
-      return handleNotFound(req, res);
+      return handleNotFound(req as RequestType, res);
     }
 
     await apiKeyRepository.softRemove(foundApikey);
@@ -639,6 +801,6 @@ export const handleRevokeApiKey = async (
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {
     const error = err as Error;
-    return handleInternalServerError(error, req, res);
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };

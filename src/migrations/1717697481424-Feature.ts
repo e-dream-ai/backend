@@ -11,7 +11,7 @@ export class Feature1717697481424 implements MigrationInterface {
     );
 
     await queryRunner.manager.save(
-      queryRunner.manager.create<Feature>(Feature, {
+      queryRunner.manager.create(Feature, {
         name: FEATURES.SIGNUP_WITH_CODE,
       }),
     );

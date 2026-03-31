@@ -3,9 +3,14 @@ import Joi from "joi";
 import type { NextFunction, Request, Response } from "express";
 import type {
   ConfirmUserLoginWithCodeCredentials,
+  CreatePasswordResetV2,
+  UserCallbackV2,
   UserLoginCredentials,
+  UserLoginCredentialsV2,
   UserLoginWithCodeCredentials,
+  UserMagicLoginCredentialsV2,
   UserSignUpCredentials,
+  UserSignUpCredentialsV2,
   UserVerifyCredentials,
 } from "types/auth.types";
 import { isFeatureActive } from "utils/feature.util";
@@ -78,4 +83,44 @@ export const validateSignupSchema = async (
   }
 
   next();
+};
+
+export const callbackSchemaV2 = {
+  query: Joi.object<UserCallbackV2>().keys({
+    code: Joi.string().required(),
+  }),
+};
+
+export const loginSchemaV2 = {
+  body: Joi.object<UserLoginCredentialsV2>().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required().min(6),
+  }),
+};
+
+export const magicSchemaV2 = {
+  body: Joi.object<UserMagicLoginCredentialsV2>().keys({
+    email: Joi.string().required().email(),
+    code: Joi.string(),
+  }),
+};
+
+export const signupSchemaV2 = {
+  body: Joi.object<UserSignUpCredentialsV2>({
+    email: Joi.string().required().email(),
+    firstname: Joi.string().required().max(50),
+    lastname: Joi.string().required().max(50),
+    // password: Joi.string().required().min(10),
+    code: Joi.string().when("$isSignupCodeActive", {
+      is: true,
+      then: Joi.required(),
+      otherwise: Joi.optional(),
+    }),
+  }),
+};
+
+export const createPasswordResetV2 = {
+  body: Joi.object<CreatePasswordResetV2>({
+    email: Joi.string().required().email(),
+  }),
 };

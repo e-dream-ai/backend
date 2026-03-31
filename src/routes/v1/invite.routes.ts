@@ -14,7 +14,7 @@ const inviteRouter = Router();
 
 /**
  * @swagger
- * /invite:
+ * /api/v1/invite:
  *  get:
  *    tags:
  *      - invite
@@ -68,7 +68,7 @@ inviteRouter.get(
 
 /**
  * @swagger
- * /invite:
+ * /api/v1/invite:
  *  post:
  *    tags:
  *      - invite
@@ -121,7 +121,7 @@ inviteRouter.post(
 
 /**
  * @swagger
- * /invite/{id}/invalidate:
+ * /api/v1/invite/{id}/invalidate:
  *  put:
  *    tags:
  *      - invite

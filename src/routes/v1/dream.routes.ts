@@ -8,11 +8,13 @@ import validatorMiddleware from "middlewares/validator.middleware";
 import {
   abortMultipartUploadDreamSchema,
   completeMultipartUploadDreamSchema,
+  createDreamSchema,
   createMultipartUploadDreamSchema,
   createMultipartUploadFileSchema,
   getDreamsSchema,
   refreshMultipartUploadUrlSchema,
   requestDreamSchema,
+  setDreamStatusFailedSchema,
   updateDreamProcessedSchema,
   updateDreamSchema,
 } from "schemas/dream.schema";
@@ -25,7 +27,7 @@ dreamRouter.use("/job", jobRouter);
 
 /**
  * @swagger
- * /dream:
+ * /api/v1/dream:
  *   get:
  *     tags:
  *       - dream
@@ -39,6 +41,10 @@ dreamRouter.use("/job", jobRouter);
  *       - schema:
  *           type: number
  *         name: skip
+ *         in: query
+ *       - schema:
+ *           type: string
+ *         name: userUUID
  *         in: query
  *     responses:
  *       '200':
@@ -81,9 +87,17 @@ dreamRouter.get(
   dreamController.handleGetDreams,
 );
 
+dreamRouter.post(
+  "/",
+  requireAuth,
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(createDreamSchema),
+  dreamController.handleCreateDream,
+);
+
 /**
  * @swagger
- * /dream/create-multipart-upload:
+ * /api/v1/dream/create-multipart-upload:
  *  post:
  *    tags:
  *      - dream
@@ -144,7 +158,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/:uuid/create-multipart-upload:
+ * /api/v1/dream/:uuid/create-multipart-upload:
  *  post:
  *    tags:
  *      - dream
@@ -218,7 +232,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /{uuid}/refresh-multipart-upload-url:
+ * /api/v1/dream/{uuid}/refresh-multipart-upload-url:
  *  post:
  *    tags:
  *      - dream
@@ -300,7 +314,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /{uuid}/complete-multipart-upload:
+ * /api/v1/dream/{uuid}/complete-multipart-upload:
  *  post:
  *    tags:
  *      - dream
@@ -377,7 +391,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /{uuid}/abort-multipart-upload:
+ * /api/v1/dream/{uuid}/abort-multipart-upload:
  *  post:
  *    tags:
  *      - dream
@@ -425,7 +439,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/my-dreams:
+ * /api/v1/dream/my-dreams:
  *  get:
  *    tags:
  *      - dream
@@ -482,7 +496,7 @@ dreamRouter.get(
 
 /**
  * @swagger
- * /dream/{uuid}/vote:
+ * /api/v1/dream/{uuid}/vote:
  *  get:
  *    tags:
  *      - dream
@@ -534,7 +548,70 @@ dreamRouter.get(
 
 /**
  * @swagger
- * /dream/{uuid}/process-dream:
+ * /api/v1/dream/{uuid}/preview:
+ *  get:
+ *    tags:
+ *      - dream
+ *    summary: Gets dream preview frame
+ *    description: Gets dream preview frame (base64) from Redis if available
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Gets dream preview frame
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        preview_frame:
+ *                          type: string
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+dreamRouter.get(
+  "/:uuid/preview",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(requestDreamSchema),
+  dreamController.handleGetDreamPreview,
+);
+
+dreamRouter.get(
+  "/:uuid/thumbnail",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  dreamController.handleGetDreamThumbnail,
+);
+
+/**
+ * @swagger
+ * /api/v1/dream/{uuid}/process-dream:
  *  put:
  *    tags:
  *      - dream
@@ -578,14 +655,72 @@ dreamRouter.get(
 dreamRouter.post(
   "/:uuid/process-dream",
   requireAuth,
-  checkRoleMiddleware([ROLES.ADMIN_GROUP]),
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(requestDreamSchema),
   dreamController.handleProcessDream,
 );
 
 /**
  * @swagger
- * /dream/{uuid}/status/processing:
+ * /api/v1/dream/{uuid}/cancel-job:
+ *  post:
+ *    tags:
+ *      - dream
+ *    summary: Cancel ongoing dream job
+ *    description: Cancel ongoing dream job (render/processing). Does not change dream state.
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: dream uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Job cancelled successfully
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        message:
+ *                          type: string
+ *                        jobFound:
+ *                          type: boolean
+ *                        runpodCancelled:
+ *                          type: boolean
+ *      '404':
+ *        description: Dream not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *      '403':
+ *        description: Forbidden - user not authorized
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+dreamRouter.post(
+  "/:uuid/cancel-job",
+  requireAuth,
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(requestDreamSchema),
+  dreamController.handleCancelDreamJob,
+);
+
+/**
+ * @swagger
+ * /api/v1/dream/{uuid}/status/processing:
  *  post:
  *    tags:
  *      - dream
@@ -635,7 +770,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}/status/processed:
+ * /api/v1/dream/{uuid}/status/processed:
  *  post:
  *    tags:
  *      - dream
@@ -662,6 +797,8 @@ dreamRouter.post(
  *                 type: number
  *               activityLevel:
  *                 type: number
+ *               md5:
+ *                 type: string
  *    responses:
  *      '200':
  *        description: Set dream status to processed
@@ -697,7 +834,7 @@ dreamRouter.post(
 
 /**
  * @swagger
- * /dream/{uuid}/status/failed:
+ * /api/v1/dream/{uuid}/status/failed:
  *  post:
  *    tags:
  *      - dream
@@ -742,13 +879,13 @@ dreamRouter.post(
   "/:uuid/status/failed",
   requireAuth,
   checkRoleMiddleware([ROLES.ADMIN_GROUP]),
-  validatorMiddleware(requestDreamSchema),
+  validatorMiddleware(setDreamStatusFailedSchema),
   dreamController.handleSetDreamStatusFailed,
 );
 
 /**
  * @swagger
- * /dream/{uuid}:
+ * /api/v1/dream/{uuid}:
  *  get:
  *    tags:
  *      - dream
@@ -800,7 +937,7 @@ dreamRouter.get(
 
 /**
  * @swagger
- * /dream/{uuid}:
+ * /api/v1/dream/{uuid}:
  *  put:
  *    tags:
  *      - dream
@@ -919,7 +1056,7 @@ dreamRouter.put(
 
 /**
  * @swagger
- * /dream/{uuid}:
+ * /api/v1/dream/{uuid}:
  *  delete:
  *    tags:
  *      - dream
@@ -964,7 +1101,7 @@ dreamRouter.delete(
 
 /**
  * @swagger
- * /dream/{uuid}/upvote:
+ * /api/v1/dream/{uuid}/upvote:
  *  put:
  *    tags:
  *      - dream
@@ -1016,7 +1153,7 @@ dreamRouter.put(
 
 /**
  * @swagger
- * /dream/{uuid}/downvote:
+ * /api/v1/dream/{uuid}/downvote:
  *  put:
  *    tags:
  *      - dream
@@ -1068,7 +1205,7 @@ dreamRouter.put(
 
 /**
  * @swagger
- * /dream/{uuid}/unvote:
+ * /api/v1/dream/{uuid}/unvote:
  *  put:
  *    tags:
  *      - dream

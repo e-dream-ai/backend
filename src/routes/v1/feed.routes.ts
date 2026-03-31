@@ -10,7 +10,7 @@ const feedRouter = Router();
 
 /**
  * @swagger
- * /feed/ranked:
+ * /api/v1/feed/ranked:
  *  get:
  *    tags:
  *      - feed
@@ -31,6 +31,13 @@ const feedRouter = Router();
  *        schema:
  *          type: integer
  *          example: 1
+ *      - name: search
+ *        in: query
+ *        description: Search query to filter playlists by name
+ *        required: false
+ *        schema:
+ *          type: string
+ *          example: "my playlist"
  *    responses:
  *      '200':
  *        description: Gets ranked playlist
@@ -68,12 +75,13 @@ feedRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(feedSchema),
   feedController.handleGetRankedFeed,
 );
 
 /**
  * @swagger
- * /feed/:
+ * /api/v1/feed/:
  *  get:
  *    tags:
  *      - feed
@@ -131,12 +139,81 @@ feedRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(feedSchema),
   feedController.handleGetFeed,
 );
 
 /**
  * @swagger
- * /feed/my-dreams:
+ * /api/v1/feed/grouped:
+ *  get:
+ *    tags:
+ *      - feed
+ *    summary: Gets grouped feed content with virtual playlists
+ *    description: Gets feed content with virtual playlist grouping applied on the backend
+ *    parameters:
+ *      - name: take
+ *        in: query
+ *        description: Number of items to take
+ *        required: false
+ *        schema:
+ *          type: integer
+ *          example: 1
+ *      - name: skip
+ *        in: query
+ *        description: Number of items to skip
+ *        required: false
+ *        schema:
+ *          type: integer
+ *          example: 1
+ *    responses:
+ *      '200':
+ *        description: Gets grouped feed content
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        count:
+ *                          type: number
+ *                        feedItems:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/FeedItem'
+ *                        virtualPlaylists:
+ *                          type: array
+ *                          items:
+ *                            type: object
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+feedRouter.get(
+  "/grouped",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(feedSchema),
+  feedController.handleGetGroupedFeed,
+);
+
+/**
+ * @swagger
+ * /api/v1/feed/my-dreams:
  *  get:
  *    tags:
  *      - feed

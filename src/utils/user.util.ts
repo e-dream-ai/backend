@@ -5,10 +5,13 @@ import {
 } from "clients/cognito.client";
 import { ROLES } from "constants/role.constants";
 import appDataSource from "database/app-data-source";
-import { User } from "entities";
+import { Invite, User, Vote } from "entities";
+import type { User as WorkOSUser } from "@workos-inc/node";
 import { Role } from "entities/Role.entity";
 import {
   DAILY_USER_DEFAULT_QUOTA,
+  DAILY_USER_QUOTA_RESET_UTC_HOUR,
+  INTERACTIVE_QUOTA,
   MIN_USER_QUOTA,
 } from "constants/user.constants";
 import {
@@ -17,11 +20,14 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 import { fetchCognitoUser } from "controllers/auth.controller";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
+import { VoteType } from "types/vote.types";
 
 /**
  * Repositories
  */
 const userRepository = appDataSource.getRepository(User);
+const roleRepository = appDataSource.getRepository(Role);
+const voteRepository = appDataSource.getRepository(Vote);
 
 export const authenticateUser = async ({
   username,
@@ -73,7 +79,9 @@ export const getUserSelectedColumns = ({
 } = {}): FindOptionsSelect<User> => {
   return {
     id: true,
+    uuid: true,
     cognitoId: true,
+    workOSId: true,
     name: true,
     description: true,
     avatar: true,
@@ -81,6 +89,8 @@ export const getUserSelectedColumns = ({
     enableMarketingEmails: true,
     quota: true,
     last_login_at: true,
+    last_client_ping_at: true,
+    last_client_version: true,
     created_at: true,
     updated_at: true,
     deleted_at: true,
@@ -98,12 +108,89 @@ export const getUserFindOptionsRelations = (): FindOptionsRelations<User> => {
 };
 
 /**
+ * Retrieves user identifier for s3 resources handling purposes
+ * @param user - database user
+ * @returns user identifier
+ */
+export const getUserIdentifier = (user: User) => {
+  return user.cognitoId ?? user.uuid;
+};
+
+/**
  * Checks if the given user is an admin.
  * @param user The user object to check.
  * @returns True if the user is an admin, false otherwise.
  */
 export const isAdmin = (user?: User): boolean =>
   user?.role?.name === ROLES.ADMIN_GROUP;
+
+/**
+ * This function checks if a user with the same email as the provided `workOSUser` already exists in the database.
+ * @param workOSUser - WorkOS user object to be synchronized.
+ * @param roleSlug - (Optional) Slug of the role to be assigned to the new user.
+ * @returns A Promise that resolves to the synchronized user.
+ */
+export const syncWorkOSUser = async (
+  workOSUser: WorkOSUser,
+  opts?: {
+    invite?: Invite;
+  },
+) => {
+  let user = await userRepository.findOne({
+    where: {
+      email: workOSUser.email,
+    },
+    relations: {
+      role: true,
+      currentPlaylist: { user: true, displayedOwner: true },
+      currentDream: {
+        user: true,
+        displayedOwner: true,
+        endKeyframe: true,
+        startKeyframe: true,
+      },
+    },
+  });
+
+  /**
+   * Get user group role
+   */
+  const role = await roleRepository.findOneBy({ name: ROLES.USER_GROUP });
+  const userRole = opts?.invite?.signupRole || role!;
+
+  // If the user exists and does not have a workOSId, update it
+  if (user && !user.workOSId) {
+    /**
+     * Update user on database and for response
+     */
+    await userRepository.update(user.id, {
+      workOSId: workOSUser.id,
+      role: userRole,
+      signupInvite: opts?.invite,
+      name: workOSUser.firstName,
+      lastName: workOSUser.lastName,
+    });
+    user.workOSId = workOSUser.id;
+    return user;
+  }
+
+  // If the user exists, return the existing user
+  if (user) {
+    return user;
+  }
+
+  // If the user does not exist, create a new user
+  user = new User();
+  user.workOSId = workOSUser.id;
+  user.email = workOSUser.email;
+  user.signupInvite = opts?.invite;
+  user.role = userRole;
+  user.name = workOSUser.firstName;
+  user.lastName = workOSUser.lastName;
+
+  const newUser = await userRepository.save(user);
+  return newUser;
+};
 
 /**
  * Updates default user daily quota if is below it
@@ -119,12 +206,63 @@ export const setDailyUsersQuota = async () => {
   }
 };
 
+export const getNextQuotaResetAt = (now: Date = new Date()): Date => {
+  const nextResetAt = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      DAILY_USER_QUOTA_RESET_UTC_HOUR,
+      0,
+      0,
+      0,
+    ),
+  );
+
+  if (now >= nextResetAt) {
+    nextResetAt.setUTCDate(nextResetAt.getUTCDate() + 1);
+  }
+
+  return nextResetAt;
+};
+
 /**
  * Reduces the quota of a user by a given amount
  * @param user user whose quota is to be reduced
  * @param quotaToReduce amount by which to reduce the user's quota
  * @returns void
  */
+
+/**
+ * Fills a user's quota up to INTERACTIVE_QUOTA if it is currently below that.
+ * Returns the resulting quota value.
+ */
+export const fillUserInteractiveQuota = async (
+  user: User,
+): Promise<bigint | number> => {
+  // Use conditional DB update to avoid overwriting a quota that's already higher.
+  // We can't trust user.quota here because socket.data.user is stale from connection time.
+  const result = await userRepository
+    .createQueryBuilder()
+    .update(User)
+    .set({ quota: INTERACTIVE_QUOTA })
+    .where("id = :id AND quota < :quota", {
+      id: user.id,
+      quota: INTERACTIVE_QUOTA,
+    })
+    .execute();
+
+  if (result.affected && result.affected > 0) {
+    console.log(
+      `fillUserInteractiveQuota: user ${user.uuid} quota filled to ${INTERACTIVE_QUOTA}`,
+    );
+    return INTERACTIVE_QUOTA;
+  }
+
+  // Quota was already >= INTERACTIVE_QUOTA, fetch current value from DB
+  const freshUser = await userRepository.findOne({ where: { id: user.id } });
+  return freshUser?.quota ?? INTERACTIVE_QUOTA;
+};
 
 export const reduceUserQuota = async (user: User, quotaToReduce: number) => {
   // ensures that the user's quota can't be negative
@@ -136,8 +274,19 @@ export const reduceUserQuota = async (user: User, quotaToReduce: number) => {
   await userRepository.update(user.id, { quota: newQuota });
 };
 
-export const setUserLastClientPingAt = async (user: User) => {
-  await userRepository.update(user.id, { last_client_ping_at: new Date() });
+export const setUserLastClientPingAt = async (
+  user: User,
+  clientVersion?: string | null,
+) => {
+  const updateData: Partial<User> = {
+    last_client_ping_at: new Date(),
+  };
+
+  if (clientVersion !== undefined) {
+    updateData.last_client_version = clientVersion;
+  }
+
+  await userRepository.update(user.id, updateData);
 };
 
 export const resetUserLastClientPingAt = async (user: User) => {
@@ -145,5 +294,33 @@ export const resetUserLastClientPingAt = async (user: User) => {
 };
 
 export const setUserLastLoginAt = async (user: User) => {
-  await userRepository.update(user.id, { last_login_at: new Date() });
+  await userRepository.update(user.id, {
+    last_login_at: new Date(),
+    verified: true,
+  });
+};
+
+/**
+ * Retrieves the UUIDs of dreams that a user has downvoted
+ *
+ * @param user
+ * @returns string[]
+ */
+export const getUserDownvotedDreams = async (user: User): Promise<string[]> => {
+  /**
+   * Get downvoted dreams
+   */
+  const downvotes = await voteRepository.find({
+    where: { user: { id: user.id }, vote: VoteType.DOWNVOTE },
+    relations: {
+      dream: true,
+    },
+  });
+
+  /**
+   * Return uuids
+   */
+  const dislikes = downvotes.map((dv) => dv.dream.uuid);
+
+  return dislikes;
 };

@@ -7,9 +7,13 @@ import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import {
   addPlaylistItemSchema,
+  addPlaylistKeyframeSchema,
   createPlaylistSchema,
+  getPlaylistItemsSchema,
+  getPlaylistKeyframesSchema,
   orderPlaylistSchema,
   removePlaylistItemSchema,
+  removePlaylistKeyframeSchema,
   requestPlaylistSchema,
   updatePlaylistSchema,
 } from "schemas/playlist.schema";
@@ -17,7 +21,103 @@ const playlistRouter = Router();
 
 /**
  * @swagger
- * /playlist/{uuid}:
+ * /api/v1/playlist/default:
+ *  get:
+ *    tags:
+ *      - playlist
+ *    summary: Gets default playlist data
+ *    description: Gets default playlist data
+ *    responses:
+ *      '200':
+ *        description: Gets default playlist data
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dreams:
+ *                          $ref: '#/components/schemas/Dream'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.get(
+  "/default",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  playlistController.handleGetDefaultPlaylist,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/references:
+ *  get:
+ *    tags:
+ *      - playlist
+ *    summary: Gets parent references of the playlist
+ *    description: Gets parent references of the playlist
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: Playlist uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Gets parent references of the playlist
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        playlist:
+ *                          $ref: '#/components/schemas/Playlist'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.get(
+  "/:uuid/references",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(requestPlaylistSchema),
+  playlistController.handleGetPlaylistReferences,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}:
  *  get:
  *    tags:
  *      - playlist
@@ -69,12 +169,228 @@ playlistRouter.get(
 
 /**
  * @swagger
- * /playlist/{uuid}:
+ * /api/v1/playlist/{uuid}/items:
+ *  get:
+ *    tags:
+ *      - playlist
+ *    summary: Gets paginated playlist items
+ *    description: Gets paginated playlist items
+ *    parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Playlist UUID
+ *       - in: query
+ *         name: take
+ *         schema:
+ *           type: number
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Number of items to return (default 30)
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *         description: Number of items to skip (default 0)
+ *    responses:
+ *      '200':
+ *        description: Paginated playlist items
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        items:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/PlaylistItem'
+ *                        totalCount:
+ *                          type: number
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *      '404':
+ *        description: Playlist not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+playlistRouter.get(
+  "/:uuid/items",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(getPlaylistItemsSchema),
+  playlistController.handleGetPlaylistItems,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/playback-items:
+ *  get:
+ *    tags:
+ *      - playlist
+ *    summary: Gets playlist items for web player playback
+ *    parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Playlist UUID
+ *    responses:
+ *      '200':
+ *        description: Playlist playback items
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        items:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/PlaylistItem'
+ *      '404':
+ *        description: Playlist not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+playlistRouter.get(
+  "/:uuid/playback-items",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(requestPlaylistSchema),
+  playlistController.handleGetPlaylistPlaybackItems,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/keyframes:
+ *  get:
+ *    tags:
+ *      - playlist
+ *    summary: Gets paginated playlist keyframes
+ *    description: Gets paginated playlist keyframes
+ *    parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Playlist UUID
+ *       - in: query
+ *         name: take
+ *         schema:
+ *           type: number
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Number of keyframes to return (default 30)
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *         description: Number of keyframes to skip (default 0)
+ *    responses:
+ *      '200':
+ *        description: Paginated playlist keyframes
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        keyframes:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/PlaylistKeyframe'
+ *                        totalCount:
+ *                          type: number
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *      '404':
+ *        description: Playlist not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ */
+playlistRouter.get(
+  "/:uuid/keyframes",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(getPlaylistKeyframesSchema),
+  playlistController.handleGetPlaylistKeyframes,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}:
  *  get:
  *    tags:
  *      - playlist
  *    summary: Gets playlists
  *    description: Gets playlists
+ *    parameters:
+ *       - schema:
+ *           type: number
+ *         name: take
+ *         in: query
+ *       - schema:
+ *           type: number
+ *         name: skip
+ *         in: query
+ *       - schema:
+ *           type: string
+ *         name: userUUID
+ *         in: query
  *    responses:
  *      '200':
  *        description: Gets playlists
@@ -113,7 +429,7 @@ playlistRouter.get(
 
 /**
  * @swagger
- * /playlist:
+ * /api/v1/playlist:
  *  post:
  *    tags:
  *      - playlist
@@ -124,7 +440,7 @@ playlistRouter.get(
  *      content:
  *        application/json:
  *          schema:
- *            $ref: '#/components/schemas/Playlist'
+ *            $ref: '#/components/schemas/CreatePlaylistRequest'
  *    responses:
  *      '200':
  *        description: Creates playlist
@@ -164,7 +480,7 @@ playlistRouter.post(
 
 /**
  * @swagger
- * /playlist/{uuid}:
+ * /api/v1/playlist/{uuid}:
  *  put:
  *    tags:
  *      - playlist
@@ -175,7 +491,7 @@ playlistRouter.post(
  *      content:
  *        application/json:
  *          schema:
- *            $ref: '#/components/schemas/Playlist'
+ *            $ref: '#/components/schemas/UpdatePlaylistRequest'
  *    parameters:
  *      - name: uuid
  *        in: query
@@ -222,7 +538,7 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{uuid}/thumbnail:
+ * /api/v1/playlist/{uuid}/thumbnail:
  *  put:
  *    tags:
  *      - playlist
@@ -286,7 +602,7 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{uuid}:
+ * /api/v1/playlist/{uuid}:
  *  delete:
  *    tags:
  *      - playlist
@@ -331,7 +647,7 @@ playlistRouter.delete(
 
 /**
  * @swagger
- * /playlist/{uuid}/order:
+ * /api/v1/playlist/{uuid}/order:
  *  put:
  *    tags:
  *      - playlist
@@ -409,12 +725,12 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{uuid}/add-item:
+ * /api/v1/playlist/{uuid}/add-item:
  *  put:
  *    tags:
  *      - playlist
- *    summary: Updates playlist order
- *    description: Updates playlist order
+ *    summary: Adds playlist item
+ *    description: Adds playlist item
  *    requestBody:
  *      required: true
  *      content:
@@ -424,8 +740,8 @@ playlistRouter.put(
  *            properties:
  *              type:
  *                type: string
- *              id:
- *                type: number
+ *              uuid:
+ *                type: string
  *    parameters:
  *      - name: uuid
  *        in: query
@@ -435,7 +751,7 @@ playlistRouter.put(
  *          type: string
  *    responses:
  *      '200':
- *        description: Updates playlist order
+ *        description: Adds playlist item
  *        content:
  *          application/json:
  *            schema:
@@ -472,7 +788,7 @@ playlistRouter.put(
 
 /**
  * @swagger
- * /playlist/{uuid}/remove-item/{itemId}:
+ * /api/v1/playlist/{uuid}/remove-item/{itemId}:
  *  delete:
  *    tags:
  *      - playlist
@@ -527,6 +843,128 @@ playlistRouter.delete(
   ]),
   validatorMiddleware(removePlaylistItemSchema),
   playlistController.handleRemovePlaylistItem,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/keyframe:
+ *  put:
+ *    tags:
+ *      - playlist
+ *    summary: Adds playlist keyframe
+ *    description: Adds playlist keyframe
+ *    requestBody:
+ *      required: true
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            properties:
+ *              type:
+ *                type: string
+ *              uuid:
+ *                type: number
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: Playlist uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Adds playlist keyframe
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        playlist:
+ *                          $ref: '#/components/schemas/Playlist'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.post(
+  "/:uuid/keyframe",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(addPlaylistKeyframeSchema),
+  playlistController.handleAddPlaylistKeyframe,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/keyframe/{playlistKeyframeId}:
+ *  delete:
+ *    tags:
+ *      - playlist
+ *    summary: Deletes playlist keyframe
+ *    description: Deletes playlist keyframe
+ *    parameters:
+ *      - name: uuid
+ *        in: query
+ *        description: Playlist uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *      - name: playlistKeyframeId
+ *        in: query
+ *        description: playlist keyframe id
+ *        required: true
+ *        schema:
+ *          type: integer
+ *          example: 1
+ *    responses:
+ *      '200':
+ *        description: Deletes playlist keyframe
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        playlist:
+ *                          $ref: '#/components/schemas/Playlist'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.delete(
+  "/:uuid/keyframe/:playlistKeyframeId",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(removePlaylistKeyframeSchema),
+  playlistController.handleRemovePlaylistKeyframe,
 );
 
 export default playlistRouter;

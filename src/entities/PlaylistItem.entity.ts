@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -22,6 +23,7 @@ export class PlaylistItem {
    */
   @ManyToOne(() => Playlist)
   @JoinColumn()
+  @Index()
   playlist: Playlist;
 
   @Column({
@@ -29,27 +31,33 @@ export class PlaylistItem {
     enum: PlaylistItemType,
     default: PlaylistItemType.NONE,
   })
+  @Index()
   type: PlaylistItemType;
 
   /**
    * Dream of the Playlist Item
    * Should be null if playlistItem exists
    */
-  @ManyToOne(() => Dream, (dream) => dream.playlistItems)
-  dreamItem: Dream;
+  @ManyToOne(() => Dream, (dream) => dream.playlistItems, { nullable: true })
+  @Index()
+  dreamItem: Dream | null;
 
   /**
    * Playlist of the Playlist Item
    * Should be null if dreamItem exists
    */
-  @ManyToOne(() => Playlist, (playlist) => playlist.playlistItems)
-  playlistItem: Playlist;
+  @ManyToOne(() => Playlist, (playlist) => playlist.playlistItems, {
+    nullable: true,
+  })
+  @Index()
+  playlistItem: Playlist | null;
 
   /**
    * Zero-based indexing for ordering
    * Set default order value to 0
    */
   @Column({ default: 0, type: "integer" })
+  @Index()
   order: number;
 
   @CreateDateColumn()

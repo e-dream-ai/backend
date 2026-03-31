@@ -1,19 +1,22 @@
 import { PAGINATION } from "constants/pagination.constants";
-import appDataSource from "database/app-data-source";
+import { feedItemRepository } from "database/repositories";
 import { FeedItem } from "entities/FeedItem.entity";
 import httpStatus from "http-status";
-import { FindOptionsWhere, MoreThanOrEqual } from "typeorm";
+import { FindOptionsWhere } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import { GetFeedRequest } from "types/feed.types";
+import { DreamMediaType } from "types/dream.types";
 import {
+  formatFeedResponse,
   getFeedFindOptionsRelations,
   getFeedFindOptionsWhere,
   getFeedSelectedColumns,
+  groupFeedDreamItemsByPlaylist,
 } from "utils/feed.util";
 import { handleInternalServerError, jsonResponse } from "utils/responses.util";
-
-const feedRepository = appDataSource.getRepository(FeedItem);
+import { isAdmin } from "utils/user.util";
+import { transformFeedItemsWithSignedUrls } from "utils/transform.util";
 
 /**
  * Handles get ranked feed
@@ -35,17 +38,28 @@ export const handleGetRankedFeed = async (
     PAGINATION.MAX_TAKE,
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
-  const user = res.locals.user;
-  const showNSFW = user?.nsfw;
+  const search = req.query.search ? String(req.query.search) : undefined;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
+  const nsfw = user?.nsfw;
 
   try {
-    const whereSentence: FindOptionsWhere<FeedItem> = {
+    // Base query options
+    const baseOptions: FindOptionsWhere<FeedItem> = {
       type: FeedItemType.PLAYLIST,
-      playlistItem: { featureRank: MoreThanOrEqual(1) },
     };
 
-    const [feed, count] = await feedRepository.findAndCount({
-      where: getFeedFindOptionsWhere(whereSentence, { showNSFW }),
+    // Get where conditions with appropriate hidden item handling
+    const whereSentence = getFeedFindOptionsWhere(baseOptions, {
+      nsfw,
+      search,
+      isAdmin: isUserAdmin,
+      userId: user.id,
+      ranked: true,
+    });
+
+    const [rawFeed, count] = await feedItemRepository.findAndCount({
+      where: whereSentence,
       select: getFeedSelectedColumns(),
       relations: getFeedFindOptionsRelations(),
       order: {
@@ -57,15 +71,22 @@ export const handleGetRankedFeed = async (
       skip,
     });
 
-    //Remove feature rank column
-    feed.forEach((item: FeedItem) => {
-      delete item?.dreamItem?.featureRank;
-      delete item?.playlistItem?.featureRank;
+    const feed = await formatFeedResponse(rawFeed, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw,
+      onlyProcessedDreams: true,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { feed, count } }));
+    // Transform feed items to include signed URLs
+    const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { feed: transformedFeed, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -93,27 +114,35 @@ export const handleGetFeed = async (
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const search = req.query.search ? String(req.query.search) : undefined;
-  const userId = Number(req.query.userId) || undefined;
+  const userUUID = req.query.userUUID;
   const type = req.query.type;
-  const user = res.locals.user;
-  const showNSFW = user?.nsfw;
+  const mediaType =
+    req.query.mediaType ||
+    (type === FeedItemType.DREAM ? DreamMediaType.VIDEO : undefined);
+  const user = res.locals.user!;
+  const nsfw = user?.nsfw;
+  // Convert to boolean since Joi handles it as string since we are working with a query param
+  const onlyHidden = req.query.onlyHidden === "true";
+  const isUserAdmin = isAdmin(user);
 
   try {
-    const dreamItemSearch: FindOptionsWhere<FeedItem> = {
-      user: userId ? { id: userId } : undefined,
-      type: type,
-    };
-    const playlistItemSearch: FindOptionsWhere<FeedItem> = {
-      user: userId ? { id: userId } : undefined,
+    // Base query options
+    const baseOptions: FindOptionsWhere<FeedItem> = {
+      user: userUUID ? { uuid: userUUID } : undefined,
       type: type,
     };
 
-    const whereSentence = [
-      ...getFeedFindOptionsWhere(dreamItemSearch, { showNSFW, search }),
-      ...getFeedFindOptionsWhere(playlistItemSearch, { showNSFW, search }),
-    ];
+    // Get where conditions with appropriate hidden item handling
+    const whereSentence = getFeedFindOptionsWhere(baseOptions, {
+      nsfw,
+      search,
+      onlyHidden,
+      isAdmin: isUserAdmin,
+      userId: user.id,
+      mediaType,
+    });
 
-    const [feed, count] = await feedRepository.findAndCount({
+    const [rawFeed, count] = await feedItemRepository.findAndCount({
       where: whereSentence,
       select: getFeedSelectedColumns(),
       relations: getFeedFindOptionsRelations(),
@@ -122,9 +151,22 @@ export const handleGetFeed = async (
       skip,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { feed, count } }));
+    const feed = await formatFeedResponse(rawFeed, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw,
+      onlyProcessedDreams: true,
+    });
+
+    // Transform feed items to include signed URLs
+    const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { feed: transformedFeed, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -151,17 +193,25 @@ export const handleGetMyDreams = async (
     PAGINATION.MAX_TAKE,
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
-  const user = res.locals.user;
-  const showNSFW = user?.nsfw;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
+  const nsfw = user?.nsfw;
 
   try {
-    const [feed, count] = await feedRepository.findAndCount({
-      where: getFeedFindOptionsWhere(
-        {
-          user: { id: user?.id },
-        },
-        { showNSFW },
-      ),
+    // Base query options
+    const baseOptions: FindOptionsWhere<FeedItem> = {
+      user: { id: user?.id },
+    };
+
+    // Get where conditions with appropriate hidden item handling
+    const whereSentence = getFeedFindOptionsWhere(baseOptions, {
+      nsfw,
+      isAdmin: isUserAdmin,
+      userId: user.id,
+    });
+
+    const [rawFeed, count] = await feedItemRepository.findAndCount({
+      where: whereSentence,
       select: getFeedSelectedColumns(),
       relations: getFeedFindOptionsRelations(),
       order: { created_at: "DESC" },
@@ -169,11 +219,122 @@ export const handleGetMyDreams = async (
       skip,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { feed, count } }));
+    const feed = await formatFeedResponse(rawFeed, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw,
+      onlyProcessedDreams: true,
+    });
+
+    // Transform feed items to include signed URLs
+    const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { feed: transformedFeed, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);
+  }
+};
+
+/**
+ * Handles get grouped feed with virtual playlists
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - grouped feed gotten
+ * BAD_REQUEST 400 - error getting grouped feed
+ *
+ */
+export const handleGetGroupedFeed = async (
+  req: RequestType<unknown, GetFeedRequest>,
+  res: ResponseType,
+) => {
+  const take = Math.min(
+    Number(req.query.take) || PAGINATION.TAKE,
+    PAGINATION.MAX_TAKE,
+  );
+  const skip = Number(req.query.skip) || PAGINATION.SKIP;
+  const search = req.query.search ? String(req.query.search) : undefined;
+  const userUUID = req.query.userUUID;
+  const type = req.query.type;
+  const mediaType =
+    req.query.mediaType ||
+    (type === FeedItemType.DREAM ? DreamMediaType.VIDEO : undefined);
+  const user = res.locals.user!;
+  const nsfw = user?.nsfw;
+  const onlyHidden = req.query.onlyHidden === "true";
+  const isUserAdmin = isAdmin(user);
+
+  try {
+    // Base query options
+    const baseOptions: FindOptionsWhere<FeedItem> = {
+      user: userUUID ? { uuid: userUUID } : undefined,
+      type: type,
+    };
+
+    // Get where conditions with appropriate hidden item handling
+    const whereSentence = getFeedFindOptionsWhere(baseOptions, {
+      nsfw,
+      search,
+      onlyHidden,
+      isAdmin: isUserAdmin,
+      userId: user.id,
+      mediaType,
+    });
+
+    const [rawFeed, count] = await feedItemRepository.findAndCount({
+      where: whereSentence,
+      select: getFeedSelectedColumns(),
+      relations: getFeedFindOptionsRelations(),
+      order: { created_at: "DESC" },
+      take,
+      skip,
+    });
+
+    const feed = await formatFeedResponse(rawFeed);
+
+    // Transform feed items to include signed URLs
+    const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
+
+    const groups = groupFeedDreamItemsByPlaylist(transformedFeed);
+
+    const dreamUUIDs = new Set<string>();
+
+    const virtualPlaylists = Array.from(groups.entries()).map(([, pl]) => pl);
+
+    // Collect UUIDs of dreams that are now in virtual playlists
+    groups.forEach((group) => {
+      group.dreams.forEach((dream) => {
+        dreamUUIDs.add(dream.uuid);
+      });
+    });
+
+    // Filter out dreams that are now in virtual playlists from the main feed
+    const filteredFeed = transformedFeed.filter(
+      (feedItem) =>
+        (feedItem.dreamItem || feedItem.playlistItem) &&
+        !(feedItem.dreamItem && dreamUUIDs.has(feedItem.dreamItem.uuid)),
+    );
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          feedItems: filteredFeed,
+          virtualPlaylists,
+          count,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
   }
 };

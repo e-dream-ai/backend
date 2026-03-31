@@ -1,10 +1,17 @@
 /* eslint-disable */
 import { User } from "entities";
 import { Socket } from "socket.io";
+import { RequestContext } from "./express.types";
 /* eslint-enable */
 
+/**
+ * Socket data types
+ */
 declare module "socket.io" {
   interface Socket {
-    data?: { user?: User }; // Aquí puedes ser más específico con el tipo si es necesario
+    data?: { user?: User; requestContext?: RequestContext };
+    cookies: {
+      [key: string]: string;
+    };
   }
 }

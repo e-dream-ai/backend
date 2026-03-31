@@ -1,50 +1,59 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { s3Client } from "clients/s3.client";
-import { BUCKET_ACL } from "constants/aws/s3.constants";
+import { tracker } from "clients/google-analytics";
+import { r2Client } from "clients/r2.client";
+import { redisClient } from "clients/redis.client";
+
 import {
   FILE_EXTENSIONS,
   MYME_TYPES,
   MYME_TYPES_EXTENSIONS,
 } from "constants/file.constants";
-import {
-  DEFAULT_QUEUE,
-  TURN_OFF_QUANTITY,
-  TURN_ON_QUANTITY,
-} from "constants/job.constants";
+import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
-import appDataSource from "database/app-data-source";
-import { Dream, FeedItem, User, Vote } from "entities";
+import {
+  dreamRepository,
+  userRepository,
+  feedItemRepository,
+  voteRepository,
+  keyframeRepository,
+  reportRepository,
+} from "database/repositories";
+import { Dream, Keyframe, Report, User } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
+import { APP_LOGGER } from "shared/logger";
 import {
   AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
+  CreateDreamRequest,
   CreateMultipartUploadDreamRequest,
   CreateMultipartUploadFileRequest,
   DreamFileType,
+  DreamMediaType,
   DreamParamsRequest,
   DreamStatusType,
   Frame,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
+  SetDreamStatusFailedRequest,
   UpdateDreamProcessedRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { VoteType } from "types/vote.types";
-import { generateBucketObjectURL } from "utils/aws/bucket.util";
 import {
   createFeedItem,
+  findDreamPlaylistItems,
   getDreamSelectedColumns,
   handleVoteDream,
   processDreamRequest,
 } from "utils/dream.util";
-import { getQueueValues, updateVideoServiceWorker } from "utils/job.util";
+import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { canExecuteAction } from "utils/permissions.util";
 import {
-  getPlaylistFindOptionsRelations,
   refreshPlaylistUpdatedAtTimestampFromPlaylistItems,
+  computePlaylistThumbnailRecursive,
 } from "utils/playlist.util";
 import { isBrowserRequest } from "utils/request.util";
 import {
@@ -61,17 +70,16 @@ import {
   generateFilmstripPath,
   generateThumbnailPath,
   getUploadPartSignedUrl,
-} from "utils/s3.util";
+} from "utils/r2.util";
 import { truncateString } from "utils/string.util";
-import { isAdmin } from "utils/user.util";
-
-/**
- * Repositories
- */
-const dreamRepository = appDataSource.getRepository(Dream);
-const userRepository = appDataSource.getRepository(User);
-const feedItemRepository = appDataSource.getRepository(FeedItem);
-const voteRepository = appDataSource.getRepository(Vote);
+import { getUserIdentifier, isAdmin } from "utils/user.util";
+import { framesToSeconds } from "utils/video.utils";
+import {
+  signKey,
+  transformDreamWithSignedUrls,
+  transformDreamsWithSignedUrls,
+} from "utils/transform.util";
+import { detectMediaTypeFromExtension } from "utils/media.util";
 
 /**
  * Handles get dreams
@@ -97,20 +105,115 @@ export const handleGetDreams = async (
     const skip = Number(req.query.skip) || PAGINATION.SKIP;
     const status =
       (req.query.status as DreamStatusType) || DreamStatusType.PROCESSED;
-    const userId = Number(req.query.userId) || undefined;
+    const userUUID = req.query.userUUID;
 
     const [dreams, count] = await dreamRepository.findAndCount({
-      where: { user: { id: userId }, status },
+      where: { user: { uuid: userUUID }, status },
       relations: { user: true, displayedOwner: true },
-      select: getDreamSelectedColumns({ originalVideo: isBrowser }),
+      select: getDreamSelectedColumns({
+        originalVideo: isBrowser,
+        filmstrip: false,
+      }),
       order: { created_at: "DESC" },
       take,
       skip,
     });
 
+    const transformedDreams = await transformDreamsWithSignedUrls(dreams);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { dreams: transformedDreams, count },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+export const handleCreateDream = async (
+  req: RequestType<CreateDreamRequest>,
+  res: ResponseType,
+) => {
+  const user = res.locals.user!;
+
+  try {
+    const name = truncateString(req.body.name, 1000, false);
+    const description = req.body.description;
+    const sourceUrl = req.body.sourceUrl;
+    const nsfw = req.body.nsfw;
+    const hidden = req.body.hidden;
+    const ccbyLicense = req.body.ccbyLicense;
+    const prompt = req.body.prompt
+      ? typeof req.body.prompt === "string"
+        ? req.body.prompt
+        : JSON.stringify(req.body.prompt)
+      : undefined;
+
+    let mediaType = req.body.mediaType;
+    if (!mediaType && prompt) {
+      try {
+        const parsedPrompt =
+          typeof prompt === "string" ? JSON.parse(prompt) : prompt;
+        if (parsedPrompt?.infinidream_algorithm) {
+          const algorithm = parsedPrompt.infinidream_algorithm;
+          if (isImageGenerationAlgorithm(algorithm)) {
+            mediaType = DreamMediaType.IMAGE;
+          }
+        }
+      } catch (error) {
+        // If prompt parsing fails, continue with default mediaType
+        // Error is intentionally ignored as we fall back to default VIDEO mediaType
+      }
+    }
+    mediaType = mediaType ?? DreamMediaType.VIDEO;
+
+    if (mediaType === DreamMediaType.IMAGE && !prompt) {
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message:
+            "Image dreams require either a prompt for AI generation or a file upload via multipart upload",
+        }),
+      );
+    }
+
+    const dream = new Dream();
+    dream.name = name;
+    dream.description = description;
+    dream.sourceUrl = sourceUrl;
+    dream.prompt = prompt ?? null;
+    dream.user = user;
+    dream.nsfw = nsfw ?? false;
+    dream.hidden = hidden ?? false;
+    dream.ccbyLicense = ccbyLicense ?? false;
+    dream.mediaType = mediaType;
+    dream.status = DreamStatusType.QUEUE;
+
+    await dreamRepository.save(dream);
+
+    const [savedDream] = await dreamRepository.find({
+      where: { uuid: dream.uuid },
+      relations: { user: true },
+      select: getDreamSelectedColumns(),
+    });
+
+    if (prompt) {
+      await processDreamRequest(savedDream);
+    }
+
+    tracker.sendEventWithRequestContext(
+      res,
+      user.uuid,
+      "USER_NEW_DREAM_FROM_PROMPT",
+      {},
+    );
+
     return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dreams: dreams, count } }));
+      .status(httpStatus.CREATED)
+      .json(jsonResponse({ success: true, data: { dream: savedDream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -133,23 +236,37 @@ export const handleCreateMultipartUpload = async (
   res: ResponseType,
 ) => {
   // setting vars
-  const user = res.locals.user;
+  const user = res.locals.user!;
   let dream: Dream;
 
   try {
     const dreamUUID = req.body.uuid;
     // truncate string to 1000 characters
     const name = truncateString(req.body.name, 1000, false);
+    const description = req.body.description;
+    const sourceUrl = req.body.sourceUrl;
     const extension = req.body.extension;
     const parts = req.body.parts ?? 1;
     const nsfw = req.body.nsfw;
+    const hidden = req.body.hidden;
+    const ccbyLicense = req.body.ccbyLicense;
+    const mediaType =
+      req.body.mediaType ??
+      (extension
+        ? detectMediaTypeFromExtension(extension)
+        : DreamMediaType.VIDEO);
 
     if (!dreamUUID) {
       // create dream
       dream = new Dream();
       dream.name = name;
+      dream.description = description;
+      dream.sourceUrl = sourceUrl;
       dream.user = user!;
       dream.nsfw = nsfw ?? false;
+      dream.hidden = hidden ?? false;
+      dream.ccbyLicense = ccbyLicense ?? false;
+      dream.mediaType = mediaType;
       await dreamRepository.save(dream);
     } else {
       // find dream
@@ -167,7 +284,7 @@ export const handleCreateMultipartUpload = async (
     const uuid = dream.uuid;
     const fileExtension = extension;
     const fileName = `${uuid}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${uuid}/${fileName}`;
+    const filePath = `${getUserIdentifier(user)}/${uuid}/${fileName}`;
     const uploadId = await createMultipartUpload(filePath);
     const arrayUrls = Array.from({ length: parts });
     const urls = await Promise.all(
@@ -240,29 +357,29 @@ export const handleCreateMultipartUploadDreamFile = async (
 
     let filePath: string;
     /**
-     * dream owner uuid to generate s3 file path
+     * dream owner uuid to generate r2 file path
      */
-    const dreamOwnerUserUUID = dream.user.cognitoId;
+    const userIdentifier = getUserIdentifier(dream.user);
 
     /**
-     * filePath s3 generation
+     * filePath r2 generation
      */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
     } else if (type === DreamFileType.DREAM) {
       filePath = generateDreamPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         processed,
@@ -342,29 +459,29 @@ export const handleRefreshMultipartUploadUrl = async (
 
     let filePath: string;
     /**
-     * dream owner uuid to generate s3 file path
+     * dream owner uuid to generate r2 file path
      */
-    const dreamOwnerUserUUID = dream.user.cognitoId;
+    const userIdentifier = getUserIdentifier(dream.user);
 
     /**
-     * filePath s3 generation
+     * filePath r2 generation
      */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
     } else if (type === DreamFileType.DREAM) {
       filePath = generateDreamPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         processed,
@@ -386,7 +503,7 @@ export const handleRefreshMultipartUploadUrl = async (
 };
 
 /**
- * Handles create multipart upload with presigned urls to post
+ * Handles complete multipart upload with presigned urls to post
  *
  * @param {RequestType} req - Request object
  * @param {Response} res - Response object
@@ -443,62 +560,69 @@ export const handleCompleteMultipartUpload = async (
 
     let filePath: string;
     /**
-     * dream owner uuid to generate s3 file path
+     * dream owner uuid to generate r2 file path
      */
-    const dreamOwnerUserUUID = dream.user.cognitoId;
+    const userIdentifier = getUserIdentifier(dream.user);
 
     /**
-     * filePath s3 generation, updates database values if needed
+     * filePath r2 generation, updates database values if needed
      */
     if (type === DreamFileType.THUMBNAIL) {
       filePath = generateThumbnailPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
       });
 
       /**
-       * updates thumbnail url on database
+       * updates thumbnail object key on database
        */
       await dreamRepository.update(dream.id, {
-        thumbnail: generateBucketObjectURL(filePath),
+        thumbnail: filePath,
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
       });
     } else if (type === DreamFileType.DREAM && !processed) {
       filePath = generateDreamPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         processed,
       });
 
       /**
-       * if dream file is the original then updates name, original_video url and status
+       * Auto-detect mediaType from file extension if not already set
+       */
+      const detectedMediaType = detectMediaTypeFromExtension(fileExtension);
+      const currentMediaType = dream.mediaType ?? detectedMediaType;
+
+      /**
+       * if dream file is the original then updates name, original_video object key, mediaType and status
        */
       await dreamRepository.update(dream.id, {
         name,
-        original_video: generateBucketObjectURL(filePath!),
+        original_video: filePath!,
+        mediaType: currentMediaType,
         status: DreamStatusType.QUEUE,
       });
     } else if (type === DreamFileType.DREAM && processed) {
       filePath = generateDreamPath({
-        userUUID: dreamOwnerUserUUID,
+        userIdentifier,
         dreamUUID,
         extension: fileExtension,
         processed,
       });
 
       /**
-       * if dream file is the processed then updates video url
+       * if dream file is the processed then updates video object key
        */
       await dreamRepository.update(dream.id, {
-        video: generateBucketObjectURL(filePath!),
+        video: filePath!,
       });
     }
 
@@ -518,15 +642,12 @@ export const handleCompleteMultipartUpload = async (
 
     if (type === DreamFileType.DREAM && !processed) {
       /**
-       * turn on video service worker
-       */
-      await updateVideoServiceWorker(TURN_ON_QUANTITY);
-
-      /**
        * process dream requests: it needs to provide updated dream with originalVideo value
        */
       await processDreamRequest(updatedDream);
     }
+
+    tracker.sendEventWithRequestContext(res, user.uuid, "USER_NEW_UPLOAD", {});
 
     return res
       .status(httpStatus.CREATED)
@@ -560,7 +681,7 @@ export const handleAbortMultipartUpload = async (
   >,
   res: ResponseType,
 ) => {
-  const user = res.locals.user;
+  const user = res.locals.user!;
   const dreamUUID: string = req.params.uuid!;
   let dream: Dream | undefined;
   try {
@@ -592,7 +713,7 @@ export const handleAbortMultipartUpload = async (
     const uploadId = req.body.uploadId;
     const fileExtension = extension;
     const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+    const filePath = `${getUserIdentifier(user)}/${dreamUUID}/${fileName}`;
 
     await abortMultipartUpload(filePath, uploadId!);
 
@@ -628,22 +749,9 @@ export const handleGetDreamVote = async (
   const user = res.locals.user;
   const dreamUUID: string = req.params.uuid!;
   try {
-    const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID! },
-      relations: { user: true, displayedOwner: true, playlistItems: true },
-      select: getDreamSelectedColumns({
-        originalVideo: true,
-        featureRank: true,
-      }),
-    });
-
-    if (!dream) {
-      return handleNotFound(req as RequestType, res);
-    }
-
     const vote = await voteRepository.findOne({
       where: {
-        dream: { id: dream.id },
+        dream: { uuid: dreamUUID },
         user: { id: user?.id },
       },
     });
@@ -673,20 +781,24 @@ export const handleGetDream = async (
   res: ResponseType,
 ) => {
   const isBrowser = isBrowserRequest(req as RequestType);
-  const user = res.locals.user;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
   const dreamUUID: string = req.params.uuid!;
   try {
-    const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID! },
+    const dream = await dreamRepository.findOne({
+      where: { uuid: dreamUUID },
       relations: {
         user: true,
         displayedOwner: true,
-        playlistItems: { playlist: getPlaylistFindOptionsRelations() },
+        startKeyframe: true,
+        endKeyframe: true,
       },
       select: getDreamSelectedColumns({
         originalVideo: true,
         featureRank: true,
         playlistItems: true,
+        startKeyframe: true,
+        endKeyframe: true,
       }),
     });
 
@@ -694,11 +806,53 @@ export const handleGetDream = async (
       return handleNotFound(req as RequestType, res);
     }
 
+    // Get playlist items separately
+    dream.playlistItems = await findDreamPlaylistItems(
+      dreamUUID,
+      user.id,
+      isUserAdmin,
+    );
+
+    for (const pi of dream.playlistItems ?? []) {
+      if (pi.playlist && !pi.playlist.thumbnail) {
+        const fallbackThumb = await computePlaylistThumbnailRecursive(
+          pi.playlist.id,
+          {
+            userId: user.id,
+            isAdmin: isUserAdmin,
+            nsfw: user?.nsfw,
+            onlyProcessedDreams: true,
+          },
+        );
+        if (fallbackThumb) {
+          pi.playlist.thumbnail = fallbackThumb;
+        }
+      }
+    }
+
+    const isOwner = dream.user.id === user?.id;
+
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
+
+    // If is hidden and is not allowed to view return not found
+    if (dream.hidden && !isAllowed) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    let reports: Report[] = [];
+
+    if (isUserAdmin || isOwner) {
+      // Find unprocessed reports
+      reports = await reportRepository.find({
+        where: { dream: { uuid: dream.uuid }, processed: false },
+      });
+    }
+
+    dream.reports = reports;
 
     /**
      * remove original video if is not admin or owner or browser requested
@@ -715,9 +869,11 @@ export const handleGetDream = async (
       delete dream.featureRank;
     }
 
+    const transformedDream = await transformDreamWithSignedUrls(dream);
+
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: dream } }));
+      .json(jsonResponse({ success: true, data: { dream: transformedDream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -756,9 +912,14 @@ export const handleGetMyDreams = async (
       skip,
     });
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dreams, count } }));
+    const transformedDreams = await transformDreamsWithSignedUrls(dreams);
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { dreams: transformedDreams, count },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -781,14 +942,12 @@ export const handleProcessDream = async (
   res: ResponseType,
 ) => {
   const dreamUUID: string = req.params.uuid!;
+  const user = res.locals.user!;
 
   try {
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
-      /**
-       * originalVideo needed to process dream
-       */
       select: getDreamSelectedColumns({ originalVideo: true }),
     });
 
@@ -796,15 +955,20 @@ export const handleProcessDream = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    /**
-     * turn on video service worker
-     */
-    await updateVideoServiceWorker(TURN_ON_QUANTITY);
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
 
-    /**
-     * process dream - provide updated dream
-     */
-    await processDreamRequest(dream);
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    // Store the current status before processing so we can restore it on cancel
+    const previousStatus = dream.status;
+
+    await processDreamRequest(dream, previousStatus);
 
     const updatedDream = await dreamRepository.save({
       ...dream,
@@ -877,14 +1041,21 @@ export const handleSetDreamStatusProcessed = async (
   req: RequestType<UpdateDreamProcessedRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
   const dreamUUID: string = req.params.uuid!;
   const processedVideoSize = req.body.processedVideoSize;
-  const processedVideoFrames = req.body.processedVideoFrames;
+  const processedVideoFrames = req.body.processedVideoFrames!;
   const processedVideoFPS = req.body.processedVideoFPS;
-  const activityLevel = req.body.activityLevel;
+  const processedMediaWidth = req.body.processedMediaWidth;
+  const processedMediaHeight = req.body.processedMediaHeight;
+  const render_duration = req.body.render_duration;
+  const activityLevel = req.body.activityLevel!;
   const filmstrip = req.body.filmstrip
     ? (req.body.filmstrip as number[])
     : undefined;
+  const md5 = req.body.md5;
+  const mediaType = req.body.mediaType;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -902,48 +1073,80 @@ export const handleSetDreamStatusProcessed = async (
      */
 
     const user = dream.user;
-    const formatedFilmstrip: Frame[] = (filmstrip ?? [])?.map(
+    const formatedFilmstrip: Frame[] | undefined = filmstrip?.map(
       (frame) =>
         ({
           frameNumber: Number(frame),
-          url: generateBucketObjectURL(
-            `${user?.cognitoId}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
-          ),
+          url: `${getUserIdentifier(
+            user,
+          )}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
         }) as Frame,
     );
 
-    await dreamRepository.update(dream.id, {
+    const updateData: Partial<Dream> = {
       status: DreamStatusType.PROCESSED,
       processed_at: new Date(),
       processedVideoSize,
       processedVideoFrames,
       processedVideoFPS,
+      processedMediaWidth,
+      processedMediaHeight,
+      render_duration,
       activityLevel,
-      filmstrip: formatedFilmstrip,
-    });
+      md5,
+    };
+
+    if (mediaType === DreamMediaType.IMAGE) {
+      updateData.filmstrip = null as unknown as Frame[];
+    } else if (formatedFilmstrip) {
+      updateData.filmstrip = formatedFilmstrip;
+    }
+
+    if (mediaType) {
+      updateData.mediaType = mediaType;
+    }
+
+    await dreamRepository.update(dream.id, updateData);
 
     const [updatedDream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
-      relations: { user: true, playlistItems: true },
+      relations: { user: true },
       select: getDreamSelectedColumns(),
     });
+
+    // Get playlist items separately
+    updatedDream.playlistItems = await findDreamPlaylistItems(
+      dreamUUID,
+      user.id,
+      isUserAdmin,
+    );
+
+    for (const pi of updatedDream.playlistItems ?? []) {
+      if (pi.playlist && !pi.playlist.thumbnail) {
+        const fallbackThumb = await computePlaylistThumbnailRecursive(
+          pi.playlist.id,
+          {
+            userId: user.id,
+            isAdmin: isUserAdmin,
+            nsfw: user?.nsfw,
+            onlyProcessedDreams: true,
+          },
+        );
+        if (fallbackThumb) {
+          pi.playlist.thumbnail = fallbackThumb;
+        }
+      }
+    }
 
     await createFeedItem(updatedDream);
     await refreshPlaylistUpdatedAtTimestampFromPlaylistItems(
       updatedDream.playlistItems?.map((pi) => pi.id),
     );
 
-    /**
-     * get jobs queue on video service
-     */
-    const jobs = await getQueueValues(DEFAULT_QUEUE);
-
-    /**
-     * if there are not jobs on queue, turn off video service workers
-     */
-    if (!jobs.length) {
-      await updateVideoServiceWorker(TURN_OFF_QUANTITY);
-    }
+    tracker.sendEventWithRequestContext(res, user.uuid, "DREAM_UPLOADED", {
+      size_bytes: processedVideoSize,
+      duration_seconds: framesToSeconds(processedVideoFrames, activityLevel),
+    });
 
     return res
       .status(httpStatus.OK)
@@ -966,10 +1169,11 @@ export const handleSetDreamStatusProcessed = async (
  *
  */
 export const handleSetDreamStatusFailed = async (
-  req: RequestType<UpdateDreamRequest, unknown, DreamParamsRequest>,
+  req: RequestType<SetDreamStatusFailedRequest, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
   const dreamUUID: string = req.params.uuid!;
+  const error = req.body?.error;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -985,6 +1189,7 @@ export const handleSetDreamStatusFailed = async (
     const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.FAILED,
+      error: error || null,
     });
 
     return res
@@ -1012,18 +1217,37 @@ export const handleUpdateDream = async (
   res: ResponseType,
 ) => {
   const dreamUUID: string = req.params.uuid!;
-  const user = res.locals.user;
+  const user = res.locals.user!;
+  const isUserAdmin = isAdmin(user);
 
   try {
-    const [dream] = await dreamRepository.find({
-      where: { uuid: dreamUUID! },
-      relations: { user: true, displayedOwner: true },
-      select: getDreamSelectedColumns({ featureRank: true }),
+    const dream = await dreamRepository.findOne({
+      where: { uuid: dreamUUID },
+      relations: {
+        user: true,
+        displayedOwner: true,
+        startKeyframe: true,
+        endKeyframe: true,
+      },
+      select: getDreamSelectedColumns({
+        originalVideo: true,
+        featureRank: true,
+        playlistItems: true,
+        startKeyframe: true,
+        endKeyframe: true,
+      }),
     });
 
     if (!dream) {
       return handleNotFound(req as RequestType, res);
     }
+
+    // Get playlist items separately
+    dream.playlistItems = await findDreamPlaylistItems(
+      dreamUUID,
+      user.id,
+      isUserAdmin,
+    );
 
     const isAllowed = canExecuteAction({
       isOwner: dream.user.id === user?.id,
@@ -1043,16 +1267,89 @@ export const handleUpdateDream = async (
       delete dream.featureRank;
     }
 
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    const {
+      displayedOwner: _displayedOwner,
+      user: _user,
+      startKeyframe: _startKeyframe,
+      endKeyframe: _endKeyframe,
+      ...sanitizedDreamData
+    } = req.body;
+    /* eslint-enable @typescript-eslint/no-unused-vars */
+
     // Define an object to hold the fields that are allowed to be updated
-    let updateData: Partial<Dream> = {
-      ...(req.body as Omit<UpdateDreamRequest, "displayedOwner">),
-    };
+    let updateData: Partial<Dream> = sanitizedDreamData as Omit<
+      UpdateDreamRequest,
+      "displayedOwner" | "user" | "startKeyframe" | "endKeyframe"
+    >;
 
     let displayedOwner: User | null = null;
+    let newOwner: User | null = null;
+    let startKeyframe: Keyframe | null,
+      endKeyframe: Keyframe | null = null;
+
     if (isAdmin(user) && req.body.displayedOwner) {
       displayedOwner = await userRepository.findOneBy({
         id: req.body.displayedOwner,
       });
+    }
+
+    // Update actual owner (user field) - admin only
+    if (isAdmin(user) && req.body.user) {
+      newOwner = await userRepository.findOne({
+        where: { uuid: req.body.user },
+      });
+
+      if (!newOwner) {
+        return handleNotFound(req as RequestType, res, {
+          message: "User not found",
+        });
+      }
+
+      updateData = { ...updateData, user: newOwner };
+      /**
+       * update feed item user too
+       */
+      await feedItemRepository.update(
+        { dreamItem: { id: dream.id } },
+        { user: newOwner },
+      );
+    }
+
+    // find start keyframe, if exists save it into the dream; if null, remove it
+    if (req.body.startKeyframe === null) {
+      updateData = { ...updateData, startKeyframe: null };
+    } else if (req.body.startKeyframe) {
+      startKeyframe = await keyframeRepository.findOne({
+        where: {
+          uuid: req.body.startKeyframe,
+        },
+      });
+
+      if (!startKeyframe) {
+        return handleNotFound(req as RequestType, res, {
+          message: DREAM_MESSAGES.START_KEYFRAME_NOT_FOUND,
+        });
+      }
+      updateData = { ...updateData, startKeyframe };
+    }
+
+    // find end keyframe, if exists save it into the dream; if null, remove it
+    if (req.body.endKeyframe === null) {
+      updateData = { ...updateData, endKeyframe: null };
+    } else if (req.body.endKeyframe) {
+      endKeyframe = await keyframeRepository.findOne({
+        where: {
+          uuid: req.body.endKeyframe,
+        },
+      });
+
+      if (!endKeyframe) {
+        return handleNotFound(req as RequestType, res, {
+          message: DREAM_MESSAGES.END_KEYFRAME_NOT_FOUND,
+        });
+      }
+      updateData = { ...updateData, endKeyframe };
     }
 
     /**
@@ -1073,17 +1370,42 @@ export const handleUpdateDream = async (
       ...updateData,
     });
 
-    const updatedDream = await dreamRepository.findOne({
-      where: { id: dream.id },
+    const [updatedDream] = await dreamRepository.find({
+      where: { uuid: dreamUUID },
       relations: {
         user: true,
         displayedOwner: true,
+        startKeyframe: true,
+        endKeyframe: true,
       },
+      select: getDreamSelectedColumns({
+        originalVideo: true,
+        featureRank: true,
+        playlistItems: true,
+        startKeyframe: true,
+        endKeyframe: true,
+      }),
     });
+
+    if (!updatedDream) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    updatedDream.playlistItems = await findDreamPlaylistItems(
+      dreamUUID,
+      user.id,
+      isUserAdmin,
+    );
+
+    if (!isAdmin(user)) {
+      delete updatedDream.featureRank;
+    }
+
+    const transformedDream = await transformDreamWithSignedUrls(updatedDream);
 
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+      .json(jsonResponse({ success: true, data: { dream: transformedDream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -1105,7 +1427,7 @@ export const handleUpdateThumbnailDream = async (
   req: RequestType<unknown, unknown, DreamParamsRequest>,
   res: ResponseType,
 ) => {
-  const user = res.locals.user;
+  const user = res.locals.user!;
   const dreamUUID: string = req.params.uuid!;
 
   try {
@@ -1131,27 +1453,27 @@ export const handleUpdateThumbnailDream = async (
 
     // update dream
     const thumbnailBuffer = req.file?.buffer;
-    const bucketName = env.AWS_BUCKET_NAME;
+    const bucketName = env.R2_BUCKET_NAME;
     const fileMymeType = req.file?.mimetype;
     const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
     const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${user?.cognitoId}/${dreamUUID}/${fileName}`;
+    const filePath = `${getUserIdentifier(user)}/${dreamUUID}/${fileName}`;
 
     if (thumbnailBuffer) {
       const command = new PutObjectCommand({
         Bucket: bucketName,
         Key: filePath,
         Body: thumbnailBuffer,
-        ACL: BUCKET_ACL,
+        ContentType: fileMymeType || "image/jpeg",
         CacheControl: "no-cache",
         Expires: new Date(),
       });
-      await s3Client.send(command);
+      await r2Client.send(command);
     }
 
     const updatedDream = await dreamRepository.save({
       ...dream,
-      thumbnail: thumbnailBuffer ? generateBucketObjectURL(filePath) : null,
+      thumbnail: thumbnailBuffer ? filePath : null,
     });
 
     return res
@@ -1182,7 +1504,7 @@ export const handleUpvoteDream = async (
   const user = res.locals.user!;
 
   try {
-    const [dream] = await dreamRepository.find({
+    const dream = await dreamRepository.findOne({
       where: { uuid: dreamUUID! },
     });
 
@@ -1192,15 +1514,9 @@ export const handleUpvoteDream = async (
 
     await handleVoteDream({ dream, user, voteType: VoteType.UPVOTE });
 
-    const [updatedDream] = await dreamRepository.find({
-      where: { id: dream.id },
-      relations: { user: true },
-      select: getDreamSelectedColumns(),
-    });
-
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+      .json(jsonResponse({ success: true, data: { dream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -1225,7 +1541,7 @@ export const handleDownvoteDream = async (
   const dreamUUID: string = req.params.uuid!;
   const user = res.locals.user!;
   try {
-    const [dream] = await dreamRepository.find({
+    const dream = await dreamRepository.findOne({
       where: { uuid: dreamUUID! },
     });
 
@@ -1235,15 +1551,9 @@ export const handleDownvoteDream = async (
 
     await handleVoteDream({ dream, user, voteType: VoteType.DOWNVOTE });
 
-    const [updatedDream] = await dreamRepository.find({
-      where: { id: dream.id },
-      relations: { user: true },
-      select: getDreamSelectedColumns(),
-    });
-
     return res
       .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+      .json(jsonResponse({ success: true, data: { dream } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -1349,4 +1659,203 @@ export const handleDeleteDream = async (
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
   }
+};
+
+/**
+ * Handles cancel dream job
+ *
+ * @param {RequestType} req - Request object
+ * @param {Response} res - Response object
+ *
+ * @returns {Response} Returns response
+ * OK 200 - job cancelled
+ * NOT_FOUND 404 - dream not found
+ * FORBIDDEN 403 - user not authorized
+ * INTERNAL_SERVER_ERROR 500 - error cancelling job
+ *
+ */
+export const handleCancelDreamJob = async (
+  req: RequestType<unknown, unknown, DreamParamsRequest>,
+  res: ResponseType,
+) => {
+  const dreamUUID: string = req.params.uuid!;
+  const user = res.locals.user!;
+
+  try {
+    const [dream] = await dreamRepository.find({
+      where: { uuid: dreamUUID! },
+      relations: { user: true },
+      select: {
+        id: true,
+        uuid: true,
+        status: true,
+        user: {
+          id: true,
+          uuid: true,
+        },
+      },
+    });
+
+    if (!dream) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const isAllowed = canExecuteAction({
+      isOwner: dream.user.id === user?.id,
+      allowedRoles: [ROLES.ADMIN_GROUP],
+      userRole: user?.role?.name,
+    });
+
+    if (!isAllowed) {
+      return handleForbidden(req as RequestType, res);
+    }
+
+    // Import the cancel utility
+    const { cancelJobAcrossQueues } = await import("utils/job-cancel.util");
+
+    // Cancel the job across all queues
+    const result = await cancelJobAcrossQueues(dreamUUID, true);
+
+    try {
+      const previewKey = `job:preview:${dreamUUID}`;
+      await redisClient.del(previewKey);
+    } catch (redisError) {
+      APP_LOGGER.error(
+        `Failed to clear preview for dream ${dreamUUID}:`,
+        redisError,
+      );
+    }
+
+    APP_LOGGER.info(
+      `Cancel job request for dream ${dreamUUID}: ${result.message}`,
+    );
+
+    // Restore the previous dream status if the job was found and had a previous status
+    if (result.jobFound && result.previousStatus) {
+      try {
+        await dreamRepository.save({
+          ...dream,
+          status: result.previousStatus as DreamStatusType,
+        });
+        APP_LOGGER.info(
+          `Restored dream ${dreamUUID} status from queue to ${result.previousStatus}`,
+        );
+      } catch (statusError: unknown) {
+        APP_LOGGER.error(
+          `Failed to restore dream ${dreamUUID} status:`,
+          statusError instanceof Error
+            ? statusError.message
+            : String(statusError),
+        );
+      }
+    }
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          message: result.message,
+          jobFound: result.jobFound,
+          runpodCancelled: result.runpodCancelled,
+          statusRestored: result.jobFound && !!result.previousStatus,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    APP_LOGGER.error(
+      `Error cancelling job for dream ${dreamUUID}:`,
+      error.message || error,
+    );
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * Handle get dream preview
+ * @param req
+ * @param res
+ */
+export const handleGetDreamPreview = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const dreamUUID = req.params.uuid;
+
+  try {
+    const previewKey = `job:preview:${dreamUUID}`;
+    const previewFrame = await redisClient.get(previewKey);
+
+    if (!previewFrame) {
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          data: {
+            preview_frame: null,
+          },
+        }),
+      );
+    }
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          preview_frame: previewFrame,
+        },
+      }),
+    );
+  } catch (err) {
+    const error = err as Error;
+    APP_LOGGER.error(
+      `Error getting preview for dream ${dreamUUID}:`,
+      error.message || error,
+    );
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * GET /v1/dream/:uuid/thumbnail
+ * Returns a 302 redirect to a freshly presigned thumbnail URL.
+ */
+export const handleGetDreamThumbnail = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const dreamUUID = req.params.uuid as string;
+  const user = res.locals.user;
+
+  const dream = await dreamRepository.findOne({
+    where: { uuid: dreamUUID },
+    relations: { user: true },
+  });
+
+  if (!dream) {
+    return handleNotFound(req, res);
+  }
+
+  const isOwner = dream.user.id === user?.id;
+  const isAllowed = canExecuteAction({
+    isOwner,
+    allowedRoles: [ROLES.ADMIN_GROUP],
+    userRole: user?.role?.name,
+  });
+
+  if (dream.hidden && !isAllowed) {
+    return handleNotFound(req, res);
+  }
+
+  if (!dream.thumbnail) {
+    return res
+      .status(httpStatus.NOT_FOUND)
+      .json(
+        jsonResponse({ success: false, message: "No thumbnail available" }),
+      );
+  }
+
+  const url = signKey(dream.thumbnail);
+
+  res.set("Cache-Control", "private, max-age=3600");
+  return res.json(jsonResponse({ success: true, data: { url } }));
 };

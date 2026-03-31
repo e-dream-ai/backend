@@ -1,17 +1,28 @@
 import Joi from "joi";
 import {
   AddPlaylistItemRequest,
+  AddPlaylistKeyframeRequest,
   CreatePlaylistRequest,
+  GetPlaylistQuery,
+  GetPlaylistItemsQuery,
+  GetPlaylistKeyframesQuery,
   OrderPlaylist,
   OrderPlaylistRequest,
   PlaylistItemType,
   PlaylistParamsRequest,
   RemovePlaylistItemRequest,
+  RemovePlaylistKeyframeRequest,
   UpdatePlaylistRequest,
 } from "types/playlist.types";
 import { RequestValidationSchema } from "types/validator.types";
 
 export const requestPlaylistSchema: RequestValidationSchema = {
+  query: Joi.object<GetPlaylistQuery>().keys({
+    take: Joi.number(),
+    skip: Joi.number(),
+    search: Joi.string(),
+    userUUID: Joi.string().uuid(),
+  }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
   }),
@@ -20,14 +31,29 @@ export const requestPlaylistSchema: RequestValidationSchema = {
 export const createPlaylistSchema: RequestValidationSchema = {
   body: Joi.object<CreatePlaylistRequest>().keys({
     name: Joi.string().required(),
+    description: Joi.string().max(500).allow(""),
+    nsfw: Joi.boolean(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
+    loops: Joi.number().integer().min(0),
   }),
 };
 
 export const updatePlaylistSchema: RequestValidationSchema = {
   body: Joi.object<UpdatePlaylistRequest>().keys({
     name: Joi.string().required().max(100),
+    description: Joi.string().max(500).allow(""),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0).integer(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
+    loops: Joi.number().integer().min(0),
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -66,5 +92,41 @@ export const removePlaylistItemSchema: RequestValidationSchema = {
   params: Joi.object<RemovePlaylistItemRequest>().keys({
     uuid: Joi.string().uuid().required(),
     itemId: Joi.number().integer().positive().required(),
+  }),
+};
+
+export const addPlaylistKeyframeSchema: RequestValidationSchema = {
+  body: Joi.object<AddPlaylistKeyframeRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+  params: Joi.object<PlaylistParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const removePlaylistKeyframeSchema: RequestValidationSchema = {
+  params: Joi.object<RemovePlaylistKeyframeRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+    playlistKeyframeId: Joi.number().integer().positive().required(),
+  }),
+};
+
+export const getPlaylistItemsSchema: RequestValidationSchema = {
+  query: Joi.object<GetPlaylistItemsQuery>().keys({
+    take: Joi.number().integer().min(1).max(5000),
+    skip: Joi.number().integer().min(0),
+  }),
+  params: Joi.object<PlaylistParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const getPlaylistKeyframesSchema: RequestValidationSchema = {
+  query: Joi.object<GetPlaylistKeyframesQuery>().keys({
+    take: Joi.number().integer().min(1).max(5000),
+    skip: Joi.number().integer().min(0),
+  }),
+  params: Joi.object<PlaylistParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
   }),
 };

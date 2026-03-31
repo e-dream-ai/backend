@@ -5,6 +5,8 @@ export const env = cleanEnv(process.env, {
   npm_package_version: str(),
   NODE_ENV: str(),
   PORT: port(),
+  LOGGING: bool(),
+  LOGGING_LEVEL: str(),
 
   /**
    * AWS
@@ -20,10 +22,14 @@ export const env = cleanEnv(process.env, {
   AWS_COGNITO_APP_CLIENT_ID: str(),
 
   /**
-   * S3
+   * Cloudflare R2 Storage
    */
-  AWS_BUCKET_NAME: str(),
-  AWS_BUCKET_URL: str(),
+  R2_REGION: str(),
+  R2_ACCOUNT_ID: str(),
+  R2_ACCESS_KEY_ID: str(),
+  R2_SECRET_ACCESS_KEY: str(),
+  R2_BUCKET_NAME: str(),
+  R2_BUCKET_URL: str(),
 
   /**
    * SES
@@ -31,10 +37,20 @@ export const env = cleanEnv(process.env, {
   AWS_SES_EMAIL_IDENTITY: str(),
 
   /**
-   * Heroku
+   * SES
    */
-  HEROKU_API_URL: str(),
-  VIDEO_SERVICE_APP_ID_OR_NAME: str(),
+  OPS_EMAIL: str(),
+
+  /**
+   * Resend
+   */
+  RESEND_API_KEY: str(),
+
+  /**
+   * Marketing
+   */
+  EMAIL_SECRET: str(),
+  MARKETING_UNSUBSCRIBE_SECRET: str(),
 
   /**
    * REDIS
@@ -46,9 +62,16 @@ export const env = cleanEnv(process.env, {
   REDIS_PASSWORD: str(),
 
   /**
-   * PROCESS VIDEO SERVER
+   * Presign Service
    */
-  PROCESS_VIDEO_SERVER_URL: str(),
+  PRESIGN_SERVICE_URL: str(),
+  PRESIGN_SERVICE_API_KEY: str(),
+
+  /**
+   * Image Worker (CF Worker serving R2 files directly)
+   */
+  IMAGE_WORKER_URL: str(),
+  IMAGE_WORKER_SIGNING_SECRET: str(),
 
   /**
    * TYPEORM
@@ -78,9 +101,10 @@ export const env = cleanEnv(process.env, {
   API_KEYS: json(),
 
   /**
-   * VIDEO_INGESTION_API_KEY
+   * HEAP_SNAPSHOT_API_KEY
+   * If not set, heap snapshot endpoint and scheduler are disabled
    */
-  VIDEO_INGESTION_API_KEY: str(),
+  HEAP_SNAPSHOT_API_KEY: str({ default: "" }),
 
   /**
    * SESSION_SECRET
@@ -93,9 +117,70 @@ export const env = cleanEnv(process.env, {
   CIPHER_KEY: str(),
 
   /**
-   * HEROKU_APIKEY
+   * WORKOS_CLIENT_ID
    */
-  HEROKU_APIKEY: str(),
+  WORKOS_CLIENT_ID: str(),
+
+  /**
+   * WORKOS_API_KEY
+   */
+  WORKOS_API_KEY: str(),
+
+  /**
+   * WORKOS_CALLBACK_URL
+   */
+  WORKOS_CALLBACK_URL: str(),
+
+  /**
+   * WORKOS_COOKIE_PASSWORD
+   */
+  WORKOS_COOKIE_PASSWORD: str(),
+
+  /**
+   * WORKOS_AUTH_URL
+   */
+  WORKOS_AUTH_URL: str(),
+
+  /**
+   * WORKOS_AUTH_URL
+   */
+  WORKOS_ORGANIZATION_ID: str(),
+
+  /**
+   * WORKOS_WEBHOOK_SECRET
+   */
+  WORKOS_WEBHOOK_SECRET: str(),
+
+  /**
+   * BACKEND_DOMAIN
+   */
+  BACKEND_DOMAIN: str(),
+
+  /**
+   * Google Analytics
+   */
+  GA_MEASUREMENT_ID: str(),
+  GA_API_SECRET: str(),
+
+  /**
+   * Designed Playlist UUID
+   */
+  DESIGNED_PLAYLIST_UUID: str(),
+
+  /**
+   * SHEEP Invitation Playlist UUID
+   */
+  SHEEP_PLAYLIST_UUID: str(),
+
+  /**
+   * Internal API key for protected internal endpoints
+   */
+  INTERNAL_API_KEY: str({ default: "" }),
+
+  /**
+   * Routes to log
+   */
+  LOG_ROUTES: str(),
 });
 
 export default env;

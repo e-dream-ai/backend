@@ -3,14 +3,24 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { Namespace } from "socket.io/dist/namespace";
-import { socketAuthMiddleware } from "middlewares/socket.middleware";
+import {
+  socketAuthMiddleware,
+  socketCookieParserMiddleware,
+  socketWorkOSAuth,
+} from "middlewares/socket.middleware";
 import env from "shared/env";
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
-import { APP_LOGGER } from "shared/logger";
 import passport from "passport";
-import session from "express-session";
 import configurePassport from "clients/passport.client";
+import cookieParser from "cookie-parser";
+import { handleCustomOrigin } from "utils/api.util";
+import { ALLOWED_HEADERS, ALLOWED_METHODS } from "constants/api.constants";
+import {
+  requestContextMiddleware,
+  socketRequestContextMiddleware,
+} from "./request-context-middleware";
+import { requestLogger } from "./request-logger.middleware";
 
 const swaggerPath = "/api/v1/api-docs";
 
@@ -26,14 +36,18 @@ const options: swaggerJSDoc.Options = {
     },
     servers: [
       {
-        url: `http://localhost:${env.PORT ?? 8080}/api/v1/`,
+        url: `http://localhost:${env.PORT ?? 8080}/`,
       },
       {
-        url: "https://e-dream-76c98b08cc5d.herokuapp.com/api/v1/",
+        url: "https://e-dream-76c98b08cc5d.herokuapp.com/",
       },
     ],
   },
-  apis: ["./src/routes/v1/*.routes.ts", "./src/routes/v1/router.ts"],
+  apis: [
+    "./src/routes/v1/*.routes.ts",
+    "./src/routes/v1/router.ts",
+    "./src/routes/v2/*.routes.ts",
+  ],
 };
 
 const swaggerSpec = swaggerJSDoc(options);
@@ -47,11 +61,22 @@ export const registerMiddlewares = (app: express.Application) => {
     next();
   };
 
+  // parse cookies
+  app.use(cookieParser());
+
   // parse json request body
   app.use(bodyParser.json());
 
   // cors middleware
-  app.use(cors());
+  app.use(
+    cors({
+      // Cors callback function
+      origin: handleCustomOrigin,
+      credentials: true,
+      methods: ALLOWED_METHODS,
+      allowedHeaders: ALLOWED_HEADERS,
+    }),
+  );
 
   // parse urlencoded request body
   app.use(express.urlencoded({ extended: true }));
@@ -60,20 +85,13 @@ export const registerMiddlewares = (app: express.Application) => {
   app.use(customHeaders);
 
   // pino-http express middleware
-  app.use(pinoHttp({ logger: APP_LOGGER }));
+  app.use(pinoHttp());
 
-  app.use(
-    session({
-      secret: "your_secret_key",
-      resave: false,
-      saveUninitialized: true,
-    }),
-  );
+  app.use(requestContextMiddleware);
+
+  app.use(requestLogger);
 
   app.use(passport.initialize());
-  app.use(passport.session());
-
-  // swagger ui
 
   // Serve Swagger UI
   app.use(swaggerPath, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -81,5 +99,8 @@ export const registerMiddlewares = (app: express.Application) => {
 
 export const socketRegisterMiddlewares = (namespace: Namespace) => {
   // auth middleware
+  namespace.use(socketCookieParserMiddleware);
+  namespace.use(socketRequestContextMiddleware);
   namespace.use(socketAuthMiddleware);
+  namespace.use(socketWorkOSAuth);
 };

@@ -17,10 +17,12 @@ import { FeedItem } from "./FeedItem.entity";
 import { PlaylistItem } from "./PlaylistItem.entity";
 import { User } from "./User.entity";
 import { Vote } from "./Vote.entity";
-import { DreamStatusType, Frame } from "types/dream.types";
+import { DreamStatusType, DreamMediaType, Frame } from "types/dream.types";
 import { ColumnNumericTransformer } from "transformers/numeric.transformer";
 import { ColumnVideoTransformer } from "transformers/video.transformer";
 import env from "shared/env";
+import { Keyframe } from "./Keyframe.entity";
+import { Report } from "./Report.entity";
 
 @Entity()
 export class Dream {
@@ -34,6 +36,7 @@ export class Dream {
 
   @ManyToOne(() => User, (user) => user.dreams)
   @JoinColumn()
+  @Index()
   user: User;
 
   /**
@@ -41,6 +44,7 @@ export class Dream {
    */
   @ManyToOne(() => User, (user) => user.dreams, { nullable: true })
   @JoinColumn()
+  @Index()
   displayedOwner?: User | null;
 
   /**
@@ -59,7 +63,19 @@ export class Dream {
     enum: DreamStatusType,
     default: DreamStatusType.NONE,
   })
+  @Index()
   status: DreamStatusType;
+
+  /**
+   * media type: video or image
+   */
+  @Column({
+    type: "enum",
+    enum: DreamMediaType,
+    default: DreamMediaType.VIDEO,
+  })
+  @Index()
+  mediaType: DreamMediaType;
 
   /**
    * processed video
@@ -90,10 +106,29 @@ export class Dream {
   processedVideoFPS?: number | null;
 
   /**
+   * Processed media resolution width in pixels (video or image)
+   */
+  @Column({ type: "integer", nullable: true, default: null })
+  processedMediaWidth?: number | null;
+
+  /**
+   * Processed media resolution height in pixels (video or image)
+   */
+  @Column({ type: "integer", nullable: true, default: null })
+  processedMediaHeight?: number | null;
+
+  /**
+   * render duration in milliseconds
+   */
+  @Column({ type: "integer", nullable: true, default: null })
+  render_duration?: number | null;
+
+  /**
    * featureRank
    * default 0
    */
   @Column({ type: "integer", default: 0 })
+  @Index()
   featureRank?: number;
 
   @Column({ nullable: true, type: "varchar" })
@@ -134,12 +169,60 @@ export class Dream {
   })
   nsfw: boolean;
 
+  /**
+   * hidden flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  hidden: boolean;
+
+  /**
+   * ccbyLicense flag
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  ccbyLicense: boolean;
+
   // filmstrip
   @Column({ type: "json", nullable: true })
   filmstrip: string[] | Frame[];
 
   // computed frontend url field
   frontendUrl: string;
+
+  @Column({ nullable: true, type: "varchar" })
+  description?: string | null;
+
+  @Column({ nullable: true, type: "text" })
+  error?: string | null;
+
+  @Column({ nullable: true, type: "varchar" })
+  sourceUrl?: string | null;
+
+  @Column({ nullable: true, type: "varchar", length: 32 })
+  md5?: string | null;
+
+  @Column({ nullable: true, type: "json" })
+  prompt?: string | null;
+
+  // start keyframe column
+  @ManyToOne(() => Keyframe, { nullable: true })
+  @JoinColumn()
+  @Index()
+  startKeyframe: Keyframe | null;
+
+  // end keyframe column
+  @ManyToOne(() => Keyframe, { nullable: true })
+  @JoinColumn()
+  @Index()
+  endKeyframe: Keyframe | null;
+
+  @OneToMany(() => Report, (report) => report.dream)
+  reports: Report[];
 
   // last processed at date
   @Column({ nullable: true, type: "timestamp" })

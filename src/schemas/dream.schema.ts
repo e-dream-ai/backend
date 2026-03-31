@@ -7,13 +7,16 @@ import {
 import {
   AbortMultipartUploadDreamRequest,
   CompleteMultipartUploadDreamRequest,
+  CreateDreamRequest,
   CreateMultipartUploadDreamRequest,
   CreateMultipartUploadFileRequest,
   DreamFileType,
+  DreamMediaType,
   DreamParamsRequest,
   DreamStatusType,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
+  SetDreamStatusFailedRequest,
   UpdateDreamProcessedRequest,
   UpdateDreamRequest,
 } from "types/dream.types";
@@ -25,12 +28,44 @@ export const requestDreamSchema: RequestValidationSchema = {
   }),
 };
 
+export const createDreamSchema: RequestValidationSchema = {
+  body: Joi.object<CreateDreamRequest>().keys({
+    name: Joi.string().required(),
+    prompt: Joi.alternatives()
+      .try(Joi.string().max(30000), Joi.object())
+      .optional(),
+    description: Joi.string().optional().allow("").max(4000),
+    sourceUrl: Joi.string()
+      .uri({
+        scheme: ["http", "https"],
+        allowRelative: false,
+      })
+      .optional()
+      .allow("")
+      .max(500)
+      .messages({
+        "string.uri":
+          "Invalid URL format. URL must start with http:// or https://",
+      }),
+    nsfw: Joi.boolean(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
+    ccbyLicense: Joi.boolean(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
+  }),
+};
+
 export const getDreamsSchema: RequestValidationSchema = {
   query: Joi.object<GetDreamsQuery>().keys({
     status: Joi.string().valid(...Object.values(DreamStatusType)),
     skip: Joi.number(),
     take: Joi.number(),
-    userId: Joi.number(),
+    userUUID: Joi.string(),
   }),
 };
 
@@ -40,6 +75,38 @@ export const updateDreamSchema: RequestValidationSchema = {
     activityLevel: Joi.number(),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0),
+    user: Joi.string().uuid().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
+    description: Joi.string().optional().allow("").max(4000),
+    prompt: Joi.string().optional().allow("").max(30000),
+    sourceUrl: Joi.string()
+      .uri({
+        scheme: ["http", "https"],
+        allowRelative: false,
+      })
+      .optional()
+      .allow("")
+      .max(500)
+      .messages({
+        "string.uriCustomScheme":
+          "Invalid URL format. URL must start with http:// or https://",
+      }),
+    nsfw: Joi.boolean(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
+    ccbyLicense: Joi.boolean(),
+    startKeyframe: Joi.string().uuid().allow(null),
+    endKeyframe: Joi.string().uuid().allow(null),
+    render_duration: Joi.number().integer(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -52,7 +119,14 @@ export const updateDreamProcessedSchema: RequestValidationSchema = {
     processedVideoFPS: Joi.number(),
     processedVideoFrames: Joi.number().integer(),
     processedVideoSize: Joi.number().integer(),
+    processedMediaWidth: Joi.number().integer(),
+    processedMediaHeight: Joi.number().integer(),
+    render_duration: Joi.number().integer(),
     filmstrip: Joi.array<number>(),
+    md5: Joi.string(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -67,9 +141,32 @@ export const createMultipartUploadDreamSchema: RequestValidationSchema = {
     uuid: Joi.string().uuid(),
     name: Joi.string(),
     extension: Joi.string()
-      .valid(...ALLOWED_VIDEO_TYPES)
+      .valid(...ALLOWED_VIDEO_TYPES, ...ALLOWED_IMAGE_TYPES)
       .required(),
     parts: Joi.number().greater(0).integer().required(),
+    description: Joi.string().optional().allow("").max(4000),
+    sourceUrl: Joi.string()
+      .uri({
+        scheme: ["http", "https"],
+        allowRelative: false,
+      })
+      .optional()
+      .allow("")
+      .max(500)
+      .messages({
+        "string.uri":
+          "Invalid URL format. URL must start with http:// or https://",
+      }),
+    nsfw: Joi.boolean(),
+    hidden: Joi.boolean().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
+    ccbyLicense: Joi.boolean(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
   }),
 };
 
@@ -161,6 +258,15 @@ export const abortMultipartUploadDreamSchema: RequestValidationSchema = {
       .valid(...ALLOWED_VIDEO_TYPES)
       .required(),
     uploadId: Joi.string().required(),
+  }),
+  params: Joi.object<DreamParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const setDreamStatusFailedSchema: RequestValidationSchema = {
+  body: Joi.object<SetDreamStatusFailedRequest>().keys({
+    error: Joi.string().optional().allow("").max(10000),
   }),
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

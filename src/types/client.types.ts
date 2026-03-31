@@ -4,6 +4,10 @@ export type GetDreamsQuery = {
   uuids: string;
 };
 
+export type GetDreamsRequestQuery = {
+  uuids: string[];
+};
+
 export type PartialClientDream = {
   uuid: string;
   timestamp?: number;
@@ -23,6 +27,7 @@ export type ClientDream = {
   nsfw: boolean;
   frontendUrl: string;
   activityLevel?: number | null;
+  md5?: string | null;
   timestamp: number;
   video_timestamp?: number | null;
 };
@@ -33,6 +38,7 @@ export type ClientPlaylist = {
   artist?: string | null;
   thumbnail?: string | null;
   nsfw: boolean;
+  loops: number;
   contents: {
     uuid: string;
     timestamp: number;

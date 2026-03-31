@@ -1,0 +1,160 @@
+import http from "http";
+import express from "express";
+import { Server } from "socket.io";
+import Redis from "ioredis";
+import { createAdapter } from "@socket.io/redis-adapter";
+import env from "shared/env";
+import appDataSource from "database/app-data-source";
+import { APP_LOGGER } from "shared/logger";
+import {
+  registerMiddlewares,
+  socketRegisterMiddlewares,
+} from "middlewares/middleware";
+import { registerRoutes } from "routes/v1/router";
+import { remoteControlConnectionListener } from "socket/remote-control";
+import Bugsnag from "@bugsnag/js";
+import { ALLOWED_HEADERS, ALLOWED_METHODS } from "constants/socket.constants";
+import { handleCustomOrigin } from "utils/api.util";
+import { redisClient } from "clients/redis.client";
+import { setIo } from "socket/io";
+import { jobProgressService } from "services/job-progress.service";
+import {
+  startHeapSnapshotScheduler,
+  stopHeapSnapshotScheduler,
+} from "utils/heap-snapshot.util";
+
+export type ServerResources = {
+  app: express.Application;
+  server: http.Server;
+  io: Server;
+  pubClient: Redis;
+  subClient: Redis;
+};
+
+/**
+ * Initialize and start the server with all required resources (app, server, io server and redis clients)
+ * @returns Promise that resolves when server is listening
+ */
+export async function startServer(): Promise<ServerResources> {
+  // Initialize express app
+  const app: express.Application = express();
+  const server = http.createServer(app);
+  server.timeout = 60000; // 60 seconds
+  const port = env.PORT ?? 8080;
+  const version = env.npm_package_version;
+
+  // Create dedicated Redis clients for Socket.IO adapter (must not share with app operations)
+  const pubClient = redisClient.duplicate();
+  const subClient = redisClient.duplicate();
+
+  // Initialize Socket.IO with Redis adapter
+  const io = new Server(server, {
+    cors: {
+      // Cors callback function
+      origin: handleCustomOrigin,
+      credentials: true,
+      methods: ALLOWED_METHODS,
+      allowedHeaders: ALLOWED_HEADERS,
+    },
+    adapter: createAdapter(pubClient, subClient),
+    pingTimeout: 10000,
+    pingInterval: 25000,
+    transports: ["websocket"],
+  });
+
+  // Database connection
+  try {
+    await appDataSource.initialize();
+    APP_LOGGER.info(`Worker ${process.pid}: Connected with postgres`);
+  } catch (err) {
+    APP_LOGGER.error(`Worker ${process.pid}: Database connection error:`, err);
+    throw err;
+  }
+
+  // Set up express app
+  configureApp(app, io);
+
+  // Start express server
+  await new Promise<void>((resolve) => {
+    server.listen(port, () => {
+      APP_LOGGER.info(
+        `Worker ${process.pid}: e-dream.ai api ${version} started on port ${port}`,
+      );
+      resolve();
+    });
+  });
+
+  return { app, server, io, pubClient, subClient };
+}
+
+/**
+ * Configure express app with middlewares, routes and socket handlers
+ */
+function configureApp(app: express.Application, io: Server) {
+  setIo(io);
+  jobProgressService.start();
+  startHeapSnapshotScheduler();
+  const bugsnagMiddleware = Bugsnag.getPlugin("express");
+
+  if (env.NODE_ENV !== "development") {
+    // This must be the first middleware in the stack
+    // It can only capture errors in downstream middleware
+    app.use(bugsnagMiddleware!.requestHandler);
+  }
+
+  // Register middlewares
+  registerMiddlewares(app);
+
+  // Register routes
+  registerRoutes(app);
+
+  // Set up Socket.IO namespaces and handlers
+  const remoteControlNamespace = io.of("remote-control");
+
+  socketRegisterMiddlewares(remoteControlNamespace);
+  remoteControlNamespace.on("connection", remoteControlConnectionListener);
+
+  if (env.NODE_ENV !== "development") {
+    // Error handler - must be last
+    app.use(bugsnagMiddleware!.errorHandler);
+  }
+}
+
+/**
+ * Properly shut down all server resources
+ */
+export async function shutdownServer(
+  resources: ServerResources,
+): Promise<void> {
+  const { server, io, pubClient, subClient } = resources;
+
+  // Close the HTTP server
+  await new Promise<void>((resolve) => {
+    server.close(() => {
+      APP_LOGGER.info(`Worker ${process.pid}: HTTP server closed`);
+      resolve();
+    });
+  });
+
+  // Close Socket.IO connections
+  await new Promise<void>((resolve) => {
+    io.close(() => {
+      APP_LOGGER.info(`Worker ${process.pid}: Socket.IO server closed`);
+      resolve();
+    });
+  });
+
+  // Stop BullMQ event listeners
+  await jobProgressService.stop();
+
+  // Stop heap snapshot scheduler
+  stopHeapSnapshotScheduler();
+
+  // Close Redis connections
+  await Promise.all([pubClient.quit(), subClient.quit()]);
+  APP_LOGGER.info(`Worker ${process.pid}: Redis connections closed`);
+
+  // Close database connection
+  await appDataSource.destroy();
+  APP_LOGGER.info(`Worker ${process.pid}: Database connection closed`);
+}

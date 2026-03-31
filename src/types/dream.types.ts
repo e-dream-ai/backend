@@ -4,7 +4,16 @@ export type DreamParamsRequest = {
   uuid: string;
 };
 
-export type CreateDreamRequest = object;
+export type CreateDreamRequest = {
+  name: string;
+  prompt?: string | object;
+  description?: string;
+  sourceUrl?: string;
+  nsfw?: boolean;
+  hidden?: boolean;
+  ccbyLicense?: boolean;
+  mediaType?: DreamMediaType;
+};
 
 export type Frame = { frameNumber: number; url: string };
 
@@ -12,7 +21,7 @@ export type GetDreamsQuery = {
   status: DreamStatusType;
   take: number;
   skip: number;
-  userId: number;
+  userUUID: string;
 };
 
 export type UpdateDreamRequest = {
@@ -22,14 +31,34 @@ export type UpdateDreamRequest = {
   activityLevel?: number;
   featureRank?: number;
   displayedOwner?: number;
+  user?: string;
+  startKeyframe?: string | null;
+  endKeyframe?: string | null;
+  render_duration?: number;
+  nsfw?: boolean;
+  hidden?: boolean;
+  description?: string;
+  prompt?: string;
+  sourceUrl?: string;
+  ccbyLicense?: boolean;
+  mediaType?: DreamMediaType;
 };
 
 export type UpdateDreamProcessedRequest = {
   processedVideoSize?: number;
   processedVideoFrames?: number;
   processedVideoFPS?: number;
+  processedMediaWidth?: number;
+  processedMediaHeight?: number;
+  render_duration?: number;
   activityLevel?: number;
   filmstrip?: number[];
+  md5?: string;
+  mediaType?: DreamMediaType;
+};
+
+export type SetDreamStatusFailedRequest = {
+  error?: string;
 };
 
 export type CreateMultipartUploadDreamRequest = {
@@ -38,6 +67,11 @@ export type CreateMultipartUploadDreamRequest = {
   extension: string;
   parts: number;
   nsfw?: boolean;
+  hidden?: boolean;
+  description?: string;
+  sourceUrl?: string;
+  ccbyLicense?: boolean;
+  mediaType?: DreamMediaType;
 };
 
 export type CreateMultipartUploadFileRequest = {
@@ -84,4 +118,9 @@ export enum DreamStatusType {
   PROCESSING = "processing",
   FAILED = "failed",
   PROCESSED = "processed",
+}
+
+export enum DreamMediaType {
+  VIDEO = "video",
+  IMAGE = "image",
 }

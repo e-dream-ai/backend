@@ -7,10 +7,19 @@ import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import dreamRouter from "routes/v1/dream.routes";
 import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
+import keyframeRouter from "routes/v1/keyframe.routes";
 import featureRouter from "./feature.routes";
+import healthRouter from "./health.routes";
 import userRouter from "routes/v1/user.routes";
 import clientRouter from "routes/v1/client.routes";
 import inviteRouter from "routes/v1/invite.routes";
+import reportRouter from "routes/v1/report.routes";
+import marketingRouter from "routes/v1/marketing.routes";
+import heapSnapshotRouter from "routes/v1/heap-snapshot.routes";
+import simulateAuthFailureRouter from "routes/v1/simulate-auth-failure.routes";
+import simulateHelloRouter from "routes/v1/simulate-hello.routes";
+import authRouterV2 from "routes/v2/auth.routes";
+import webhooksRouterV2 from "routes/v2/webhooks.routes";
 import { jsonResponse } from "utils/responses.util";
 
 export const registerRoutes = (app: express.Application) => {
@@ -163,6 +172,9 @@ export const registerRoutes = (app: express.Application) => {
    *           type: string
    *         name:
    *           type: string
+   *         description:
+   *           type: string
+   *           maxLength: 500
    *         thumbnail:
    *           type: string
    *         featureRank:
@@ -182,6 +194,25 @@ export const registerRoutes = (app: express.Application) => {
    *           $ref: '#/components/schemas/User'
    *         displayedOwner:
    *           $ref: '#/components/schemas/User'
+   *     Keyframe:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         uuid:
+   *           type: string
+   *         name:
+   *           type: string
+   *         image:
+   *           type: string
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *         user:
+   *           $ref: '#/components/schemas/User'
    *     PlaylistItem:
    *       type: object
    *       properties:
@@ -197,6 +228,21 @@ export const registerRoutes = (app: express.Application) => {
    *           $ref: '#/components/schemas/Dream'
    *         playlistItem:
    *           $ref: '#/components/schemas/Playlist'
+   *         order:
+   *           type: number
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *     PlaylistKeyframe:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         keyframe:
+   *           $ref: '#/components/schemas/Keyframe'
    *         order:
    *           type: number
    *         created_at:
@@ -264,6 +310,48 @@ export const registerRoutes = (app: express.Application) => {
    *         updated_at:
    *           type: string
    *           format: date
+   *     ReportType:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         description:
+   *           type: string
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
+   *     Report:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: number
+   *         uuid:
+   *           type: string
+   *         dream:
+   *           type: Dream
+   *         reportedBy:
+   *           type: User
+   *         processed:
+   *           type: boolean
+   *         comments:
+   *           type: string
+   *         link:
+   *           type: string
+   *         processedBy:
+   *           type: User
+   *         reportedAt:
+   *           type: string
+   *         processedAt:
+   *           type: string
+   *         created_at:
+   *           type: string
+   *           format: date
+   *         updated_at:
+   *           type: string
+   *           format: date
    *     Feature:
    *       type: object
    *       properties:
@@ -284,6 +372,9 @@ export const registerRoutes = (app: express.Application) => {
    *       properties:
    *         quota:
    *           type: number
+   *         quotaExpiresAt:
+   *           type: string
+   *           format: date-time
    *         currentPlaylistUUID:
    *           type: string
    *         dislikesCount:
@@ -349,6 +440,38 @@ export const registerRoutes = (app: express.Application) => {
    *                  type: number
    *         timestamp:
    *           type: number
+   *     CreatePlaylistRequest:
+   *       type: object
+   *       required:
+   *         - name
+   *       properties:
+   *         name:
+   *           type: string
+   *           maxLength: 100
+   *         description:
+   *           type: string
+   *           maxLength: 500
+   *         nsfw:
+   *           type: boolean
+   *         hidden:
+   *           type: boolean
+   *     UpdatePlaylistRequest:
+   *       type: object
+   *       required:
+   *         - name
+   *       properties:
+   *         name:
+   *           type: string
+   *           maxLength: 100
+   *         description:
+   *           type: string
+   *           maxLength: 500
+   *         featureRank:
+   *           type: number
+   *         displayedOwner:
+   *           type: number
+   *         hidden:
+   *           type: boolean
    *   requestBodies: {}
    *   securitySchemes:
    *     bearerAuth:
@@ -366,6 +489,9 @@ export const registerRoutes = (app: express.Application) => {
       message: `e-dream.ai is running api at version ${version}`,
     });
   });
+
+  // health
+  app.use("/api/v1/health", healthRouter);
 
   // register feature router
   app.use("/api/v1/feature", featureRouter);
@@ -385,13 +511,37 @@ export const registerRoutes = (app: express.Application) => {
   // register playlist router
   app.use("/api/v1/playlist", playlistRouter);
 
+  // register keyframe router
+  app.use("/api/v1/keyframe", keyframeRouter);
+
   // register playlist router
   app.use("/api/v1/feed", feedRouter);
 
-  // register playlist router
+  // register invite router
   app.use("/api/v1/invite", inviteRouter);
 
-  app.all("*", (req, res) => {
+  // register report router
+  app.use("/api/v1/report", reportRouter);
+
+  // register marketing router
+  app.use("/api/v1/marketing", marketingRouter);
+
+  // register heap snapshot router (internal, protected by x-snapshot-key header)
+  app.use("/api/v1/internal/heap-snapshot", heapSnapshotRouter);
+
+  // register simulate auth failure router (internal, protected by x-internal-key header)
+  app.use("/api/v1/internal/simulate-auth-failure", simulateAuthFailureRouter);
+
+  // register simulate hello router (internal, protected by x-internal-key header)
+  app.use("/api/v1/internal/simulate-hello", simulateHelloRouter);
+
+  // register v2 auth
+  app.use("/api/v2/auth", authRouterV2);
+
+  // register v2 webhooks
+  app.use("/api/v2/webhooks", webhooksRouterV2);
+
+  app.all("/{*splat}", (req, res) => {
     res.status(httpStatus.NOT_FOUND);
     if (req.accepts("json")) {
       res.json(

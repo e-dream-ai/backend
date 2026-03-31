@@ -2,14 +2,24 @@ import { ROLES } from "constants/role.constants";
 import Joi from "joi";
 import {
   GetUsersQuery,
+  GetVotedDreamsRequest,
   UpdateUserRequest,
   UpdateUserRoleRequest,
+  UserParamsRequest,
 } from "types/user.types";
 import { NextFunction } from "express";
 import httpStatus from "http-status";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse } from "utils/responses.util";
 import { mapValidatorErrors } from "middlewares/validator.middleware";
+import { RequestValidationSchema } from "types/validator.types";
+import { VoteType } from "types/vote.types";
+
+export const requestUserSchema: RequestValidationSchema = {
+  params: Joi.object<UserParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
 
 export const getUsersSchema = {
   query: Joi.object<GetUsersQuery>().keys({
@@ -23,7 +33,7 @@ export const getUsersSchema = {
 export const updateUserSchema = {
   body: Joi.object<UpdateUserRequest>().keys({
     name: Joi.string().optional().allow("").max(50),
-    description: Joi.string().optional().allow("").max(300),
+    description: Joi.string().optional().allow("").max(4000),
     role: Joi.number().greater(0).integer(),
     nsfw: Joi.boolean().optional(),
     enableMarketingEmails: Joi.boolean().optional(),
@@ -34,6 +44,18 @@ export const updateUserSchema = {
 export const updateUserRoleSchema = {
   body: Joi.object<UpdateUserRoleRequest>().keys({
     role: Joi.string().required().valid(ROLES.ADMIN_GROUP, ROLES.USER_GROUP),
+  }),
+};
+
+export const requestVotedDreamsSchema: RequestValidationSchema = {
+  params: Joi.object<UserParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+  query: Joi.object<GetVotedDreamsRequest>().keys({
+    take: Joi.number(),
+    skip: Joi.number(),
+    type: Joi.string().valid(...Object.values(VoteType)),
+    search: Joi.string().optional().allow(""),
   }),
 };
 

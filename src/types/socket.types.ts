@@ -2,12 +2,20 @@ export const REMOTE_CONTROLS = {
   PLAYING: "playing",
   PLAY_DREAM: "play_dream",
   PLAY_PLAYLIST: "play_playlist",
+  /**
+   * `LIKE_DREAM` and `DISLIKE_DREAM` needs a dream uuid to upvote or downvote it
+   */
   LIKE_DREAM: "like",
   DISLIKE_DREAM: "dislike",
+  /**
+   * `LIKE_CURRENT_DREAM` and `DISLIKE_CURRENT_DREAM` upvotes or downvotes current user dream
+   */
   LIKE_CURRENT_DREAM: "like_current_dream",
   DISLIKE_CURRENT_DREAM: "dislike_current_dream",
   GO_PREVIOUS_DREAM: "previous",
   GO_NEXT_DREAM: "next",
+  TOGGLE_REPEAT: "repeat",
+  TOGGLE_SHUFFLE: "shuffle",
   PLAYBACK_SLOWER: "playback_slower",
   PLAYBACK_FASTER: "playback_faster",
   FORWARD: "forward",
@@ -34,10 +42,27 @@ export const REMOTE_CONTROLS = {
   RESET_PLAYLIST: "reset_playlist",
 };
 
+/**
+ * Device management socket events
+ */
+export const DEVICE_EVENTS = {
+  REGISTER: "device:register",
+  ROLE_ASSIGNED: "device:role-assigned",
+  LIST_UPDATED: "device:list-updated",
+  PING: "device:ping",
+  PONG: "device:pong",
+};
+
 export type RemoteControlEvent = {
   event: string;
   name?: string | null;
   uuid?: string;
   key?: string;
   frameNumber?: number;
+  isWebClientEvent?: boolean;
+  // Desktop status metrics
+  currentTime?: number; // seconds
+  duration?: number; // seconds
+  fps?: number; // display fps
+  paused?: boolean; // desktop pause state
 };

@@ -4,6 +4,8 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Generated,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -17,20 +19,34 @@ import { Vote } from "./Vote.entity";
 import { Invite } from "./Invite.entity";
 import { NEW_USER_DEFAULT_QUOTA } from "constants/user.constants";
 import { ApiKey } from "./ApiKey.entity";
+import { Keyframe } from "./Keyframe.entity";
+import { Report } from "./Report.entity";
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: "varchar" })
-  cognitoId: string;
+  @Column({ type: "string" })
+  @Generated("uuid")
+  @Index()
+  uuid: string;
+
+  @Index()
+  @Column({ nullable: true, type: "varchar", length: 64 })
+  workOSId: string | null;
+
+  @Column({ nullable: true, type: "varchar" })
+  cognitoId: string | null;
 
   @Column({ type: "varchar" })
   email: string;
 
   @Column({ nullable: true, type: "varchar", length: 50 })
   name?: string | null;
+
+  @Column({ nullable: true, type: "varchar" })
+  lastName?: string | null;
 
   @Column({ nullable: true, type: "varchar" })
   description?: string | null;
@@ -51,6 +67,15 @@ export class User {
 
   @OneToMany(() => Playlist, (playlist) => playlist.user)
   playlists: Playlist[];
+
+  @OneToMany(() => Keyframe, (keyframe) => keyframe.user)
+  keyframes: Playlist[];
+
+  @OneToMany(() => Report, (report) => report.reportedBy)
+  reports: Report[];
+
+  @OneToMany(() => Report, (report) => report.reportedBy)
+  processedReports: Report[];
 
   /**
    *  Role
@@ -105,6 +130,15 @@ export class User {
   quota?: number;
 
   /**
+   * verified
+   */
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  verified: boolean;
+
+  /**
    * last_login_at saves the last login user date
    * users with null last_login_at are considered unverified (have never logged in)
    */
@@ -117,6 +151,12 @@ export class User {
    */
   @Column({ nullable: true, type: "timestamp" })
   last_client_ping_at: Date | null;
+
+  /**
+   * last_client_version saves the last version seen from client headers
+   */
+  @Column({ nullable: true, type: "varchar", length: 64 })
+  last_client_version: string | null;
 
   @CreateDateColumn()
   created_at: Date;

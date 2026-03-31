@@ -11,6 +11,7 @@ const SUPPORTED_ALGORITHMS = [
   "deforum",
   "uprez",
   "qwen-image",
+  "z-image-turbo",
   "wan-t2v",
   "wan-i2v",
   "wan-i2v-lora",
@@ -22,6 +23,7 @@ const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   deforum: "deforumvideo",
   uprez: "uprezvideo",
   "qwen-image": "qwenimage",
+  "z-image-turbo": "zimageturbo",
   "wan-t2v": "want2v",
   "wan-i2v": "wani2v",
   "wan-i2v-lora": "wani2vlora",
@@ -75,5 +77,5 @@ export const mapAlgorithmToQueue = (algorithm: string): string | null => {
 };
 
 export const isImageGenerationAlgorithm = (algorithm: string): boolean => {
-  return algorithm === "qwen-image";
+  return algorithm === "qwen-image" || algorithm === "z-image-turbo";
 };

@@ -32,3 +32,26 @@ export const AUTH_MESSAGES = {
 export const SOCKET_AUTH_ERROR_MESSAGES = {
   UNAUTHORIZED: "UNAUTHORIZED",
 };
+
+/**
+ * Machine-readable error codes for auth failures.
+ *
+ * Returned as `errorCode` in 400 responses from the refresh endpoint so that
+ * clients can react programmatically without string-matching human-readable
+ * messages. Each value maps to a specific WorkOS `RefreshSessionFailureReason`
+ * (or to the generic UNKNOWN sentinel for unexpected states).
+ */
+export const AUTH_ERROR_CODES = {
+  /** The session has expired or been revoked (WorkOS: INVALID_GRANT). */
+  SESSION_EXPIRED: "SESSION_EXPIRED",
+  /** The session cookie is present but corrupt or tampered (WorkOS: INVALID_SESSION_COOKIE). */
+  SESSION_INVALID: "SESSION_INVALID",
+  /** No session cookie was included in the request (WorkOS: NO_SESSION_COOKIE_PROVIDED). */
+  NO_SESSION: "NO_SESSION",
+  /** The user must complete MFA enrolment before the session can be refreshed (WorkOS: MFA_ENROLLMENT). */
+  MFA_ENROLLMENT_REQUIRED: "MFA_ENROLLMENT_REQUIRED",
+  /** The user's organisation requires SSO; the current session cannot be refreshed (WorkOS: SSO_REQUIRED). */
+  SSO_REQUIRED: "SSO_REQUIRED",
+  /** An unexpected failure reason was returned; clients should treat this as a transient error. */
+  UNKNOWN: "UNKNOWN",
+} as const;

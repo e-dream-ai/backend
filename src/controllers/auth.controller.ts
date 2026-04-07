@@ -8,7 +8,11 @@ import {
   UserAttributes,
 } from "constants/aws/cognito.constant";
 import passport from "passport";
-import { AUTH_ERROR_CODES, AUTH_MESSAGES } from "constants/messages/auth.constant";
+import {
+  AUTH_ERROR_CODES,
+  AUTH_MESSAGES,
+  AuthErrorCode,
+} from "constants/messages/auth.constant";
 import httpStatus from "http-status";
 import {
   ConfirmUserLoginWithCodeCredentials,
@@ -1140,33 +1144,42 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
     } else if (!authenticated && refreshResponse?.reason) {
       const reason = refreshResponse?.reason ?? "";
 
-      // Map every known WorkOS RefreshSessionFailureReason to a human-readable
-      // message and a stable machine-readable errorCode.  Clients should branch
-      // on errorCode rather than parsing the message string.
-      let message  = AUTH_MESSAGES.EXPIRED_TOKEN;
-      let errorCode = AUTH_ERROR_CODES.SESSION_EXPIRED;
+      // Lookup table: maps every known WorkOS RefreshSessionFailureReason to a
+      // human-readable message and a stable machine-readable errorCode.
+      const REFRESH_FAILURE_MAP: Partial<
+        Record<
+          RefreshSessionFailureReason,
+          { message: string; errorCode: AuthErrorCode }
+        >
+      > = {
+        [RefreshSessionFailureReason.INVALID_GRANT]: {
+          message: AUTH_MESSAGES.EXPIRED_TOKEN,
+          errorCode: AUTH_ERROR_CODES.SESSION_EXPIRED,
+        },
+        [RefreshSessionFailureReason.INVALID_SESSION_COOKIE]: {
+          message: AUTH_MESSAGES.INVALID_TOKEN,
+          errorCode: AUTH_ERROR_CODES.SESSION_INVALID,
+        },
+        [RefreshSessionFailureReason.NO_SESSION_COOKIE_PROVIDED]: {
+          message: AUTH_MESSAGES.INVALID_TOKEN,
+          errorCode: AUTH_ERROR_CODES.NO_SESSION,
+        },
+        [RefreshSessionFailureReason.MFA_ENROLLMENT]: {
+          message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
+          errorCode: AUTH_ERROR_CODES.MFA_ENROLLMENT_REQUIRED,
+        },
+        [RefreshSessionFailureReason.SSO_REQUIRED]: {
+          message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
+          errorCode: AUTH_ERROR_CODES.SSO_REQUIRED,
+        },
+      };
 
-      if (reason === RefreshSessionFailureReason.INVALID_GRANT) {
-        // Most common case: the session has expired or been revoked.
-        message   = AUTH_MESSAGES.EXPIRED_TOKEN;
-        errorCode = AUTH_ERROR_CODES.SESSION_EXPIRED;
-      } else if (reason === RefreshSessionFailureReason.INVALID_SESSION_COOKIE) {
-        // The token is present but corrupt or tampered.
-        message   = AUTH_MESSAGES.INVALID_TOKEN;
-        errorCode = AUTH_ERROR_CODES.SESSION_INVALID;
-      } else if (reason === RefreshSessionFailureReason.NO_SESSION_COOKIE_PROVIDED) {
-        // No cookie was sent — client-side bug.
-        message   = AUTH_MESSAGES.INVALID_TOKEN;
-        errorCode = AUTH_ERROR_CODES.NO_SESSION;
-      } else if (reason === RefreshSessionFailureReason.MFA_ENROLLMENT) {
-        // User must complete MFA enrolment; direct them to the auth flow.
-        message   = AUTH_MESSAGES.AUTHENTICATION_FAILED;
-        errorCode = AUTH_ERROR_CODES.MFA_ENROLLMENT_REQUIRED;
-      } else if (reason === RefreshSessionFailureReason.SSO_REQUIRED) {
-        // Organisation enforces SSO; the current session cannot be refreshed.
-        message   = AUTH_MESSAGES.AUTHENTICATION_FAILED;
-        errorCode = AUTH_ERROR_CODES.SSO_REQUIRED;
-      }
+      const { message, errorCode } = REFRESH_FAILURE_MAP[
+        reason as RefreshSessionFailureReason
+      ] ?? {
+        message: AUTH_MESSAGES.EXPIRED_TOKEN,
+        errorCode: AUTH_ERROR_CODES.SESSION_EXPIRED,
+      };
 
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({

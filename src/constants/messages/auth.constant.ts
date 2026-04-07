@@ -55,3 +55,6 @@ export const AUTH_ERROR_CODES = {
   /** An unexpected failure reason was returned; clients should treat this as a transient error. */
   UNKNOWN: "UNKNOWN",
 } as const;
+
+export type AuthErrorCode =
+  (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];

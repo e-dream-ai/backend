@@ -538,7 +538,7 @@ export const handleCompleteMultipartUpload = async (
 
   let dream: Dream | undefined;
   try {
-    const [dream] = await dreamRepository.find({
+    [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
       select: getDreamSelectedColumns(),

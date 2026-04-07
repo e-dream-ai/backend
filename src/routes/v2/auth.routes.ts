@@ -238,11 +238,27 @@ authRouter.get("/logout", requireAuth, authController.logout);
  *                data:
  *                  $ref: '#/components/schemas/Tokens'
  *      '400':
- *        description: Bad request
+ *        description: |
+ *          Session could not be refreshed. The `errorCode` field contains a
+ *          machine-readable reason that clients should branch on rather than
+ *          parsing the human-readable `message` string.
+ *          Possible errorCode values:
+ *            SESSION_EXPIRED           – session has expired or been revoked
+ *            SESSION_INVALID           – cookie is present but corrupt/tampered
+ *            NO_SESSION                – no session cookie was sent
+ *            MFA_ENROLLMENT_REQUIRED   – user must complete MFA enrolment
+ *            SSO_REQUIRED              – organisation requires SSO login
+ *            UNKNOWN                   – unexpected state; treat as transient
  *        content:
  *          application/json:
  *            schema:
- *              $ref: '#/components/schemas/BadApiResponse'
+ *              allOf:
+ *                - $ref: '#/components/schemas/BadApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    errorCode:
+ *                      type: string
+ *                      example: SESSION_EXPIRED
  */
 authRouter.post("/refresh", authController.refreshWorkOS);
 

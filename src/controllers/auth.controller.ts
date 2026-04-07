@@ -8,7 +8,11 @@ import {
   UserAttributes,
 } from "constants/aws/cognito.constant";
 import passport from "passport";
-import { AUTH_MESSAGES } from "constants/messages/auth.constant";
+import {
+  AUTH_ERROR_CODES,
+  AUTH_MESSAGES,
+  AuthErrorCode,
+} from "constants/messages/auth.constant";
 import httpStatus from "http-status";
 import {
   ConfirmUserLoginWithCodeCredentials,
@@ -1140,22 +1144,58 @@ export const refreshWorkOS = async (req: RequestType, res: ResponseType) => {
     } else if (!authenticated && refreshResponse?.reason) {
       const reason = refreshResponse?.reason ?? "";
 
-      let message = AUTH_MESSAGES.EXPIRED_TOKEN;
-      if (reason === RefreshSessionFailureReason.NO_SESSION_COOKIE_PROVIDED) {
-        message = AUTH_MESSAGES.INVALID_TOKEN;
-      }
+      // Lookup table: maps every known WorkOS RefreshSessionFailureReason to a
+      // human-readable message and a stable machine-readable errorCode.
+      const REFRESH_FAILURE_MAP: Partial<
+        Record<
+          RefreshSessionFailureReason,
+          { message: string; errorCode: AuthErrorCode }
+        >
+      > = {
+        [RefreshSessionFailureReason.INVALID_GRANT]: {
+          message: AUTH_MESSAGES.EXPIRED_TOKEN,
+          errorCode: AUTH_ERROR_CODES.SESSION_EXPIRED,
+        },
+        [RefreshSessionFailureReason.INVALID_SESSION_COOKIE]: {
+          message: AUTH_MESSAGES.INVALID_TOKEN,
+          errorCode: AUTH_ERROR_CODES.SESSION_INVALID,
+        },
+        [RefreshSessionFailureReason.NO_SESSION_COOKIE_PROVIDED]: {
+          message: AUTH_MESSAGES.INVALID_TOKEN,
+          errorCode: AUTH_ERROR_CODES.NO_SESSION,
+        },
+        [RefreshSessionFailureReason.MFA_ENROLLMENT]: {
+          message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
+          errorCode: AUTH_ERROR_CODES.MFA_ENROLLMENT_REQUIRED,
+        },
+        [RefreshSessionFailureReason.SSO_REQUIRED]: {
+          message: AUTH_MESSAGES.AUTHENTICATION_FAILED,
+          errorCode: AUTH_ERROR_CODES.SSO_REQUIRED,
+        },
+      };
+
+      const { message, errorCode } = REFRESH_FAILURE_MAP[
+        reason as RefreshSessionFailureReason
+      ] ?? {
+        message: AUTH_MESSAGES.EXPIRED_TOKEN,
+        errorCode: AUTH_ERROR_CODES.SESSION_EXPIRED,
+      };
 
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({
           success: false,
           message,
+          errorCode,
         }),
       );
     }
 
+    // Authenticated is false but no reason was provided — unexpected WorkOS state.
     return res.status(httpStatus.BAD_REQUEST).json(
       jsonResponse({
         success: false,
+        message: AUTH_MESSAGES.UNEXPECTED_ERROR,
+        errorCode: AUTH_ERROR_CODES.UNKNOWN,
       }),
     );
   } catch (error) {

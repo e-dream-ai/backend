@@ -131,6 +131,8 @@ export const cancelJobAcrossQueues = async (
     "wani2vlora",
     "qwenimage",
     "zimageturbo",
+    "ltxi2v",
+    "nvidiavsr",
   ];
 
   for (const queueName of queueNames) {

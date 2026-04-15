@@ -182,7 +182,7 @@ pnpm run migration:show
 
 ## Image Worker & Caching
 
-Every image/video URL served to the frontend goes through this worker. The worker sits at a Cloudflare Workers URL; the R2 bucket is **never exposed directly to the public**.
+Every image/video URL served to the frontend goes through this worker. The worker sits at a Cloudflare Workers URL; the R2 bucket is **never exposed directly to the public**. For the worker's own documentation, see [cf-image-worker/README.md](https://github.com/e-dream-ai/cf-image-worker/blob/main/README.md).
 
 ```
 Browser → Cloudflare Worker (image-worker) → R2 Bucket

@@ -145,7 +145,9 @@ export const handleCreateDream = async (
     const sourceUrl = req.body.sourceUrl;
     const nsfw = req.body.nsfw;
     const hidden = req.body.hidden;
-    const ccbyLicense = req.body.ccbyLicense;
+    const ccbyLicense = user.enableCreatingProprietaryDreams
+      ? req.body.ccbyLicense
+      : true;
     const prompt = req.body.prompt
       ? typeof req.body.prompt === "string"
         ? req.body.prompt
@@ -249,7 +251,9 @@ export const handleCreateMultipartUpload = async (
     const parts = req.body.parts ?? 1;
     const nsfw = req.body.nsfw;
     const hidden = req.body.hidden;
-    const ccbyLicense = req.body.ccbyLicense;
+    const ccbyLicense = user.enableCreatingProprietaryDreams
+      ? req.body.ccbyLicense
+      : true;
     const mediaType =
       req.body.mediaType ??
       (extension
@@ -1282,6 +1286,14 @@ export const handleUpdateDream = async (
       UpdateDreamRequest,
       "displayedOwner" | "user" | "startKeyframe" | "endKeyframe"
     >;
+
+    if (
+      !isUserAdmin &&
+      !user.enableCreatingProprietaryDreams &&
+      updateData.ccbyLicense === false
+    ) {
+      updateData.ccbyLicense = true;
+    }
 
     let displayedOwner: User | null = null;
     let newOwner: User | null = null;

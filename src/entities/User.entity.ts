@@ -116,6 +116,12 @@ export class User {
   })
   enableMarketingEmails: boolean;
 
+  @Column({
+    type: "boolean",
+    default: false,
+  })
+  enableCreatingProprietaryDreams: boolean;
+
   /**
    * signup invite
    */

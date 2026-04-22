@@ -37,6 +37,7 @@ export const updateUserSchema = {
     role: Joi.number().greater(0).integer(),
     nsfw: Joi.boolean().optional(),
     enableMarketingEmails: Joi.boolean().optional(),
+    enableCreatingProprietaryDreams: Joi.boolean().optional(),
     quota: Joi.number().greater(0).integer().optional(),
   }),
 };
@@ -69,9 +70,9 @@ export const validateUserSchema = async (
   let schema;
 
   if (role !== ROLES.ADMIN_GROUP) {
-    // quota is allowed to be updated only by admins
     schema = updateUserSchema.body.keys({
       quota: Joi.forbidden(),
+      enableCreatingProprietaryDreams: Joi.forbidden(),
     });
   } else {
     schema = updateUserSchema.body.keys();

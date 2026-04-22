@@ -18,6 +18,7 @@ export type UpdateUserRequest = {
   role?: number;
   nsfw?: boolean;
   enableMarketingEmails?: boolean;
+  enableCreatingProprietaryDreams?: boolean;
   quota?: number;
 };
 

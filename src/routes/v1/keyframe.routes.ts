@@ -165,11 +165,7 @@ keyframeRouter.get(
 keyframeRouter.post(
   "/",
   requireAuth,
-  checkRoleMiddleware([
-    ROLES.USER_GROUP,
-    ROLES.CREATOR_GROUP,
-    ROLES.ADMIN_GROUP,
-  ]),
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(createKeyframeSchema),
   keyframeController.handleCreateKeyframe,
 );

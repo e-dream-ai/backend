@@ -747,13 +747,17 @@ export const handleUpdatePlaylist = async (
     }
 
     /* eslint-disable @typescript-eslint/no-unused-vars */
-    const { displayedOwner: _displayedOwner, ...sanitizedData } = req.body;
+    const {
+      displayedOwner: _displayedOwner,
+      user: _user,
+      ...sanitizedData
+    } = req.body;
     /* eslint-enable @typescript-eslint/no-unused-vars */
 
     // Define an object to hold the fields that are allowed to be updated
     let updateData: Partial<Playlist> = sanitizedData as Omit<
       UpdatePlaylistRequest,
-      "displayedOwner"
+      "displayedOwner" | "user"
     >;
 
     let displayedOwner: User | null = null;
@@ -774,6 +778,24 @@ export const handleUpdatePlaylist = async (
       await feedItemRepository.update(
         { playlistItem: { id: playlist.id } },
         { user: displayedOwner },
+      );
+    }
+
+    if (isAdmin(user) && req.body.user) {
+      const newOwner = await userRepository.findOne({
+        where: { uuid: req.body.user },
+      });
+
+      if (!newOwner) {
+        return handleNotFound(req as RequestType, res, {
+          message: "User not found",
+        });
+      }
+
+      updateData = { ...updateData, user: newOwner };
+      await feedItemRepository.update(
+        { playlistItem: { id: playlist.id } },
+        { user: newOwner },
       );
     }
 

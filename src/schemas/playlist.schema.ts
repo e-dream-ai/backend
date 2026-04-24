@@ -54,6 +54,11 @@ export const updatePlaylistSchema: RequestValidationSchema = {
       otherwise: Joi.forbidden(),
     }),
     loops: Joi.number().integer().min(0),
+    user: Joi.string().uuid().when("$isUserAdmin", {
+      is: true,
+      then: Joi.allow(),
+      otherwise: Joi.forbidden(),
+    }),
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

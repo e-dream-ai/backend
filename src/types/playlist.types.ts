@@ -31,6 +31,7 @@ export type UpdatePlaylistRequest = {
   nsfw?: boolean;
   hidden?: boolean;
   loops?: number;
+  user?: string;
 };
 
 export type OrderPlaylist = {

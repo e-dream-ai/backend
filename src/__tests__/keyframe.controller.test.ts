@@ -149,9 +149,14 @@ describe("keyframe.controller", () => {
       getUploadPartSignedUrl,
       generateKeyframePath,
     }));
+    jest.mock("utils/uploadVersion.util", () => ({
+      __esModule: true,
+      setKeyframeVersion: jest.fn().mockResolvedValue(1),
+    }));
     jest.mock("utils/responses.util", () => ({
       __esModule: true,
       jsonResponse: (p: unknown) => p,
+      handleInternalServerError: jest.fn(),
     }));
 
     const { handleInitKeyframeImageUpload } = await import(
@@ -205,9 +210,15 @@ describe("keyframe.controller", () => {
       completeMultipartUpload,
       generateKeyframePath,
     }));
+    jest.mock("utils/uploadVersion.util", () => ({
+      __esModule: true,
+      getKeyframeVersion: jest.fn().mockResolvedValue(1),
+      delKeyframeVersion: jest.fn().mockResolvedValue(1),
+    }));
     jest.mock("utils/responses.util", () => ({
       __esModule: true,
       jsonResponse: (p: unknown) => p,
+      handleInternalServerError: jest.fn(),
     }));
 
     const { handleCompleteKeyframeImageUpload } = await import(

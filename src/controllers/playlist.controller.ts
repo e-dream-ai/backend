@@ -910,7 +910,7 @@ export const handleUpdateThumbnailPlaylist = async (
     const fileMymeType = req.file?.mimetype;
     const fileExtension =
       MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
-    const fileName = `${THUMBNAIL}.${fileExtension}`;
+    const fileName = `${THUMBNAIL}-${Date.now()}.${fileExtension}`;
     const filePath = `${getUserIdentifier(user)}/${PLAYLIST_PREFIX}-${
       playlist.id
     }/${fileName}`;

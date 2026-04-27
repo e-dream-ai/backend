@@ -352,7 +352,7 @@ describe("user.controller", () => {
     expect(send).toHaveBeenCalled();
     expect(userRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
-        avatar: expect.stringContaining("u1/avatar."),
+        avatar: expect.stringContaining("u1/avatar-"),
       }),
     );
     expect(status).toHaveBeenCalledWith(200);

@@ -1103,13 +1103,13 @@ export const handleSetDreamStatusProcessed = async (
           frameNumber: Number(frame),
           url: filmstripVersion
             ? `${getUserIdentifier(
-                user,
-              )}/${dreamUUID}/filmstrip/${filmstripVersion}/frame-${frame}.${
-                FILE_EXTENSIONS.JPG
-              }`
+              user,
+            )}/${dreamUUID}/filmstrip/${filmstripVersion}/frame-${frame}.${
+              FILE_EXTENSIONS.JPG
+            }`
             : `${getUserIdentifier(
-                user,
-              )}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
+              user,
+            )}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
         }) as Frame,
     );
     if (filmstripVersion) await clearFilmstripVersion(dreamUUID);

@@ -140,24 +140,33 @@ export const generateThumbnailPath = ({
   userIdentifier,
   dreamUUID,
   extension,
+  renderVersion,
 }: {
   userIdentifier: string;
   dreamUUID: string;
   extension: string;
-}) => `${userIdentifier}/${dreamUUID}/thumbnails/${dreamUUID}.${extension}`;
+  renderVersion?: number;
+}) =>
+  renderVersion
+    ? `${userIdentifier}/${dreamUUID}/thumbnails/${dreamUUID}-${renderVersion}.${extension}`
+    : `${userIdentifier}/${dreamUUID}/thumbnails/${dreamUUID}.${extension}`;
 
 export const generateFilmstripPath = ({
   userIdentifier,
   dreamUUID,
   extension,
   frameNumber,
+  renderVersion,
 }: {
   userIdentifier: string;
   dreamUUID: string;
   extension: string;
   frameNumber: number;
+  renderVersion?: number;
 }) =>
-  `${userIdentifier}/${dreamUUID}/filmstrip/frame-${frameNumber}.${extension}`;
+  renderVersion
+    ? `${userIdentifier}/${dreamUUID}/filmstrip/${renderVersion}/frame-${frameNumber}.${extension}`
+    : `${userIdentifier}/${dreamUUID}/filmstrip/frame-${frameNumber}.${extension}`;
 
 export const generateDreamPath = ({
   userIdentifier,
@@ -178,12 +187,16 @@ export const generateKeyframePath = ({
   userIdentifier,
   keyframeUUID,
   extension,
+  renderVersion,
 }: {
   userIdentifier: string;
   keyframeUUID: string;
   extension: string;
+  renderVersion?: number;
 }) =>
-  `${userIdentifier}/keyframes/${keyframeUUID}/${keyframeUUID}.${extension}`;
+  renderVersion
+    ? `${userIdentifier}/keyframes/${keyframeUUID}/${keyframeUUID}-${renderVersion}.${extension}`
+    : `${userIdentifier}/keyframes/${keyframeUUID}/${keyframeUUID}.${extension}`;
 
 /**
  * Helper function to extract file extension from object key or file path

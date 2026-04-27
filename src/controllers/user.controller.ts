@@ -142,15 +142,15 @@ export const handleGetUsers = async (
     };
     const whereSentence = search
       ? [
-        {
-          ...baseConditions,
-          name: ILike(`%${search}%`),
-        },
-        {
-          ...baseConditions,
-          email: ILike(`%${search}%`),
-        },
-      ]
+          {
+            ...baseConditions,
+            name: ILike(`%${search}%`),
+          },
+          {
+            ...baseConditions,
+            email: ILike(`%${search}%`),
+          },
+        ]
       : (baseConditions as FindOptionsWhere<User>);
     const [users, count] = await userRepository.findAndCount({
       where: whereSentence,
@@ -543,7 +543,7 @@ export const handleUpdateUserAvatar = async (
     const fileMymeType = req.file?.mimetype;
     const fileExtension =
       MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
-    const fileName = `${AVATAR}.${fileExtension}`;
+    const fileName = `${AVATAR}-${Date.now()}.${fileExtension}`;
     const filePath = `${getUserIdentifier(user)}/${fileName}`;
 
     if (avatarBuffer) {

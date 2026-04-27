@@ -494,15 +494,15 @@ export const handleGetPlaylistReferences = async (
     const unfilteredReferences = await playlistItemRepository.find({
       where: Array.isArray(where)
         ? where.map((playlistWhere) => ({
-          playlistItem: { uuid },
-          type: PlaylistItemType.PLAYLIST,
-          playlist: playlistWhere,
-        }))
+            playlistItem: { uuid },
+            type: PlaylistItemType.PLAYLIST,
+            playlist: playlistWhere,
+          }))
         : {
-          playlistItem: { uuid },
-          type: PlaylistItemType.PLAYLIST,
-          playlist: where,
-        },
+            playlistItem: { uuid },
+            type: PlaylistItemType.PLAYLIST,
+            playlist: where,
+          },
       select: {
         id: true,
         type: true,
@@ -598,9 +598,9 @@ export const handleGetPlaylists = async (
   const userCondition = { uuid: userUUID };
   const where = searchILike
     ? [
-      { user: userCondition, name: searchILike },
-      { user: userCondition, displayedOwner: { name: searchILike } },
-    ]
+        { user: userCondition, name: searchILike },
+        { user: userCondition, displayedOwner: { name: searchILike } },
+      ]
     : { user: userCondition };
 
   try {
@@ -910,7 +910,7 @@ export const handleUpdateThumbnailPlaylist = async (
     const fileMymeType = req.file?.mimetype;
     const fileExtension =
       MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
-    const fileName = `${THUMBNAIL}.${fileExtension}`;
+    const fileName = `${THUMBNAIL}-${Date.now()}.${fileExtension}`;
     const filePath = `${getUserIdentifier(user)}/${PLAYLIST_PREFIX}-${
       playlist.id
     }/${fileName}`;

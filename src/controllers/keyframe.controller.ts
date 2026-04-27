@@ -30,6 +30,11 @@ import {
   generateKeyframePath,
   getUploadPartSignedUrl,
 } from "utils/r2.util";
+import {
+  delKeyframeVersion,
+  getKeyframeVersion,
+  setKeyframeVersion,
+} from "utils/uploadVersion.util";
 import { CreateMultipartUploadFileRequest } from "types/keyframe.types";
 import { keyframeRepository, userRepository } from "database/repositories";
 import {
@@ -223,6 +228,7 @@ export const handleInitKeyframeImageUpload = async (
       userIdentifier,
       keyframeUUID,
       extension: fileExtension,
+      renderVersion: await setKeyframeVersion(keyframeUUID),
     });
 
     const uploadId = await createMultipartUpload(filePath!);
@@ -304,11 +310,11 @@ export const handleCompleteKeyframeImageUpload = async (
       userIdentifier,
       keyframeUUID,
       extension: fileExtension,
+      renderVersion: await getKeyframeVersion(keyframeUUID),
     });
 
-    await keyframeRepository.update(keyframe.id, {
-      image: filePath!,
-    });
+    await keyframeRepository.update(keyframe.id, { image: filePath! });
+    await delKeyframeVersion(keyframeUUID);
 
     /**
      * completes multipart upload with path, upload id and parts

@@ -80,6 +80,14 @@ import {
   transformDreamsWithSignedUrls,
 } from "utils/transform.util";
 import { detectMediaTypeFromExtension } from "utils/media.util";
+import {
+  clearFilmstripVersion,
+  delThumbVersion,
+  getFilmstripVersion,
+  getThumbVersion,
+  setFilmstripVersion,
+  setThumbVersion,
+} from "utils/uploadVersion.util";
 
 /**
  * Handles get dreams
@@ -373,6 +381,7 @@ export const handleCreateMultipartUploadDreamFile = async (
         userIdentifier,
         dreamUUID,
         extension: fileExtension,
+        renderVersion: await setThumbVersion(dreamUUID),
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
@@ -380,6 +389,7 @@ export const handleCreateMultipartUploadDreamFile = async (
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
+        renderVersion: await setFilmstripVersion(dreamUUID),
       });
     } else if (type === DreamFileType.DREAM) {
       filePath = generateDreamPath({
@@ -475,6 +485,7 @@ export const handleRefreshMultipartUploadUrl = async (
         userIdentifier,
         dreamUUID,
         extension: fileExtension,
+        renderVersion: await getThumbVersion(dreamUUID),
       });
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
@@ -482,6 +493,7 @@ export const handleRefreshMultipartUploadUrl = async (
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
+        renderVersion: await getFilmstripVersion(dreamUUID),
       });
     } else if (type === DreamFileType.DREAM) {
       filePath = generateDreamPath({
@@ -576,6 +588,7 @@ export const handleCompleteMultipartUpload = async (
         userIdentifier,
         dreamUUID,
         extension: fileExtension,
+        renderVersion: await getThumbVersion(dreamUUID),
       });
 
       /**
@@ -584,12 +597,14 @@ export const handleCompleteMultipartUpload = async (
       await dreamRepository.update(dream.id, {
         thumbnail: filePath,
       });
+      await delThumbVersion(dreamUUID);
     } else if (type === DreamFileType.FILMSTRIP) {
       filePath = generateFilmstripPath({
         userIdentifier,
         dreamUUID,
         extension: fileExtension,
         frameNumber: frameNumber!,
+        renderVersion: await getFilmstripVersion(dreamUUID),
       });
     } else if (type === DreamFileType.DREAM && !processed) {
       filePath = generateDreamPath({
@@ -1016,6 +1031,8 @@ export const handleSetDreamStatusProcessing = async (
       return handleNotFound(req as RequestType, res);
     }
 
+    await clearFilmstripVersion(dreamUUID);
+
     const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.PROCESSING,
@@ -1077,15 +1094,25 @@ export const handleSetDreamStatusProcessed = async (
      */
 
     const user = dream.user;
+    const filmstripVersion = filmstrip
+      ? await getFilmstripVersion(dreamUUID)
+      : undefined;
     const formatedFilmstrip: Frame[] | undefined = filmstrip?.map(
       (frame) =>
         ({
           frameNumber: Number(frame),
-          url: `${getUserIdentifier(
-            user,
-          )}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
+          url: filmstripVersion
+            ? `${getUserIdentifier(
+                user,
+              )}/${dreamUUID}/filmstrip/${filmstripVersion}/frame-${frame}.${
+                FILE_EXTENSIONS.JPG
+              }`
+            : `${getUserIdentifier(
+                user,
+              )}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
         }) as Frame,
     );
+    if (filmstripVersion) await clearFilmstripVersion(dreamUUID);
 
     const updateData: Partial<Dream> = {
       status: DreamStatusType.PROCESSED,
@@ -1468,8 +1495,12 @@ export const handleUpdateThumbnailDream = async (
     const bucketName = env.R2_BUCKET_NAME;
     const fileMymeType = req.file?.mimetype;
     const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
-    const fileName = `${dreamUUID}.${fileExtension}`;
-    const filePath = `${getUserIdentifier(user)}/${dreamUUID}/${fileName}`;
+    const filePath = generateThumbnailPath({
+      userIdentifier: getUserIdentifier(dream.user),
+      dreamUUID,
+      extension: fileExtension,
+      renderVersion: Date.now(),
+    });
 
     if (thumbnailBuffer) {
       const command = new PutObjectCommand({

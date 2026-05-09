@@ -35,7 +35,7 @@ const sendMarketingSchema = Joi.object({
     .items(Joi.string().trim().min(1).max(128).invalid("%", "_"))
     .max(20)
     .single(),
-  minLastClientVersion: Joi.string()
+  maxLastClientVersion: Joi.string()
     .trim()
     .pattern(/^v?\d+(\.\d+){0,3}$/),
 })
@@ -59,8 +59,8 @@ const versionToInt = (version: string): number => {
   );
 };
 
-const versionRawAtLeast = (minVersion: string) => {
-  const minVersionInt = versionToInt(minVersion);
+const versionRawAtMost = (maxVersion: string) => {
+  const maxVersionInt = versionToInt(maxVersion);
   return Raw<string>(
     (alias) => `
       CASE WHEN ${alias} ~ '^v?\\d+(\\.\\d+){0,3}$' THEN (
@@ -68,8 +68,8 @@ const versionRawAtLeast = (minVersion: string) => {
         COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 2), '')::int, 0) * 1000000 +
         COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 3), '')::int, 0) * 1000 +
         COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 4), '')::int, 0)
-      ) ELSE 0 END >= :minVersionInt`,
-    { minVersionInt },
+      ) ELSE 0 END <= :maxVersionInt`,
+    { maxVersionInt },
   );
 };
 
@@ -165,7 +165,7 @@ export const handleSendMarketingEmails = async (
       email,
       userId,
       emailPrefixes,
-      minLastClientVersion,
+      maxLastClientVersion,
     } = value;
 
     const baseWhere: FindOptionsWhere<User> = {
@@ -190,8 +190,8 @@ export const handleSendMarketingEmails = async (
       }));
     }
 
-    if (minLastClientVersion) {
-      const versionCondition = versionRawAtLeast(minLastClientVersion);
+    if (maxLastClientVersion) {
+      const versionCondition = versionRawAtMost(maxLastClientVersion);
       where = Array.isArray(where)
         ? where.map((w) => ({ ...w, last_client_version: versionCondition }))
         : { ...where, last_client_version: versionCondition };
@@ -222,7 +222,7 @@ export const handleSendMarketingEmails = async (
             offset,
             count: targetCount,
             emailPrefixes: emailPrefixes ?? undefined,
-            minLastClientVersion: minLastClientVersion ?? undefined,
+            maxLastClientVersion: maxLastClientVersion ?? undefined,
             triggeredBy: res.locals.user?.id ?? null,
             createdAt: new Date().toISOString(),
           },
@@ -277,7 +277,7 @@ export const handleSendMarketingEmails = async (
           offset,
           count: targetCount,
           emailPrefixes: emailPrefixes ?? undefined,
-          minLastClientVersion: minLastClientVersion ?? undefined,
+          maxLastClientVersion: maxLastClientVersion ?? undefined,
           triggeredBy: res.locals.user?.id ?? null,
           createdAt: new Date().toISOString(),
           queued: result.count,

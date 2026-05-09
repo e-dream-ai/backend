@@ -3,7 +3,14 @@ import httpStatus from "http-status";
 import { jsonResponse } from "utils/responses.util";
 import { handleInternalServerError } from "utils/responses.util";
 import { userRepository } from "database/repositories";
-import { FindOperator, FindOptionsWhere, IsNull, Not } from "typeorm";
+import {
+  FindOperator,
+  FindOptionsWhere,
+  ILike,
+  IsNull,
+  Not,
+  Raw,
+} from "typeorm";
 import { User } from "entities";
 import { enqueueMarketingEmails } from "utils/marketing-queue.util";
 import { MARKETING_SEND_MAX_PER_RUN } from "constants/marketing.constants";
@@ -24,8 +31,16 @@ const sendMarketingSchema = Joi.object({
   offset: Joi.number().integer().min(0).default(0),
   email: Joi.string().email(),
   userId: Joi.number().integer().min(1),
+  emailPrefixes: Joi.array()
+    .items(Joi.string().trim().min(1).max(128).invalid("%", "_"))
+    .max(20)
+    .single(),
+  maxLastClientVersion: Joi.string()
+    .trim()
+    .pattern(/^v?\d+(\.\d+){0,3}$/),
 })
   .nand("email", "userId")
+  .without("emailPrefixes", ["email", "userId"])
   .required();
 
 const sendOneMarketingSchema = Joi.object({
@@ -33,6 +48,30 @@ const sendOneMarketingSchema = Joi.object({
   templateId: Joi.string().required(),
   unsubscribeToken: Joi.string().required(),
 }).required();
+
+const versionToInt = (version: string): number => {
+  const segments = version.trim().replace(/^v/i, "").split(".").map(Number);
+  return (
+    (segments[0] ?? 0) * 1_000_000_000 +
+    (segments[1] ?? 0) * 1_000_000 +
+    (segments[2] ?? 0) * 1_000 +
+    (segments[3] ?? 0)
+  );
+};
+
+const versionRawAtMost = (maxVersion: string) => {
+  const maxVersionInt = versionToInt(maxVersion);
+  return Raw<string>(
+    (alias) => `
+      CASE WHEN ${alias} ~ '^v?\\d+(\\.\\d+){0,3}$' THEN (
+        COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 1), '')::int, 0) * 1000000000 +
+        COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 2), '')::int, 0) * 1000000 +
+        COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 3), '')::int, 0) * 1000 +
+        COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 4), '')::int, 0)
+      ) ELSE 0 END <= :maxVersionInt`,
+    { maxVersionInt },
+  );
+};
 
 const getUnsubscribeToken = (req: RequestType): string | undefined => {
   const bodyToken =
@@ -118,19 +157,44 @@ export const handleSendMarketingEmails = async (
       );
     }
 
-    const { templateId, dryRun, limit, offset, email, userId } = value;
+    const {
+      templateId,
+      dryRun,
+      limit,
+      offset,
+      email,
+      userId,
+      emailPrefixes,
+      maxLastClientVersion,
+    } = value;
 
-    const where: FindOptionsWhere<User> = {
+    const baseWhere: FindOptionsWhere<User> = {
       enableMarketingEmails: true,
       email: Not(IsNull()) as FindOperator<string>,
     };
 
+    let where: FindOptionsWhere<User> | FindOptionsWhere<User>[] = baseWhere;
+
     if (email) {
-      where.email = email;
+      where = { ...baseWhere, email };
     }
 
     if (userId) {
-      where.id = userId;
+      where = { ...baseWhere, id: userId };
+    }
+
+    if (emailPrefixes?.length) {
+      where = emailPrefixes.map((prefix: string) => ({
+        enableMarketingEmails: true,
+        email: ILike(`${prefix}%`),
+      }));
+    }
+
+    if (maxLastClientVersion) {
+      const versionCondition = versionRawAtMost(maxLastClientVersion);
+      where = Array.isArray(where)
+        ? where.map((w) => ({ ...w, last_client_version: versionCondition }))
+        : { ...where, last_client_version: versionCondition };
     }
 
     const totalEligible = await userRepository.count({ where });
@@ -157,6 +221,8 @@ export const handleSendMarketingEmails = async (
             totalEligible,
             offset,
             count: targetCount,
+            emailPrefixes: emailPrefixes ?? undefined,
+            maxLastClientVersion: maxLastClientVersion ?? undefined,
             triggeredBy: res.locals.user?.id ?? null,
             createdAt: new Date().toISOString(),
           },
@@ -210,6 +276,8 @@ export const handleSendMarketingEmails = async (
           totalEligible,
           offset,
           count: targetCount,
+          emailPrefixes: emailPrefixes ?? undefined,
+          maxLastClientVersion: maxLastClientVersion ?? undefined,
           triggeredBy: res.locals.user?.id ?? null,
           createdAt: new Date().toISOString(),
           queued: result.count,

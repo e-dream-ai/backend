@@ -40,7 +40,7 @@ export const enqueueMarketingEmails = async (
         data: job,
         opts: {
           attempts: 3,
-          backoff: { type: "exponential", delay: 1000 },
+          backoff: { type: "exponential", delay: 10000 },
         },
       })),
     );

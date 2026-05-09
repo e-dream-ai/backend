@@ -3,9 +3,11 @@
   "version": "0.0.1",
   "description": "Backend of e-dream.ai",
   "main": "dist/index.js",
+  "packageManager": "pnpm@9.15.9",
   "engines": {
-    "node": ">=20.15.0",
-    "npm": ">=9.0.0"
+    "node": "20.x",
+    "npm": ">=9.0.0",
+    "pnpm": "9.15.9"
   },
   "scripts": {
     "start": "NODE_PATH=dist node --max-semi-space-size=64 --max-old-space-size=450 dist/index.js",

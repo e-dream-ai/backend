@@ -3,7 +3,14 @@ import httpStatus from "http-status";
 import { jsonResponse } from "utils/responses.util";
 import { handleInternalServerError } from "utils/responses.util";
 import { userRepository } from "database/repositories";
-import { FindOperator, FindOptionsWhere, ILike, IsNull, Not } from "typeorm";
+import {
+  FindOperator,
+  FindOptionsWhere,
+  ILike,
+  IsNull,
+  Not,
+  Raw,
+} from "typeorm";
 import { User } from "entities";
 import { enqueueMarketingEmails } from "utils/marketing-queue.util";
 import { MARKETING_SEND_MAX_PER_RUN } from "constants/marketing.constants";
@@ -28,6 +35,9 @@ const sendMarketingSchema = Joi.object({
     .items(Joi.string().trim().min(1).max(128).invalid("%", "_"))
     .max(20)
     .single(),
+  minLastClientVersion: Joi.string()
+    .trim()
+    .pattern(/^v?\d+(\.\d+){0,3}$/),
 })
   .nand("email", "userId")
   .without("emailPrefixes", ["email", "userId"])
@@ -38,6 +48,30 @@ const sendOneMarketingSchema = Joi.object({
   templateId: Joi.string().required(),
   unsubscribeToken: Joi.string().required(),
 }).required();
+
+const versionToInt = (version: string): number => {
+  const segments = version.trim().replace(/^v/i, "").split(".").map(Number);
+  return (
+    (segments[0] ?? 0) * 1_000_000_000 +
+    (segments[1] ?? 0) * 1_000_000 +
+    (segments[2] ?? 0) * 1_000 +
+    (segments[3] ?? 0)
+  );
+};
+
+const versionRawAtLeast = (minVersion: string) => {
+  const minVersionInt = versionToInt(minVersion);
+  return Raw<string>(
+    (alias) => `
+      CASE WHEN ${alias} ~ '^v?\\d+(\\.\\d+){0,3}$' THEN (
+        COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 1), '')::int, 0) * 1000000000 +
+        COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 2), '')::int, 0) * 1000000 +
+        COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 3), '')::int, 0) * 1000 +
+        COALESCE(NULLIF(split_part(regexp_replace(${alias}, '^v', '', 'i'), '.', 4), '')::int, 0)
+      ) ELSE 0 END >= :minVersionInt`,
+    { minVersionInt },
+  );
+};
 
 const getUnsubscribeToken = (req: RequestType): string | undefined => {
   const bodyToken =
@@ -123,8 +157,16 @@ export const handleSendMarketingEmails = async (
       );
     }
 
-    const { templateId, dryRun, limit, offset, email, userId, emailPrefixes } =
-      value;
+    const {
+      templateId,
+      dryRun,
+      limit,
+      offset,
+      email,
+      userId,
+      emailPrefixes,
+      minLastClientVersion,
+    } = value;
 
     const baseWhere: FindOptionsWhere<User> = {
       enableMarketingEmails: true,
@@ -146,6 +188,13 @@ export const handleSendMarketingEmails = async (
         enableMarketingEmails: true,
         email: ILike(`${prefix}%`),
       }));
+    }
+
+    if (minLastClientVersion) {
+      const versionCondition = versionRawAtLeast(minLastClientVersion);
+      where = Array.isArray(where)
+        ? where.map((w) => ({ ...w, last_client_version: versionCondition }))
+        : { ...where, last_client_version: versionCondition };
     }
 
     const totalEligible = await userRepository.count({ where });
@@ -173,6 +222,7 @@ export const handleSendMarketingEmails = async (
             offset,
             count: targetCount,
             emailPrefixes: emailPrefixes ?? undefined,
+            minLastClientVersion: minLastClientVersion ?? undefined,
             triggeredBy: res.locals.user?.id ?? null,
             createdAt: new Date().toISOString(),
           },
@@ -227,6 +277,7 @@ export const handleSendMarketingEmails = async (
           offset,
           count: targetCount,
           emailPrefixes: emailPrefixes ?? undefined,
+          minLastClientVersion: minLastClientVersion ?? undefined,
           triggeredBy: res.locals.user?.id ?? null,
           createdAt: new Date().toISOString(),
           queued: result.count,

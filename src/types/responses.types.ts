@@ -3,4 +3,5 @@ export type JsonResponse = {
   message?: string;
   data?: object;
   errorCode?: string;
+  retryAfterSeconds?: number;
 };

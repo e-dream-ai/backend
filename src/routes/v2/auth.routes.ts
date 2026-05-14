@@ -190,6 +190,7 @@ authRouter.post(
  *          Possible errorCode values:
  *            INVALID_CODE       – verification code was wrong or unmatched
  *            CODE_EXPIRED       – verification code has expired (request a new one)
+ *            CODE_LOCKED_OUT    – code revoked after too many wrong-digit attempts; request a new one
  *            USER_NOT_FOUND     – no account exists for this email
  *            BAD_REQUEST        – request body was malformed
  *            UNKNOWN            – unexpected state; treat as transient

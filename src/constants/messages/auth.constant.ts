@@ -21,6 +21,8 @@ export const AUTH_MESSAGES = {
   UNEXPECTED_ERROR: "An unexpected error occurred.",
   CODE_MISMATCH: "Invalid verification code provided.",
   EXPIRED_CODE: "Invalid code provided, please request a code again.",
+  RATE_LIMIT_EXCEEDED:
+    "Too many verification attempts. Please wait a moment and try again.",
   PASSWORD_RESET_CREATED:
     "Password reset created, wait for email instructions.",
   PASSWORD_RESET_REQUIRED: "Password reset required.",
@@ -36,10 +38,10 @@ export const SOCKET_AUTH_ERROR_MESSAGES = {
 /**
  * Machine-readable error codes for auth failures.
  *
- * Returned as `errorCode` in 400 responses from the refresh endpoint so that
+ * Returned as `errorCode` in 4xx responses from the auth endpoints so that
  * clients can react programmatically without string-matching human-readable
- * messages. Each value maps to a specific WorkOS `RefreshSessionFailureReason`
- * (or to the generic UNKNOWN sentinel for unexpected states).
+ * messages. Refresh-specific codes map to WorkOS `RefreshSessionFailureReason`;
+ * magic-link-specific codes map to WorkOS SDK exception types.
  */
 export const AUTH_ERROR_CODES = {
   /** The session has expired or been revoked (WorkOS: INVALID_GRANT). */
@@ -52,6 +54,15 @@ export const AUTH_ERROR_CODES = {
   MFA_ENROLLMENT_REQUIRED: "MFA_ENROLLMENT_REQUIRED",
   /** The user's organisation requires SSO; the current session cannot be refreshed (WorkOS: SSO_REQUIRED). */
   SSO_REQUIRED: "SSO_REQUIRED",
+  RATE_LIMITED: "RATE_LIMITED",
+  /** The magic-link code was wrong or could not be matched to the email. */
+  INVALID_CODE: "INVALID_CODE",
+  /** The magic-link code has expired; the user must request a new one. */
+  CODE_EXPIRED: "CODE_EXPIRED",
+  /** No WorkOS user exists for the supplied email. */
+  USER_NOT_FOUND: "USER_NOT_FOUND",
+  /** The request was malformed (e.g. missing/invalid email). */
+  BAD_REQUEST: "BAD_REQUEST",
   /** An unexpected failure reason was returned; clients should treat this as a transient error. */
   UNKNOWN: "UNKNOWN",
 } as const;

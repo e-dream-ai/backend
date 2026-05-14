@@ -134,11 +134,19 @@ export const handleWorkosError = (
       error.status >= 500
         ? httpStatus.SERVICE_UNAVAILABLE
         : httpStatus.BAD_REQUEST;
+    const isCodeLockedOut =
+      status === httpStatus.BAD_REQUEST &&
+      /too many failed attempts/i.test(error.message);
+
     return res.status(status).json(
       jsonResponse({
         success: false,
-        message: error.message,
-        errorCode: AUTH_ERROR_CODES.UNKNOWN,
+        message: isCodeLockedOut
+          ? AUTH_MESSAGES.CODE_LOCKED_OUT
+          : error.message,
+        errorCode: isCodeLockedOut
+          ? AUTH_ERROR_CODES.CODE_LOCKED_OUT
+          : AUTH_ERROR_CODES.UNKNOWN,
       }),
     );
   }

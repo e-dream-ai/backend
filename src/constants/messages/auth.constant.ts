@@ -23,6 +23,8 @@ export const AUTH_MESSAGES = {
   EXPIRED_CODE: "Invalid code provided, please request a code again.",
   RATE_LIMIT_EXCEEDED:
     "Too many verification attempts. Please wait a moment and try again.",
+  CODE_LOCKED_OUT:
+    "This verification code has been locked after too many incorrect attempts. Please request a new code.",
   PASSWORD_RESET_CREATED:
     "Password reset created, wait for email instructions.",
   PASSWORD_RESET_REQUIRED: "Password reset required.",
@@ -59,6 +61,7 @@ export const AUTH_ERROR_CODES = {
   INVALID_CODE: "INVALID_CODE",
   /** The magic-link code has expired; the user must request a new one. */
   CODE_EXPIRED: "CODE_EXPIRED",
+  CODE_LOCKED_OUT: "CODE_LOCKED_OUT",
   /** No WorkOS user exists for the supplied email. */
   USER_NOT_FOUND: "USER_NOT_FOUND",
   /** The request was malformed (e.g. missing/invalid email). */

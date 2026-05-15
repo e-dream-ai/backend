@@ -1221,11 +1221,11 @@ export const handleSignUpV2 = async (
   try {
     // const password = req.body.password!;
     const { email, firstname, lastname, code } = req.body;
-    const invite = await validateAndUseCode(code!);
+    const invite = code ? await validateAndUseCode(code) : undefined;
 
     const isSignupCodeActive = await isFeatureActive(FEATURES.SIGNUP_WITH_CODE);
 
-    if (isSignupCodeActive && !invite) {
+    if (isSignupCodeActive && code && !invite) {
       return res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({
           success: false,
@@ -1313,6 +1313,8 @@ export const handleSignUpV2 = async (
 
     if ((invite?.code ?? "").toUpperCase() === "SHEEP") {
       await setUserCurrentPlaylist(user, env.SHEEP_PLAYLIST_UUID);
+    } else {
+      await setUserCurrentPlaylist(user, env.DESIGNED_PLAYLIST_UUID);
     }
 
     let pendingAuthenticationToken: string | undefined;

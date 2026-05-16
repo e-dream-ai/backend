@@ -6,6 +6,7 @@ import { jsonResponse } from "utils/responses.util";
 import { APP_LOGGER } from "shared/logger";
 import { isAdmin } from "utils/user.util";
 import { ResponseType } from "types/express.types";
+import { AUTH_ERROR_CODES } from "constants/messages/auth.constant";
 
 export const mapValidatorErrors = (error: Joi.ValidationError | undefined) =>
   error?.details?.map((err) => ({
@@ -53,6 +54,7 @@ const validatorMiddleware = (schema: RequestValidationSchema) => {
           success: false,
           data: errors,
           message: error.message,
+          errorCode: AUTH_ERROR_CODES.BAD_REQUEST,
         }),
       );
     }

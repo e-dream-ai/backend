@@ -14,6 +14,7 @@ describe("dream get endpoints", () => {
       query: {},
       headers: {},
       cookies: {},
+      get: ((_header: string) => undefined) as unknown as RequestType["get"],
     };
     const json = jest.fn();
     const status = jest.fn(() => ({ json }));
@@ -74,6 +75,7 @@ describe("dream get endpoints", () => {
       __esModule: true,
       jsonResponse: <T>(p: T) => p,
       handleNotFound: jest.fn(),
+      handleInternalServerError: jest.fn(),
       ...(overrides["utils/responses.util"] || {}),
     }));
   };

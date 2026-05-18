@@ -875,9 +875,12 @@ export const handleGetDream = async (
     dream.reports = reports;
 
     /**
-     * remove original video if is not admin or owner or browser requested
+     * remove original video if is not admin or owner or browser requested.
+     * EdreamSDK requests (worker / internal SDK) are always allowed regardless
+     * of ownership, since they are trusted server-side callers.
      */
-    if (!isAllowed || !isBrowser) {
+    const isEdreamSdk = req.get("User-Agent")?.includes("EdreamSDK") ?? false;
+    if (!isEdreamSdk && (!isAllowed || !isBrowser)) {
       delete dream.original_video;
     }
 

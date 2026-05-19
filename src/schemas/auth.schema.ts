@@ -111,11 +111,7 @@ export const signupSchemaV2 = {
     firstname: Joi.string().required().max(50),
     lastname: Joi.string().required().max(50),
     // password: Joi.string().required().min(10),
-    code: Joi.string().when("$isSignupCodeActive", {
-      is: true,
-      then: Joi.required(),
-      otherwise: Joi.optional(),
-    }),
+    code: Joi.string().allow("").optional(),
   }),
 };
 

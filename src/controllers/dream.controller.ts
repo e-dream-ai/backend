@@ -1,3 +1,4 @@
+import { ILike } from "typeorm";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
 import { r2Client } from "clients/r2.client";
@@ -874,9 +875,12 @@ export const handleGetDream = async (
     dream.reports = reports;
 
     /**
-     * remove original video if is not admin or owner or browser requested
+     * remove original video if is not admin or owner or browser requested.
+     * EdreamSDK requests (worker / internal SDK) are always allowed regardless
+     * of ownership, since they are trusted server-side callers.
      */
-    if (!isAllowed || !isBrowser) {
+    const isEdreamSdk = req.get("User-Agent")?.includes("EdreamSDK") ?? false;
+    if (!isEdreamSdk && (!isAllowed || !isBrowser)) {
       delete dream.original_video;
     }
 
@@ -920,10 +924,16 @@ export const handleGetMyDreams = async (
   );
   const skip = Number(req.query.skip) || PAGINATION.SKIP;
   const user = res.locals.user;
+  const mediaType = req.query.mediaType as DreamMediaType | undefined;
+  const search = req.query.search ? String(req.query.search) : undefined;
 
   try {
     const [dreams, count] = await dreamRepository.findAndCount({
-      where: { user: { id: user?.id } },
+      where: {
+        user: { id: user?.id },
+        ...(mediaType && { mediaType }),
+        ...(search && { name: ILike(`%${search}%`) }),
+      },
       relations: { user: true },
       select: getDreamSelectedColumns(),
       order: { created_at: "DESC" },

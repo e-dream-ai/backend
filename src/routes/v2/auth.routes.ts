@@ -183,11 +183,51 @@ authRouter.post(
  *                        sealedSession:
  *                          type: string
  *      '400':
- *        description: Bad request
+ *        description: |
+ *          Magic-link login failed. The `errorCode` field contains a
+ *          machine-readable reason that clients should branch on rather than
+ *          parsing the human-readable `message` string.
+ *          Possible errorCode values:
+ *            INVALID_CODE       – verification code was wrong or unmatched
+ *            CODE_EXPIRED       – verification code has expired (request a new one)
+ *            CODE_LOCKED_OUT    – code revoked after too many wrong-digit attempts; request a new one
+ *            USER_NOT_FOUND     – no account exists for this email
+ *            BAD_REQUEST        – request body was malformed
+ *            UNKNOWN            – unexpected state; treat as transient
  *        content:
  *          application/json:
  *            schema:
- *              $ref: '#/components/schemas/BadApiResponse'
+ *              allOf:
+ *                - $ref: '#/components/schemas/BadApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    errorCode:
+ *                      type: string
+ *                      example: INVALID_CODE
+ *      '429':
+ *        description: |
+ *          WorkOS rate-limit hit (magic-link send/validate is capped at
+ *          3 codes/minute). Response includes `retryAfterSeconds` in the JSON
+ *          body and a standard `Retry-After` HTTP header. Clients should wait
+ *          that long before retrying.
+ *        headers:
+ *          Retry-After:
+ *            schema:
+ *              type: integer
+ *            description: Seconds to wait before retrying.
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/BadApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    errorCode:
+ *                      type: string
+ *                      example: RATE_LIMITED
+ *                    retryAfterSeconds:
+ *                      type: integer
+ *                      example: 60
  */
 authRouter.post(
   "/magic",

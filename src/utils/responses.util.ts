@@ -7,8 +7,18 @@ import {
   ResponseOptions,
   ResponseType,
 } from "types/express.types";
-import { GenericServerException, OauthException } from "@workos-inc/node";
-import { AUTH_MESSAGES } from "constants/messages/auth.constant";
+import {
+  BadRequestException,
+  GenericServerException,
+  OauthException,
+  RateLimitExceededException,
+  UnprocessableEntityException,
+} from "@workos-inc/node";
+import {
+  AUTH_ERROR_CODES,
+  AUTH_MESSAGES,
+  AuthErrorCode,
+} from "constants/messages/auth.constant";
 import { User } from "entities";
 
 export const jsonResponse: (response: JsonResponse) => JsonResponse = (
@@ -64,6 +74,17 @@ export const handleForbidden = (req: RequestType, res: ResponseType) => {
   );
 };
 
+const mapOauthErrorToCode = (oauthError: string | undefined): AuthErrorCode => {
+  switch (oauthError) {
+    case "invalid_grant":
+      return AUTH_ERROR_CODES.INVALID_CODE;
+    case "invalid_request":
+      return AUTH_ERROR_CODES.BAD_REQUEST;
+    default:
+      return AUTH_ERROR_CODES.UNKNOWN;
+  }
+};
+
 // Workos Error Handler
 export const handleWorkosError = (
   error: unknown,
@@ -71,24 +92,72 @@ export const handleWorkosError = (
   res: ResponseType,
 ) => {
   APP_LOGGER.error(error);
-  let message: string | undefined;
+
+  if (error instanceof RateLimitExceededException) {
+    const retryAfterSeconds = error.retryAfter ?? 60;
+    res.setHeader("Retry-After", String(retryAfterSeconds));
+    return res.status(httpStatus.TOO_MANY_REQUESTS).json(
+      jsonResponse({
+        success: false,
+        message: AUTH_MESSAGES.RATE_LIMIT_EXCEEDED,
+        errorCode: AUTH_ERROR_CODES.RATE_LIMITED,
+        retryAfterSeconds,
+      }),
+    );
+  }
+
+  if (error instanceof OauthException) {
+    return res.status(httpStatus.BAD_REQUEST).json(
+      jsonResponse({
+        success: false,
+        message: error.errorDescription ?? AUTH_MESSAGES.AUTHENTICATION_FAILED,
+        errorCode: mapOauthErrorToCode(error.error),
+      }),
+    );
+  }
+
+  if (
+    error instanceof BadRequestException ||
+    error instanceof UnprocessableEntityException
+  ) {
+    return res.status(httpStatus.BAD_REQUEST).json(
+      jsonResponse({
+        success: false,
+        message: error.message,
+        errorCode: AUTH_ERROR_CODES.BAD_REQUEST,
+      }),
+    );
+  }
 
   if (error instanceof GenericServerException) {
-    message = error.message;
     const status =
       error.status >= 500
         ? httpStatus.SERVICE_UNAVAILABLE
         : httpStatus.BAD_REQUEST;
-    return res.status(status).json(jsonResponse({ success: false, message }));
+    const isCodeLockedOut =
+      status === httpStatus.BAD_REQUEST &&
+      /too many failed attempts/i.test(error.message);
+
+    return res.status(status).json(
+      jsonResponse({
+        success: false,
+        message: isCodeLockedOut
+          ? AUTH_MESSAGES.CODE_LOCKED_OUT
+          : error.message,
+        errorCode: isCodeLockedOut
+          ? AUTH_ERROR_CODES.CODE_LOCKED_OUT
+          : AUTH_ERROR_CODES.UNKNOWN,
+      }),
+    );
   }
 
-  if (error instanceof OauthException) {
-    message = error.errorDescription;
-  }
-
-  return res
-    .status(httpStatus.BAD_REQUEST)
-    .json(jsonResponse({ success: false, message }));
+  return res.status(httpStatus.BAD_REQUEST).json(
+    jsonResponse({
+      success: false,
+      message: AUTH_MESSAGES.UNEXPECTED_ERROR,
+      errorCode: AUTH_ERROR_CODES.UNKNOWN,
+    }),
+  );
 };
 
 // Workos Authenticated Response Handler

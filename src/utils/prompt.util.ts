@@ -17,6 +17,7 @@ const SUPPORTED_ALGORITHMS = [
   "wan-i2v-lora",
   "ltx-i2v",
   "nvidia-uprez",
+  "discodiffusion",
 ] as const;
 type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
 
@@ -31,6 +32,7 @@ const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   "wan-i2v-lora": "wani2vlora",
   "ltx-i2v": "ltxi2v",
   "nvidia-uprez": "nvidiavsr",
+  discodiffusion: "discodiffusion",
 };
 
 export const parsePromptJson = (dream: Dream): PromptJson | null => {

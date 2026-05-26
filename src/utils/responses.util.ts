@@ -74,6 +74,29 @@ export const handleForbidden = (req: RequestType, res: ResponseType) => {
   );
 };
 
+const mapRawCodeToAuthErrorCode = (
+  rawCode: unknown,
+  fallbackMessage?: string,
+): AuthErrorCode => {
+  switch (rawCode) {
+    case "invalid_one_time_code":
+      return AUTH_ERROR_CODES.INVALID_CODE;
+    case "expired_one_time_code":
+      return AUTH_ERROR_CODES.CODE_EXPIRED;
+    case "code_locked_out":
+      return AUTH_ERROR_CODES.CODE_LOCKED_OUT;
+    default: {
+      const msg = fallbackMessage ?? "";
+      if (/too many failed attempts/i.test(msg))
+        return AUTH_ERROR_CODES.CODE_LOCKED_OUT;
+      if (/expired/i.test(msg)) return AUTH_ERROR_CODES.CODE_EXPIRED;
+      if (/invalid.*code|one-time code/i.test(msg))
+        return AUTH_ERROR_CODES.INVALID_CODE;
+      return AUTH_ERROR_CODES.UNKNOWN;
+    }
+  }
+};
+
 const mapOauthErrorToCode = (oauthError: string | undefined): AuthErrorCode => {
   switch (oauthError) {
     case "invalid_grant":
@@ -134,19 +157,16 @@ export const handleWorkosError = (
       error.status >= 500
         ? httpStatus.SERVICE_UNAVAILABLE
         : httpStatus.BAD_REQUEST;
-    const isCodeLockedOut =
-      status === httpStatus.BAD_REQUEST &&
-      /too many failed attempts/i.test(error.message);
+
+    const rawCode = (error.rawData as Record<string, unknown> | undefined)
+      ?.code;
+    const errorCode = mapRawCodeToAuthErrorCode(rawCode, error.message);
 
     return res.status(status).json(
       jsonResponse({
         success: false,
-        message: isCodeLockedOut
-          ? AUTH_MESSAGES.CODE_LOCKED_OUT
-          : error.message,
-        errorCode: isCodeLockedOut
-          ? AUTH_ERROR_CODES.CODE_LOCKED_OUT
-          : AUTH_ERROR_CODES.UNKNOWN,
+        message: error.message,
+        errorCode,
       }),
     );
   }

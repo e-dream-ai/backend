@@ -14,7 +14,7 @@ const toNumber = (v: unknown): number | undefined => {
   return undefined;
 };
 
-const QUEUES = ["video", "deforumvideo", "uprezvideo"];
+const QUEUES = ["video", "deforumvideo", "uprezvideo", "nvidiavsr"];
 
 interface JobProgressData {
   user_id: number | string;

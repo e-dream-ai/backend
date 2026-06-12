@@ -6,6 +6,7 @@ import {
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   Index,
   Generated,
 } from "typeorm";
@@ -20,7 +21,7 @@ export class UserApiEndpoint {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: "varchar", unique: true })
+  @Column({ type: "string", unique: true })
   @Generated("uuid")
   @Index()
   uuid: string;
@@ -61,8 +62,11 @@ export class UserApiEndpoint {
   capabilities: EndpointCapabilities;
 
   @CreateDateColumn()
-  createdAt: Date;
+  created_at: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updated_at: Date;
+
+  @DeleteDateColumn()
+  deleted_at: Date;
 }

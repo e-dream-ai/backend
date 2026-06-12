@@ -18,8 +18,9 @@ export class AddUserApiEndpoints1775000000000 implements MigrationInterface {
         `"apiKeyLastFour" character varying(4) NOT NULL, ` +
         `"modelId" character varying NOT NULL, ` +
         `"capabilities" jsonb NOT NULL, ` +
-        `"createdAt" TIMESTAMP NOT NULL DEFAULT now(), ` +
-        `"updatedAt" TIMESTAMP NOT NULL DEFAULT now(), ` +
+        `"created_at" TIMESTAMP NOT NULL DEFAULT now(), ` +
+        `"updated_at" TIMESTAMP NOT NULL DEFAULT now(), ` +
+        `"deleted_at" TIMESTAMP, ` +
         `CONSTRAINT "UQ_user_api_endpoint_uuid" UNIQUE ("uuid"), ` +
         `CONSTRAINT "PK_user_api_endpoint" PRIMARY KEY ("id")` +
         `)`,
@@ -32,7 +33,7 @@ export class AddUserApiEndpoints1775000000000 implements MigrationInterface {
     );
     await queryRunner.query(
       `ALTER TABLE "user_api_endpoint" ADD CONSTRAINT "FK_user_api_endpoint_user" ` +
-        `FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+        `FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
     );
   }
 

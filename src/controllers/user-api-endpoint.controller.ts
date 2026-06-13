@@ -1,4 +1,8 @@
 import httpStatus from "http-status";
+import {
+  CreateUserApiEndpointRequest,
+  UpdateUserApiEndpointRequest,
+} from "types/user-api-endpoint.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { jsonResponse, handleInternalServerError } from "utils/responses.util";
 import * as userApiEndpointService from "services/user-api-endpoint.service";
@@ -8,7 +12,7 @@ export const handleListEndpoints = async (
   res: ResponseType,
 ) => {
   try {
-    const userId = req.user!.id;
+    const userId = res.locals.user!.id;
     const endpoints = await userApiEndpointService.list(userId);
     res
       .status(httpStatus.OK)
@@ -19,12 +23,15 @@ export const handleListEndpoints = async (
 };
 
 export const handleCreateEndpoint = async (
-  req: RequestType,
+  req: RequestType<CreateUserApiEndpointRequest>,
   res: ResponseType,
 ) => {
   try {
-    const userId = req.user!.id;
-    const result = await userApiEndpointService.create(userId, req.body);
+    const userId = res.locals.user!.id;
+    const result = await userApiEndpointService.create(
+      userId,
+      req.body as CreateUserApiEndpointRequest,
+    );
 
     if (!result.success) {
       return res
@@ -43,13 +50,17 @@ export const handleCreateEndpoint = async (
 };
 
 export const handleUpdateEndpoint = async (
-  req: RequestType,
+  req: RequestType<UpdateUserApiEndpointRequest>,
   res: ResponseType,
 ) => {
   try {
-    const userId = req.user!.id;
+    const userId = res.locals.user!.id;
     const { uuid } = req.params as { uuid: string };
-    const result = await userApiEndpointService.update(uuid, userId, req.body);
+    const result = await userApiEndpointService.update(
+      uuid,
+      userId,
+      req.body as UpdateUserApiEndpointRequest,
+    );
 
     if (!result.success) {
       return res
@@ -72,7 +83,7 @@ export const handleDeleteEndpoint = async (
   res: ResponseType,
 ) => {
   try {
-    const userId = req.user!.id;
+    const userId = res.locals.user!.id;
     const { uuid } = req.params as { uuid: string };
     const result = await userApiEndpointService.remove(uuid, userId);
 
@@ -93,7 +104,7 @@ export const handleTestEndpoint = async (
   res: ResponseType,
 ) => {
   try {
-    const userId = req.user!.id;
+    const userId = res.locals.user!.id;
     const { uuid } = req.params as { uuid: string };
     const result = await userApiEndpointService.test(uuid, userId);
 

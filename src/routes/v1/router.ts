@@ -500,6 +500,9 @@ export const registerRoutes = (app: express.Application) => {
   // register user router
   app.use("/api/v1/auth", authRouter);
 
+  // register user api endpoint router
+  app.use("/api/v1/user/api-endpoints", userApiEndpointRouter);
+
   // register auth router
   app.use("/api/v1/user", userRouter);
 
@@ -535,9 +538,6 @@ export const registerRoutes = (app: express.Application) => {
 
   // register simulate hello router (internal, protected by x-internal-key header)
   app.use("/api/v1/internal/simulate-hello", simulateHelloRouter);
-
-  // register user api endpoint router
-  app.use("/api/v1/user/api-endpoints", userApiEndpointRouter);
 
   // register v2 auth
   app.use("/api/v2/auth", authRouterV2);

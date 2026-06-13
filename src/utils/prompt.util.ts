@@ -20,6 +20,8 @@ const SUPPORTED_ALGORITHMS = [
 ] as const;
 type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
 
+export const USER_ENDPOINT_QUEUE = "user-endpoint";
+
 const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   animatediff: "video",
   deforum: "deforumvideo",

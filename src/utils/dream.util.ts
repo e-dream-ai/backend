@@ -13,8 +13,10 @@ import {
   getAlgorithmFromPrompt,
   isValidAlgorithm,
   mapAlgorithmToQueue,
+  USER_ENDPOINT_QUEUE,
 } from "./prompt.util";
 import { queueWorkerJob, queueVideoIngestJob } from "./worker-queue.util";
+import * as userApiEndpointService from "services/user-api-endpoint.service";
 
 const dreamRepository = appDataSource.getRepository(Dream);
 const feedRepository = appDataSource.getRepository(FeedItem);
@@ -25,6 +27,59 @@ export const processDreamRequest = async (
   dream: Dream,
   previousStatus?: string,
 ) => {
+  // Check for user endpoint prompts BEFORE parsePromptJson (which requires infinidream_algorithm)
+  if (dream.prompt) {
+    try {
+      const rawPrompt =
+        typeof dream.prompt === "string"
+          ? JSON.parse(dream.prompt)
+          : dream.prompt;
+
+      if (rawPrompt.userEndpointUuid) {
+        const userId = dream.user.id;
+        const apiKey = await userApiEndpointService.decryptKey(
+          rawPrompt.userEndpointUuid,
+          userId,
+        );
+
+        if (!apiKey) {
+          APP_LOGGER.error(
+            `User endpoint ${rawPrompt.userEndpointUuid} not found or key decryption failed for dream ${dream.uuid}`,
+          );
+          return { status: "failed", isPromptBased: true };
+        }
+
+        const jobData = {
+          dream_uuid: dream.uuid,
+          user_id: userId,
+          auto_upload: true,
+          previous_dream_status: previousStatus,
+          api_key: apiKey,
+          ...rawPrompt,
+        };
+
+        const result = await queueWorkerJob(USER_ENDPOINT_QUEUE, jobData);
+
+        if (result.success) {
+          APP_LOGGER.info(
+            `Queued dream ${dream.uuid} to user-endpoint queue via endpoint ${rawPrompt.userEndpointUuid}`,
+          );
+          return { id: result.jobId, status: "queued", isPromptBased: true };
+        } else {
+          APP_LOGGER.error(
+            `Failed to queue user-endpoint job for dream ${dream.uuid}: ${result.error}`,
+          );
+          return { status: "failed", isPromptBased: true };
+        }
+      }
+    } catch (err) {
+      // Not valid JSON or missing field — fall through to standard processing
+      APP_LOGGER.warn(
+        `Could not parse raw prompt for user endpoint check on dream ${dream.uuid}`,
+      );
+    }
+  }
+
   const promptJson = parsePromptJson(dream);
 
   if (promptJson) {

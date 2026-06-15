@@ -184,14 +184,6 @@ export async function test(
   }
 }
 
-export async function decryptKey(
-  uuid: string,
-  userId: number,
-): Promise<string | null> {
-  const resolved = await resolveEndpointForJob(uuid, userId);
-  return resolved ? resolved.decryptedKey : null;
-}
-
 export interface ResolvedEndpointForJob {
   decryptedKey: string;
   endpointUrl: string;

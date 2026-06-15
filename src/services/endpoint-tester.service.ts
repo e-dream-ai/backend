@@ -1,11 +1,33 @@
 import axios from "axios";
+import https from "https";
+import type { LookupFunction } from "net";
 import type { EndpointProviderType } from "../types/user-api-endpoint.types";
 import { APP_LOGGER } from "shared/logger";
-import { assertSafeExternalUrl } from "utils/url-safety.util";
+import { assertSafeExternalUrl, SafeAddress } from "utils/url-safety.util";
 
 interface TestResult {
   success: boolean;
   error?: string;
+}
+
+/**
+ * Builds an https.Agent that pins the TLS connection to a pre-validated IP
+ * address. Node merges the Agent's options (including `lookup`) into the TLS
+ * connect options, so the socket connects to `pinned.address` while SNI and
+ * the Host header still carry the original hostname.
+ *
+ * This closes the DNS-rebinding TOCTOU: assertSafeExternalUrl resolved and
+ * validated the hostname, and we now force axios to connect to that exact
+ * address instead of re-resolving (which could return a private IP at request
+ * time). Combined with `maxRedirects: 0` on the request, a redirect cannot
+ * escape the pin either.
+ */
+function createPinnedAgent(pinned: SafeAddress): https.Agent {
+  const lookup: LookupFunction = (_hostname, _options, callback) => {
+    // Always resolve to the already-validated address.
+    callback(null, pinned.address, pinned.family);
+  };
+  return new https.Agent({ lookup });
 }
 
 export async function testEndpointConnection(
@@ -32,10 +54,12 @@ async function testOpenAiEndpoint(
   apiKey: string,
 ): Promise<TestResult> {
   try {
-    await assertSafeExternalUrl(`${endpointUrl}/models`);
+    const [pinned] = await assertSafeExternalUrl(`${endpointUrl}/models`);
     const response = await axios.get(`${endpointUrl}/models`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       timeout: 15000,
+      httpsAgent: createPinnedAgent(pinned),
+      maxRedirects: 0,
     });
     if (response.status === 200) return { success: true };
     return { success: false, error: `Unexpected status: ${response.status}` };
@@ -62,13 +86,15 @@ async function testFalEndpoint(
   apiKey: string,
 ): Promise<TestResult> {
   try {
-    await assertSafeExternalUrl(endpointUrl);
+    const [pinned] = await assertSafeExternalUrl(endpointUrl);
     const response = await axios.post(
       endpointUrl,
       { prompt: "test", image_size: "square", num_images: 1 },
       {
         headers: { Authorization: `Key ${apiKey}` },
         timeout: 15000,
+        httpsAgent: createPinnedAgent(pinned),
+        maxRedirects: 0,
       },
     );
     if (response.status >= 200 && response.status < 300)

@@ -4,10 +4,12 @@ import { encrypt, decrypt } from "utils/crypto.util";
 import { APP_LOGGER } from "shared/logger";
 import {
   CreateUserApiEndpointRequest,
+  EndpointProviderType,
   UpdateUserApiEndpointRequest,
   UserApiEndpointResponse,
 } from "types/user-api-endpoint.types";
 import { testEndpointConnection } from "./endpoint-tester.service";
+import { assertSafeExternalUrl } from "utils/url-safety.util";
 
 const endpointRepository = appDataSource.getRepository(UserApiEndpoint);
 
@@ -46,6 +48,13 @@ export async function create(
   endpoint?: UserApiEndpointResponse;
   error?: string;
 }> {
+  try {
+    await assertSafeExternalUrl(data.endpointUrl);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Invalid endpoint URL";
+    return { success: false, error: message };
+  }
+
   const testResult = await testEndpointConnection(
     data.providerType,
     data.endpointUrl,
@@ -91,6 +100,14 @@ export async function update(
 
   if (!endpoint) {
     return { success: false, error: "Endpoint not found" };
+  }
+
+  const effectiveUrl = data.endpointUrl ?? endpoint.endpointUrl;
+  try {
+    await assertSafeExternalUrl(effectiveUrl);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Invalid endpoint URL";
+    return { success: false, error: message };
   }
 
   if (data.apiKey) {
@@ -171,6 +188,28 @@ export async function decryptKey(
   uuid: string,
   userId: number,
 ): Promise<string | null> {
+  const resolved = await resolveEndpointForJob(uuid, userId);
+  return resolved ? resolved.decryptedKey : null;
+}
+
+export interface ResolvedEndpointForJob {
+  decryptedKey: string;
+  endpointUrl: string;
+  providerType: EndpointProviderType;
+  modelId: string;
+}
+
+/**
+ * Resolves a user endpoint into everything the worker needs to run a job:
+ * the decrypted API key plus the endpoint URL, provider type, and model id.
+ *
+ * @returns the resolved endpoint, or null if the endpoint is not found or the
+ *          key cannot be decrypted (decrypt failures are logged distinctly).
+ */
+export async function resolveEndpointForJob(
+  uuid: string,
+  userId: number,
+): Promise<ResolvedEndpointForJob | null> {
   const endpoint = await endpointRepository.findOne({
     where: { uuid, userId },
   });
@@ -179,14 +218,24 @@ export async function decryptKey(
     return null;
   }
 
+  let decryptedKey: string;
   try {
-    return decrypt({
+    decryptedKey = decrypt({
       iv: endpoint.apiKeyIv,
       content: endpoint.apiKeyEncrypted,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    APP_LOGGER.error(`Failed to decrypt key for endpoint ${uuid}: ${message}`);
+    APP_LOGGER.error(
+      `Failed to decrypt key for endpoint ${uuid} (user ${userId}): ${message}`,
+    );
     return null;
   }
+
+  return {
+    decryptedKey,
+    endpointUrl: endpoint.endpointUrl,
+    providerType: endpoint.providerType,
+    modelId: endpoint.modelId,
+  };
 }

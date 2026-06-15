@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { EndpointProviderType } from "../types/user-api-endpoint.types";
 import { APP_LOGGER } from "shared/logger";
+import { assertSafeExternalUrl } from "utils/url-safety.util";
 
 interface TestResult {
   success: boolean;
@@ -31,6 +32,7 @@ async function testOpenAiEndpoint(
   apiKey: string,
 ): Promise<TestResult> {
   try {
+    await assertSafeExternalUrl(`${endpointUrl}/models`);
     const response = await axios.get(`${endpointUrl}/models`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       timeout: 15000,
@@ -60,6 +62,7 @@ async function testFalEndpoint(
   apiKey: string,
 ): Promise<TestResult> {
   try {
+    await assertSafeExternalUrl(endpointUrl);
     const response = await axios.post(
       endpointUrl,
       { prompt: "test", image_size: "square", num_images: 1 },

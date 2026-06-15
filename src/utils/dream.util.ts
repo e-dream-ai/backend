@@ -29,54 +29,68 @@ export const processDreamRequest = async (
 ) => {
   // Check for user endpoint prompts BEFORE parsePromptJson (which requires infinidream_algorithm)
   if (dream.prompt) {
+    // Only the JSON.parse may legitimately throw on a non-JSON prompt; keep the
+    // try/catch narrow so queue/resolve failures surface instead of being
+    // swallowed as "could not parse".
+    let rawPrompt: Record<string, unknown> | undefined;
     try {
-      const rawPrompt =
+      rawPrompt =
         typeof dream.prompt === "string"
           ? JSON.parse(dream.prompt)
-          : dream.prompt;
-
-      if (rawPrompt.userEndpointUuid) {
-        const userId = dream.user.id;
-        const apiKey = await userApiEndpointService.decryptKey(
-          rawPrompt.userEndpointUuid,
-          userId,
-        );
-
-        if (!apiKey) {
-          APP_LOGGER.error(
-            `User endpoint ${rawPrompt.userEndpointUuid} not found or key decryption failed for dream ${dream.uuid}`,
-          );
-          return { status: "failed", isPromptBased: true };
-        }
-
-        const jobData = {
-          dream_uuid: dream.uuid,
-          user_id: userId,
-          auto_upload: true,
-          previous_dream_status: previousStatus,
-          api_key: apiKey,
-          ...rawPrompt,
-        };
-
-        const result = await queueWorkerJob(USER_ENDPOINT_QUEUE, jobData);
-
-        if (result.success) {
-          APP_LOGGER.info(
-            `Queued dream ${dream.uuid} to user-endpoint queue via endpoint ${rawPrompt.userEndpointUuid}`,
-          );
-          return { id: result.jobId, status: "queued", isPromptBased: true };
-        } else {
-          APP_LOGGER.error(
-            `Failed to queue user-endpoint job for dream ${dream.uuid}: ${result.error}`,
-          );
-          return { status: "failed", isPromptBased: true };
-        }
-      }
-    } catch (err) {
-      // Not valid JSON or missing field — fall through to standard processing
+          : (dream.prompt as Record<string, unknown>);
+    } catch {
+      // Not valid JSON — fall through to standard processing
       APP_LOGGER.warn(
         `Could not parse raw prompt for user endpoint check on dream ${dream.uuid}`,
       );
+    }
+
+    if (rawPrompt && rawPrompt.userEndpointUuid) {
+      const userId = dream.user.id;
+      const userEndpointUuid = rawPrompt.userEndpointUuid as string;
+      const resolved = await userApiEndpointService.resolveEndpointForJob(
+        userEndpointUuid,
+        userId,
+      );
+
+      if (!resolved) {
+        APP_LOGGER.error(
+          `User endpoint ${userEndpointUuid} not found or key decryption failed for dream ${dream.uuid}`,
+        );
+        return { status: "failed", isPromptBased: true };
+      }
+
+      // Emit the exact job contract the worker's user-endpoint handler reads.
+      // Map prompt fields explicitly — do NOT spread rawPrompt, which would
+      // leak userEndpointUuid/infinidream_algorithm and drift field names.
+      const jobData = {
+        dream_uuid: dream.uuid,
+        user_id: userId,
+        auto_upload: true,
+        previous_dream_status: previousStatus,
+        userEndpointDecryptedKey: resolved.decryptedKey,
+        userEndpointUrl: resolved.endpointUrl,
+        userEndpointProvider: resolved.providerType,
+        userEndpointModelId: resolved.modelId,
+        prompt: rawPrompt.prompt as string,
+        image: rawPrompt.image as string | undefined,
+        size: rawPrompt.size as string | undefined,
+        n: rawPrompt.n as number | undefined,
+      };
+
+      const result = await queueWorkerJob(USER_ENDPOINT_QUEUE, jobData);
+
+      if (result.success) {
+        APP_LOGGER.info(
+          `Queued dream ${dream.uuid} to user-endpoint queue via endpoint ${userEndpointUuid}`,
+        );
+        return { id: result.jobId, status: "queued", isPromptBased: true };
+      } else {
+        APP_LOGGER.error(
+          `Failed to queue user-endpoint job for dream ${dream.uuid}: ${result.error}`,
+        );
+        return { status: "failed", isPromptBased: true };
+      }
     }
   }
 

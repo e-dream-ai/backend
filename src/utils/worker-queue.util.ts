@@ -5,7 +5,9 @@ import { APP_LOGGER } from "shared/logger";
 interface JobData {
   dream_uuid: string;
   auto_upload?: boolean;
-  infinidream_algorithm: string;
+  // Optional: algorithm-based queues set this, but the user-endpoint queue
+  // routes by provider instead and has no infinidream_algorithm.
+  infinidream_algorithm?: string;
   previous_dream_status?: string;
   [key: string]: unknown;
 }

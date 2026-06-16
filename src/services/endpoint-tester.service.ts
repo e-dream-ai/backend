@@ -1,4 +1,5 @@
 import axios from "axios";
+import dns from "dns";
 import https from "https";
 import type { LookupFunction } from "net";
 import type { EndpointProviderType } from "../types/user-api-endpoint.types";
@@ -23,12 +24,37 @@ interface TestResult {
  * escape the pin either.
  */
 function createPinnedAgent(pinned: SafeAddress): https.Agent {
-  const lookup: LookupFunction = (_hostname, _options, callback) => {
-    // Always resolve to the already-validated address.
-    callback(null, pinned.address, pinned.family);
+  // Always resolve to the already-validated address. Node invokes the Agent's
+  // `lookup` with `options.all === true` during HTTPS connect and then expects
+  // the callback to receive an ARRAY of { address, family }. The positional
+  // form (callback(null, address, family)) is only correct when `all` is false;
+  // using it under `all: true` makes Node read `address = undefined` and throw
+  // ERR_INVALID_IP_ADDRESS, breaking every pinned request. Handle both modes.
+  //
+  // Note: we do NOT set `servername`, so SNI and the Host header keep the
+  // original hostname — only the socket's destination IP is pinned, so TLS
+  // certificate validation still works.
+  const lookup: LookupFunction = (_hostname, options, callback) => {
+    if ((options as dns.LookupOptions)?.all) {
+      (
+        callback as (
+          err: NodeJS.ErrnoException | null,
+          addresses: Array<{ address: string; family: number }>,
+        ) => void
+      )(null, [{ address: pinned.address, family: pinned.family }]);
+    } else {
+      callback(null, pinned.address, pinned.family);
+    }
   };
   return new https.Agent({ lookup });
 }
+
+/**
+ * Test-only surface. Exposes internals (the pinned-lookup agent factory) so the
+ * Node DNS `lookup` callback contract can be exercised directly in unit tests
+ * without performing live network requests. Not part of the public API.
+ */
+export const __test = { createPinnedAgent };
 
 export async function testEndpointConnection(
   providerType: EndpointProviderType,

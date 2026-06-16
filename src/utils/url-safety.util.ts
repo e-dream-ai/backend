@@ -1,4 +1,5 @@
 import dns from "dns";
+import net from "net";
 
 /**
  * SSRF protection for user-supplied endpoint URLs.
@@ -201,11 +202,32 @@ export async function assertSafeExternalUrl(
     throw new Error("Endpoint URL must use https");
   }
 
-  const hostname = parsed.hostname.toLowerCase();
+  // For IPv6 literals the WHATWG URL parser keeps the surrounding brackets
+  // (e.g. "[::1]", "[2606:4700:4700::1111]"). Strip them so the bare address is
+  // usable for both net.isIP() and dns.lookup().
+  let hostname = parsed.hostname.toLowerCase();
+  if (hostname.startsWith("[") && hostname.endsWith("]")) {
+    hostname = hostname.slice(1, -1);
+  }
 
-  // Reject internal-only TLDs outright.
+  // Reject internal-only TLDs outright (operates on the de-bracketed host).
   if (hostname.endsWith(".internal") || hostname.endsWith(".local")) {
     throw new Error(`Endpoint URL host is not allowed: ${hostname}`);
+  }
+
+  // Short-circuit IP literals BEFORE any DNS lookup. This (a) fixes the
+  // regression where a public IPv6 literal was sent to dns.lookup with brackets
+  // intact → ENOTFOUND → wrongly rejected, (b) makes isBlockedIPv6 actually
+  // reachable for direct IPv6-literal URLs, and (c) closes a literal-path
+  // TOCTOU since the address validated is exactly the address connected to.
+  const literalFamily = net.isIP(hostname); // 4, 6, or 0 (not an IP literal)
+  if (literalFamily !== 0) {
+    if (isBlockedAddress(hostname, literalFamily)) {
+      throw new Error(
+        `Endpoint URL resolves to a private/internal address: ${hostname}`,
+      );
+    }
+    return [{ address: hostname, family: literalFamily }];
   }
 
   // Resolve the hostname to ALL addresses and ensure none are internal.

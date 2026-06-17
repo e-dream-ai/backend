@@ -6,7 +6,6 @@ export type GetDreamsQuery = {
 
 export type GetDreamsRequestQuery = {
   uuids: string[];
-  batchSize?: number;
 };
 
 export type PartialClientDream = {

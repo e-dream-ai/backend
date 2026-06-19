@@ -9,6 +9,12 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     mediaType: DreamMediaType.VIDEO,
   },
   {
+    id: "kling-25-i2v",
+    label: "Kling 2.5 Turbo Pro",
+    provider: PROVIDERS.FAL,
+    mediaType: DreamMediaType.VIDEO,
+  },
+  {
     id: "ltx-i2v",
     label: "LTX 2.3",
     provider: PROVIDERS.RUNPOD,

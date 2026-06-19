@@ -17,6 +17,7 @@ const SUPPORTED_ALGORITHMS = [
   "wan-i2v-lora",
   "ltx-i2v",
   "kling-i2v",
+  "kling-25-i2v",
   "nvidia-uprez",
   "discodiffusion",
 ] as const;
@@ -33,6 +34,7 @@ const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   "wan-i2v-lora": "wani2vlora",
   "ltx-i2v": "ltxi2v",
   "kling-i2v": "falvideo",
+  "kling-25-i2v": "falvideo",
   "nvidia-uprez": "nvidiavsr",
   discodiffusion: "discodiffusion",
 };

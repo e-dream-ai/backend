@@ -8,6 +8,7 @@ import dreamRouter from "routes/v1/dream.routes";
 import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
 import keyframeRouter from "routes/v1/keyframe.routes";
+import modelsRouter from "routes/v1/models.routes";
 import featureRouter from "./feature.routes";
 import healthRouter from "./health.routes";
 import userRouter from "routes/v1/user.routes";
@@ -513,6 +514,9 @@ export const registerRoutes = (app: express.Application) => {
 
   // register keyframe router
   app.use("/api/v1/keyframe", keyframeRouter);
+
+  // register models router
+  app.use("/api/v1/models", modelsRouter);
 
   // register playlist router
   app.use("/api/v1/feed", feedRouter);

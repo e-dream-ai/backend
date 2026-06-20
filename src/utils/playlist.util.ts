@@ -1,4 +1,11 @@
-import { Dream, Playlist, PlaylistItem, PlaylistKeyframe } from "entities";
+import {
+  Dream,
+  Keyframe,
+  Playlist,
+  PlaylistItem,
+  PlaylistKeyframe,
+  User,
+} from "entities";
 import {
   FindOptionsSelect,
   FindOptionsRelations,
@@ -749,6 +756,76 @@ export const deletePlaylistKeyframeAndResetOrder = async ({
       .andWhere("deleted_at IS NULL")
       .andWhere("\"order\" > :deletedOrder", { deletedOrder })
       .execute();
+  });
+};
+
+export const linkPlaylistKeyframes = async ({
+  playlistId,
+  userId,
+  loop = false,
+  clear = false,
+}: {
+  playlistId: number;
+  userId: number;
+  loop?: boolean;
+  clear?: boolean;
+}): Promise<number> => {
+  return appDataSource.transaction(async (manager) => {
+    const items = await manager.find(PlaylistItem, {
+      where: { playlist: { id: playlistId }, type: PlaylistItemType.DREAM },
+      relations: { dreamItem: true },
+      order: { order: "ASC" },
+    });
+
+    const dreams = items
+      .map((item) => item.dreamItem)
+      .filter((dream): dream is Dream => Boolean(dream));
+
+    if (dreams.length === 0) {
+      return 0;
+    }
+
+    if (clear) {
+      const existing = await manager.find(PlaylistKeyframe, {
+        where: { playlist: { id: playlistId } },
+      });
+      if (existing.length > 0) {
+        await manager.softRemove(existing);
+      }
+    }
+
+    const userRef = { id: userId } as User;
+    const playlistRef = { id: playlistId } as Playlist;
+
+    const keyframes = await manager.save(
+      dreams.map((dream, i) => {
+        const keyframe = new Keyframe();
+        keyframe.name = `kf_${dream.name ?? i}`;
+        keyframe.user = userRef;
+        return keyframe;
+      }),
+    );
+
+    await manager.save(
+      keyframes.map((keyframe, i) => {
+        const playlistKeyframe = new PlaylistKeyframe();
+        playlistKeyframe.playlist = playlistRef;
+        playlistKeyframe.keyframe = keyframe;
+        playlistKeyframe.order = i;
+        return playlistKeyframe;
+      }),
+    );
+
+    for (let i = 0; i < dreams.length; i++) {
+      const endKeyframe =
+        i + 1 < dreams.length ? keyframes[i + 1] : loop ? keyframes[0] : null;
+      await manager.update(Dream, dreams[i].id, {
+        startKeyframe: keyframes[i],
+        endKeyframe,
+      });
+    }
+
+    return dreams.length;
   });
 };
 

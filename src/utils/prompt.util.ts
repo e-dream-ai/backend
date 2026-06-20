@@ -12,6 +12,7 @@ const SUPPORTED_ALGORITHMS = [
   "uprez",
   "qwen-image",
   "z-image-turbo",
+  "flux-schnell",
   "wan-t2v",
   "wan-i2v",
   "wan-i2v-lora",
@@ -29,6 +30,7 @@ const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   uprez: "uprezvideo",
   "qwen-image": "qwenimage",
   "z-image-turbo": "zimageturbo",
+  "flux-schnell": "falimage",
   "wan-t2v": "want2v",
   "wan-i2v": "wani2v",
   "wan-i2v-lora": "wani2vlora",
@@ -87,5 +89,9 @@ export const mapAlgorithmToQueue = (algorithm: string): string | null => {
 };
 
 export const isImageGenerationAlgorithm = (algorithm: string): boolean => {
-  return algorithm === "qwen-image" || algorithm === "z-image-turbo";
+  return (
+    algorithm === "qwen-image" ||
+    algorithm === "z-image-turbo" ||
+    algorithm === "flux-schnell"
+  );
 };

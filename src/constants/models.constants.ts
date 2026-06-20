@@ -7,12 +7,66 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     label: "Kling 3.0 Pro",
     provider: PROVIDERS.FAL,
     mediaType: DreamMediaType.VIDEO,
+    constraints: {
+      durationsSec: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      supportsSteps: false,
+    },
+  },
+  {
+    id: "kling-25-i2v",
+    label: "Kling 2.5 Turbo Pro",
+    provider: PROVIDERS.FAL,
+    mediaType: DreamMediaType.VIDEO,
+    constraints: {
+      durationsSec: [5, 10],
+      supportsSteps: false,
+    },
   },
   {
     id: "ltx-i2v",
     label: "LTX 2.3",
     provider: PROVIDERS.RUNPOD,
     mediaType: DreamMediaType.VIDEO,
+    constraints: {
+      durationsSec: [5, 10, 15, 20],
+      supportsSteps: true,
+    },
+  },
+  {
+    id: "flux-schnell",
+    label: "FLUX.1 [schnell]",
+    provider: PROVIDERS.FAL,
+    mediaType: DreamMediaType.IMAGE,
+    constraints: {
+      imageSizes: ["1024*768", "1024*1024", "768*1024", "1280*720", "720*1280"],
+    },
+  },
+  {
+    id: "z-image-turbo",
+    label: "Z Image Turbo",
+    provider: PROVIDERS.RUNPOD,
+    mediaType: DreamMediaType.IMAGE,
+    constraints: {
+      imageSizes: [
+        "1280*720",
+        "1024*1024",
+        "720*1280",
+        "512*512",
+        "768*768",
+        "1280*1280",
+        "1024*768",
+        "768*1024",
+      ],
+    },
+  },
+  {
+    id: "qwen-image",
+    label: "Qwen Image",
+    provider: PROVIDERS.RUNPOD,
+    mediaType: DreamMediaType.IMAGE,
+    constraints: {
+      imageSizes: ["1280*720", "1024*1024", "720*1280", "512*512"],
+    },
   },
 ];
 

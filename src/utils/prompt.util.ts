@@ -41,6 +41,10 @@ const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   discodiffusion: "discodiffusion",
 };
 
+export const GENERATION_QUEUES: string[] = [
+  ...new Set(Object.values(ALGORITHM_TO_QUEUE_MAP)),
+];
+
 export const parsePromptJson = (dream: Dream): PromptJson | null => {
   if (!dream.prompt) {
     return null;

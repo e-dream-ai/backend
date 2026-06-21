@@ -62,6 +62,11 @@ export type RemovePlaylistKeyframeRequest = {
   playlistKeyframeId: number;
 };
 
+export type LinkPlaylistKeyframesRequest = {
+  loop?: boolean;
+  clear?: boolean;
+};
+
 export type GetPlaylistItemsQuery = {
   take?: number;
   skip?: number;

@@ -2,6 +2,7 @@ import { QueueEvents, Queue } from "bullmq";
 import { redisClient } from "clients/redis.client";
 import { getIo } from "socket/io";
 import { APP_LOGGER } from "shared/logger";
+import { GENERATION_QUEUES } from "utils/prompt.util";
 
 const toNumber = (v: unknown): number | undefined => {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -14,7 +15,9 @@ const toNumber = (v: unknown): number | undefined => {
   return undefined;
 };
 
-const QUEUES = ["video", "deforumvideo", "uprezvideo", "nvidiavsr"];
+const QUEUES = GENERATION_QUEUES;
+
+const PROGRESS_TTL_SECONDS = 10800; // 3 hours is enough for active jobs
 
 interface JobProgressData {
   user_id: number | string;
@@ -93,7 +96,7 @@ export class JobProgressService {
               getJobProgressKey(dreamUuid),
               JSON.stringify(progressData),
               "EX",
-              10800, // 3 hours TTL is enough for active jobs
+              PROGRESS_TTL_SECONDS,
             );
 
             io.of("/remote-control")

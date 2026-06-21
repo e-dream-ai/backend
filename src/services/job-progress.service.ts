@@ -32,6 +32,63 @@ interface JobProgressData {
 export const getJobProgressKey = (dreamUuid: string) =>
   `job:progress:${dreamUuid}`;
 
+const DREAM_STATUS_TO_SOCKET: Record<string, string> = {
+  queue: "IN_QUEUE",
+  processing: "IN_PROGRESS",
+  processed: "COMPLETED",
+  failed: "FAILED",
+};
+
+const isTerminalStatus = (status: string) =>
+  status === "processed" || status === "failed";
+
+const clearDreamProgressCache = async (dreamUuid: string) => {
+  await redisClient.del(getJobProgressKey(dreamUuid));
+  await redisClient.del(`job:preview:${dreamUuid}`);
+};
+
+export const emitDreamJobStatus = async (params: {
+  userId: number | string;
+  dreamUuid: string;
+  status: string;
+  progress?: number;
+}) => {
+  const { userId, dreamUuid, status, progress } = params;
+  if (!dreamUuid || userId === undefined || userId === null) return;
+
+  try {
+    const io = getIo();
+    if (!io) return;
+
+    const progressData = {
+      dream_uuid: dreamUuid,
+      status: DREAM_STATUS_TO_SOCKET[status] ?? status,
+      progress,
+      updated_at: Date.now(),
+    };
+
+    if (isTerminalStatus(status)) {
+      await clearDreamProgressCache(dreamUuid);
+    } else {
+      await redisClient.set(
+        getJobProgressKey(dreamUuid),
+        JSON.stringify(progressData),
+        "EX",
+        PROGRESS_TTL_SECONDS,
+      );
+    }
+
+    const nsp = io.of("/remote-control");
+    nsp.to(`USER:${userId}`).emit("job:progress", progressData);
+    nsp.to(`DREAM:${dreamUuid}`).emit("job:progress", progressData);
+  } catch (error) {
+    APP_LOGGER.error(
+      `Error emitting dream job status for ${dreamUuid}:`,
+      error,
+    );
+  }
+};
+
 export class JobProgressService {
   private queueEvents: QueueEvents[] = [];
   private queues: Map<string, Queue> = new Map();
@@ -62,6 +119,7 @@ export class JobProgressService {
 
           const {
             dream_uuid: dreamUuid,
+            user_id: userId,
             status,
             progress: rawProgress,
             countdown_ms: countdownMs,
@@ -81,7 +139,8 @@ export class JobProgressService {
             }
           }
 
-          if (dreamUuid && (progress !== undefined || status)) {
+          const isTerminal = status === "COMPLETED" || status === "FAILED";
+          if (dreamUuid && !isTerminal && (progress !== undefined || status)) {
             const dreamRoomId = `DREAM:${dreamUuid}`;
             const progressData = {
               jobId,
@@ -99,9 +158,11 @@ export class JobProgressService {
               PROGRESS_TTL_SECONDS,
             );
 
-            io.of("/remote-control")
-              .to(dreamRoomId)
-              .emit("job:progress", progressData);
+            const nsp = io.of("/remote-control");
+            nsp.to(dreamRoomId).emit("job:progress", progressData);
+            if (userId !== undefined && userId !== null) {
+              nsp.to(`USER:${userId}`).emit("job:progress", progressData);
+            }
           }
         } catch (error) {
           APP_LOGGER.error(`Error relaying job progress for ${jobId}:`, error);
@@ -112,8 +173,7 @@ export class JobProgressService {
         try {
           const job = await this.queues.get(queueName)!.getJob(jobId);
           if (job?.data?.dream_uuid) {
-            await redisClient.del(getJobProgressKey(job.data.dream_uuid));
-            await redisClient.del(`job:preview:${job.data.dream_uuid}`);
+            await clearDreamProgressCache(job.data.dream_uuid);
           }
         } catch (error) {
           // Ignore errors during cleanup
@@ -124,8 +184,7 @@ export class JobProgressService {
         try {
           const job = await this.queues.get(queueName)!.getJob(jobId);
           if (job?.data?.dream_uuid) {
-            await redisClient.del(getJobProgressKey(job.data.dream_uuid));
-            await redisClient.del(`job:preview:${job.data.dream_uuid}`);
+            await clearDreamProgressCache(job.data.dream_uuid);
           }
         } catch (error) {
           // Ignore

@@ -89,6 +89,7 @@ import {
   setFilmstripVersion,
   setThumbVersion,
 } from "utils/uploadVersion.util";
+import { emitDreamJobStatus } from "services/job-progress.service";
 
 /**
  * Handles get dreams
@@ -1048,6 +1049,12 @@ export const handleSetDreamStatusProcessing = async (
       status: DreamStatusType.PROCESSING,
     });
 
+    await emitDreamJobStatus({
+      userId: dream.user.id,
+      dreamUuid: dreamUUID,
+      status: DreamStatusType.PROCESSING,
+    });
+
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
@@ -1189,6 +1196,14 @@ export const handleSetDreamStatusProcessed = async (
       duration_seconds: framesToSeconds(processedVideoFrames, activityLevel),
     });
 
+    if (processedVideoSize !== undefined) {
+      await emitDreamJobStatus({
+        userId: user.id,
+        dreamUuid: dreamUUID,
+        status: DreamStatusType.PROCESSED,
+      });
+    }
+
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
@@ -1231,6 +1246,12 @@ export const handleSetDreamStatusFailed = async (
       ...dream,
       status: DreamStatusType.FAILED,
       error: error || null,
+    });
+
+    await emitDreamJobStatus({
+      userId: dream.user.id,
+      dreamUuid: dreamUUID,
+      status: DreamStatusType.FAILED,
     });
 
     return res

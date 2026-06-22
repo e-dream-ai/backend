@@ -112,6 +112,7 @@ describe("user.controller", () => {
       __esModule: true,
       getUserSelectedColumns: () => ({}),
       getUserFindOptionsRelations: () => ({}),
+      getNextQuotaResetAt: () => new Date("2026-06-24T07:00:00.000Z"),
       isAdmin: () => false,
     }));
     jest.mock("utils/transform.util", () => ({
@@ -144,6 +145,7 @@ describe("user.controller", () => {
           email: undefined,
           signupInvite: undefined,
           avatar: "signed",
+          creditsResetAt: "2026-06-24T07:00:00.000Z",
         }),
       },
     });

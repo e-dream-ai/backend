@@ -17,7 +17,10 @@ import { Playlist } from "./Playlist.entity";
 import { Role } from "./Role.entity";
 import { Vote } from "./Vote.entity";
 import { Invite } from "./Invite.entity";
-import { NEW_USER_DEFAULT_QUOTA } from "constants/user.constants";
+import {
+  NEW_USER_DEFAULT_QUOTA,
+  DEFAULT_DAILY_PROVIDER_QUOTA_USD,
+} from "constants/user.constants";
 import { ApiKey } from "./ApiKey.entity";
 import { Keyframe } from "./Keyframe.entity";
 import { Report } from "./Report.entity";
@@ -134,6 +137,24 @@ export class User {
    */
   @Column({ type: "bigint", default: 0 })
   quota?: number;
+
+  /**
+   * current spendable provider credits (USD) against the company provider key,
+   * refilled nightly to `dailyQuotaUsd`
+   */
+  @Column({ type: "numeric", precision: 10, scale: 4, default: 0 })
+  providerCreditsUsd: string;
+
+  /**
+   * per-user daily provider-credit quota
+   */
+  @Column({
+    type: "numeric",
+    precision: 10,
+    scale: 4,
+    default: DEFAULT_DAILY_PROVIDER_QUOTA_USD,
+  })
+  dailyQuotaUsd: string;
 
   /**
    * verified

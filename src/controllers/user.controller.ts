@@ -43,6 +43,7 @@ import {
   getUserFindOptionsRelations,
   getUserIdentifier,
   getUserSelectedColumns,
+  getNextQuotaResetAt,
   isAdmin,
 } from "utils/user.util";
 import { workos } from "utils/workos.util";
@@ -218,6 +219,7 @@ export const handleGetUser = async (
       ...transformedUser,
       email: isAllowedView ? transformedUser.email : undefined,
       signupInvite: isAllowedView ? transformedUser.signupInvite : undefined,
+      creditsResetAt: getNextQuotaResetAt().toISOString(),
     };
 
     return res.status(httpStatus.OK).json(

@@ -9,6 +9,8 @@ import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
 import keyframeRouter from "routes/v1/keyframe.routes";
 import modelsRouter from "routes/v1/models.routes";
+import providerKeyRouter from "routes/v1/provider-key.routes";
+import providerKeyInternalRouter from "routes/v1/provider-key-internal.routes";
 import featureRouter from "./feature.routes";
 import healthRouter from "./health.routes";
 import userRouter from "routes/v1/user.routes";
@@ -517,6 +519,12 @@ export const registerRoutes = (app: express.Application) => {
 
   // register models router
   app.use("/api/v1/models", modelsRouter);
+
+  // register provider-key router (user-facing key management)
+  app.use("/api/v1/provider-keys", providerKeyRouter);
+
+  // register internal provider-key router (worker-only, x-internal-key guarded)
+  app.use("/api/v1/internal/provider-keys", providerKeyInternalRouter);
 
   // register playlist router
   app.use("/api/v1/feed", feedRouter);

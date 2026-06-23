@@ -12,7 +12,7 @@ import {
 
 const providerKeyRouter = Router();
 
-const allowedRoles = [ROLES.USER_GROUP, ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP];
+const allowedRoles = [ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP];
 
 /**
  * @swagger

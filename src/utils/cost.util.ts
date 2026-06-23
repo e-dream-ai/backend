@@ -56,6 +56,8 @@ const assertValidParams = (
   }
 };
 
+// KEEP IN SYNC with frontend/src/utils/model-cost.util.ts (estimateUnitCostUsd).
+// The frontend mirrors this formula for the cost estimate UI. If you change one, change the other.
 const priceFromPricing = (
   pricing: ModelPricing,
   params: JobCostParams,

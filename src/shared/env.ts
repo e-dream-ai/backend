@@ -119,7 +119,7 @@ export const env = cleanEnv(process.env, {
   /**
    * SECRET_CIPHER_KEY (AES-256-GCM, 64 hex chars: `openssl rand -hex 32`)
    */
-  SECRET_CIPHER_KEY: str({ default: "" }),
+  SECRET_CIPHER_KEY: str(),
 
   /**
    * WORKOS_CLIENT_ID

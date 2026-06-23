@@ -9,7 +9,10 @@ const pingWithKey = async (
   url: string,
   headers: Record<string, string>,
 ): Promise<boolean> => {
-  const response = await fetch(url, { headers });
+  const response = await fetch(url, {
+    headers,
+    signal: AbortSignal.timeout(10000),
+  });
   return response.status === 200;
 };
 

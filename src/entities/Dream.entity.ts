@@ -200,6 +200,16 @@ export class Dream {
   @Column({ nullable: true, type: "text" })
   error?: string | null;
 
+  @Column({
+    type: "decimal",
+    precision: 10,
+    scale: 4,
+    nullable: true,
+    default: null,
+    transformer: new ColumnNumericTransformer(),
+  })
+  reservedCostUsd?: number | null;
+
   @Column({ nullable: true, type: "varchar" })
   sourceUrl?: string | null;
 

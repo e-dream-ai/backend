@@ -7,6 +7,7 @@ import {
   getUserProviderKeyStatus,
   upsertUserProviderKey,
 } from "services/provider-key.service";
+import { isProviderKeySupported } from "services/provider-key-validators";
 import { handleInternalServerError, jsonResponse } from "utils/responses.util";
 import { APP_LOGGER } from "shared/logger";
 
@@ -24,6 +25,15 @@ export const handleUpsertProviderKey = async (
       provider: ModelProvider;
       key: string;
     };
+
+    if (!isProviderKeySupported(provider)) {
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message: `Provider "${provider}" does not support key management.`,
+        }),
+      );
+    }
 
     const status = await upsertUserProviderKey(user.id, provider, key);
 

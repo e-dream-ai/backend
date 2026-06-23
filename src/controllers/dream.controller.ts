@@ -49,6 +49,7 @@ import {
   getDreamSelectedColumns,
   handleVoteDream,
   processDreamRequest,
+  refundReservedDreamCost,
 } from "utils/dream.util";
 import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { canExecuteAction } from "utils/permissions.util";
@@ -1164,6 +1165,7 @@ export const handleSetDreamStatusProcessed = async (
       render_duration,
       activityLevel,
       md5,
+      reservedCostUsd: null,
     };
 
     if (mediaType === DreamMediaType.IMAGE) {
@@ -1264,10 +1266,13 @@ export const handleSetDreamStatusFailed = async (
       return handleNotFound(req as RequestType, res);
     }
 
+    await refundReservedDreamCost(dreamUUID, dream.user.id);
+
     const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.FAILED,
       error: error || null,
+      reservedCostUsd: null,
     });
 
     await emitDreamJobStatus({
@@ -1826,12 +1831,26 @@ export const handleCancelDreamJob = async (
       `Cancel job request for dream ${dreamUUID}: ${result.message}`,
     );
 
+    if (result.jobFound) {
+      try {
+        await refundReservedDreamCost(dreamUUID, dream.user.id);
+      } catch (refundError: unknown) {
+        APP_LOGGER.error(
+          `Failed to refund provider credits for cancelled dream ${dreamUUID}:`,
+          refundError instanceof Error
+            ? refundError.message
+            : String(refundError),
+        );
+      }
+    }
+
     // Restore the previous dream status if the job was found and had a previous status
     if (result.jobFound && result.previousStatus) {
       try {
         await dreamRepository.save({
           ...dream,
           status: result.previousStatus as DreamStatusType,
+          reservedCostUsd: null,
         });
         APP_LOGGER.info(
           `Restored dream ${dreamUUID} status from queue to ${result.previousStatus}`,

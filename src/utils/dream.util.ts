@@ -42,6 +42,24 @@ const failDreamWithError = async (dream: Dream, message: string) => {
   });
 };
 
+export const refundReservedDreamCost = async (
+  dreamUuid: string,
+  userId: number,
+): Promise<void> => {
+  const rows: Array<{ reservedCostUsd: string | null }> =
+    await dreamRepository.query(
+      `UPDATE "dream" SET "reservedCostUsd" = NULL
+       WHERE "uuid" = $1 AND "reservedCostUsd" IS NOT NULL
+       RETURNING "reservedCostUsd"`,
+      [dreamUuid],
+    );
+
+  const reserved = rows[0]?.reservedCostUsd;
+  if (reserved != null && Number(reserved) > 0) {
+    await refundProviderCredits(userId, Number(reserved));
+  }
+};
+
 export const processDreamRequest = async (
   dream: Dream,
   previousStatus?: string,
@@ -106,9 +124,27 @@ export const processDreamRequest = async (
           previous_dream_status: previousStatus,
         };
 
-        const result = await queueWorkerJob(queueName, jobData);
+        let result;
+        try {
+          result = await queueWorkerJob(queueName, jobData);
+        } catch (queueError) {
+          APP_LOGGER.error(
+            `queueWorkerJob threw for dream ${dream.uuid}:`,
+            queueError,
+          );
+          if (chargedUsd != null) {
+            await refundProviderCredits(dream.user.id, chargedUsd);
+          }
+          throw queueError;
+        }
 
         if (result.success) {
+          if (chargedUsd != null) {
+            await dreamRepository.update(
+              { uuid: dream.uuid },
+              { reservedCostUsd: chargedUsd },
+            );
+          }
           return { id: result.jobId, status: "queued", isPromptBased: true };
         } else {
           APP_LOGGER.error(

@@ -195,7 +195,7 @@ export const handleGetUser = async (
     const user = res.locals.user;
     const foundUser = await userRepository.findOne({
       where: { uuid },
-      select: getUserSelectedColumns({ userEmail: true }),
+      select: getUserSelectedColumns({ userEmail: true, includeCredits: true }),
       relations: getUserFindOptionsRelations(),
     });
 
@@ -213,12 +213,17 @@ export const handleGetUser = async (
     const transformedUser = await transformUserWithSignedUrls(foundUser);
 
     /**
-     * remove user email if is not admin or owner
+     * remove owner/admin-only fields (email, signup invite, provider credit
+     * balances) when the viewer is neither the owner nor an admin
      */
     const responseUser = {
       ...transformedUser,
       email: isAllowedView ? transformedUser.email : undefined,
       signupInvite: isAllowedView ? transformedUser.signupInvite : undefined,
+      providerCreditsUsd: isAllowedView
+        ? transformedUser.providerCreditsUsd
+        : undefined,
+      dailyQuotaUsd: isAllowedView ? transformedUser.dailyQuotaUsd : undefined,
       creditsResetAt: getNextQuotaResetAt().toISOString(),
     };
 

@@ -52,6 +52,7 @@ import {
 } from "utils/dream.util";
 import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { canExecuteAction } from "utils/permissions.util";
+import { INSUFFICIENT_CREDITS_CODE } from "services/provider-credit.service";
 import {
   refreshPlaylistUpdatedAtTimestampFromPlaylistItems,
   computePlaylistThumbnailRecursive,
@@ -998,7 +999,28 @@ export const handleProcessDream = async (
     // Store the current status before processing so we can restore it on cancel
     const previousStatus = dream.status;
 
-    await processDreamRequest(dream, previousStatus);
+    const result = await processDreamRequest(dream, previousStatus);
+
+    if (result?.status === "rejected") {
+      const [failedDream] = await dreamRepository.find({
+        where: { uuid: dreamUUID },
+        relations: { user: true },
+        select: getDreamSelectedColumns(),
+      });
+
+      const status =
+        result.errorCode === INSUFFICIENT_CREDITS_CODE
+          ? httpStatus.PAYMENT_REQUIRED
+          : httpStatus.BAD_REQUEST;
+
+      return res.status(status).json(
+        jsonResponse({
+          success: false,
+          message: failedDream?.error ?? "Unable to process this dream.",
+          data: { dream: failedDream },
+        }),
+      );
+    }
 
     const updatedDream = await dreamRepository.save({
       ...dream,

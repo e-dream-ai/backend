@@ -74,8 +74,10 @@ export const getRoleSelectedColumns = (): FindOptionsSelect<Role> => {
 
 export const getUserSelectedColumns = ({
   userEmail,
+  includeCredits,
 }: {
   userEmail?: boolean;
+  includeCredits?: boolean;
 } = {}): FindOptionsSelect<User> => {
   return {
     id: true,
@@ -89,8 +91,8 @@ export const getUserSelectedColumns = ({
     enableMarketingEmails: true,
     enableCreatingProprietaryDreams: true,
     quota: true,
-    providerCreditsUsd: true,
-    dailyQuotaUsd: true,
+    providerCreditsUsd: !!includeCredits,
+    dailyQuotaUsd: !!includeCredits,
     last_login_at: true,
     last_client_ping_at: true,
     last_client_version: true,

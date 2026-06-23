@@ -97,12 +97,13 @@ export const processDreamRequest = async (
         }
 
         const jobData = {
+          ...promptJson,
           dream_uuid: dream.uuid,
           user_id: dream.user.id,
           use_global_key: useGlobalKey,
+          infinidream_algorithm: algorithm,
           auto_upload: true,
           previous_dream_status: previousStatus,
-          ...promptJson,
         };
 
         const result = await queueWorkerJob(queueName, jobData);

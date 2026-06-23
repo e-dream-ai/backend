@@ -13,7 +13,12 @@ export const upsertProviderKeySchema: RequestValidationSchema = {
       .trim()
       .pattern(/^[\x21-\x7e]+$/)
       .min(1)
-      .required(),
+      .required()
+      .messages({
+        "string.pattern.base": "Provider key has an invalid format.",
+        "string.empty": "Provider key is required.",
+        "any.required": "Provider key is required.",
+      }),
   }),
 };
 

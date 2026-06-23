@@ -81,6 +81,8 @@ export const handleResolveProviderKey = async (
   res: ResponseType,
 ) => {
   try {
+    res.setHeader("Cache-Control", "no-store, private");
+
     const userId = Number(req.query.userId);
     const provider = req.query.provider as ModelProvider;
     if (!Number.isInteger(userId) || !isProvider(provider)) {

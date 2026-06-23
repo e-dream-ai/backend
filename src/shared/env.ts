@@ -157,6 +157,11 @@ export const env = cleanEnv(process.env, {
   WORKOS_WEBHOOK_SECRET: str(),
 
   /**
+   * WORKOS_DEBUG_LOGGING
+   */
+  WORKOS_DEBUG_LOGGING: bool({ default: false }),
+
+  /**
    * BACKEND_DOMAIN
    */
   BACKEND_DOMAIN: str(),

@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.test" });
 process.env.npm_package_version ||= "0.0.0-test";
+process.env.SECRET_CIPHER_KEY ||= "0".repeat(64);
 
 jest.mock("ioredis", () => {
   class MockRedis {

@@ -104,6 +104,11 @@ const getWorkOSUserLogContext = (
   workosUserEmail: workOSUser?.email ?? undefined,
 });
 
+const logWorkOS = (payload: Record<string, unknown>) => {
+  if (!env.WORKOS_DEBUG_LOGGING) return;
+  APP_LOGGER.info({ msg: "WorkOS reply", ...payload });
+};
+
 const logWorkOSReply = ({
   action,
   email,
@@ -129,8 +134,7 @@ const logWorkOSReply = ({
     expiresAt?: string | Date;
   };
 }) => {
-  APP_LOGGER.info({
-    msg: "WorkOS reply",
+  logWorkOS({
     action,
     email,
     ...getWorkOSUserLogContext(response.user),
@@ -1061,8 +1065,7 @@ export const logout = async (req: RequestType, res: ResponseType) => {
 
       const logoutUrl = await session.getLogoutUrl();
 
-      APP_LOGGER.info({
-        msg: "WorkOS reply",
+      logWorkOS({
         action: "getLogoutUrl",
         hasLogoutUrl: Boolean(logoutUrl),
       });
@@ -1274,8 +1277,7 @@ export const handleSignUpV2 = async (
       userId: workOSUser.id,
     });
 
-    APP_LOGGER.info({
-      msg: "WorkOS reply",
+    logWorkOS({
       action: "sendVerificationEmail",
       email,
       workosUserId: workOSUser.id,
@@ -1295,8 +1297,7 @@ export const handleSignUpV2 = async (
       roleSlug: userRole.name,
     });
 
-    APP_LOGGER.info({
-      msg: "WorkOS reply",
+    logWorkOS({
       action: "createOrganizationMembership",
       email,
       workosUserId: workOSUser.id,
@@ -1378,8 +1379,7 @@ export const handleCreatePasswordReset = async (
       email,
     });
 
-    APP_LOGGER.info({
-      msg: "WorkOS reply",
+    logWorkOS({
       action: "createPasswordReset",
       email,
     });

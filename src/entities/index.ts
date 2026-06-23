@@ -6,6 +6,7 @@ export * from "./Keyframe.entity";
 export * from "./PlaylistKeyframe";
 export * from "./ApiKey.entity";
 export * from "./User.entity";
+export * from "./UserProviderKey.entity";
 export * from "./Invite.entity";
 export * from "./Feature.entity";
 export * from "./Vote.entity";

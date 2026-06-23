@@ -14,12 +14,17 @@ export interface ModelConstraints {
   supportsSteps?: boolean;
 }
 
+export type ModelPricing =
+  | { kind: "perMegapixel"; usdPerMegapixel: number }
+  | { kind: "perSecond"; usdPerSecond: number; baseUsd?: number };
+
 export interface ModelCatalogEntry {
   id: SupportedAlgorithm;
   label: string;
   provider: ModelProvider;
   mediaType: DreamMediaType;
   constraints: ModelConstraints;
+  pricing?: ModelPricing;
 }
 
 export interface GetModelsQuery {

@@ -39,6 +39,8 @@ export const updateUserSchema = {
     enableMarketingEmails: Joi.boolean().optional(),
     enableCreatingProprietaryDreams: Joi.boolean().optional(),
     quota: Joi.number().greater(0).integer().optional(),
+    providerCreditsUsd: Joi.number().min(0).max(999999.9999).optional(),
+    dailyQuotaUsd: Joi.number().min(0).max(999999.9999).allow(null).optional(),
   }),
 };
 
@@ -73,6 +75,8 @@ export const validateUserSchema = async (
     schema = updateUserSchema.body.keys({
       quota: Joi.forbidden(),
       enableCreatingProprietaryDreams: Joi.forbidden(),
+      providerCreditsUsd: Joi.forbidden(),
+      dailyQuotaUsd: Joi.forbidden(),
     });
   } else {
     schema = updateUserSchema.body.keys();

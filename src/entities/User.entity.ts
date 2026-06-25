@@ -146,15 +146,17 @@ export class User {
   providerCreditsUsd: string;
 
   /**
-   * per-user daily provider-credit quota
+   * per-user daily provider-credit quota; `null` means unlimited
+   * (the user always uses the company provider key)
    */
   @Column({
     type: "numeric",
     precision: 10,
     scale: 4,
+    nullable: true,
     default: DEFAULT_DAILY_PROVIDER_QUOTA_USD,
   })
-  dailyQuotaUsd: string;
+  dailyQuotaUsd: string | null;
 
   /**
    * verified

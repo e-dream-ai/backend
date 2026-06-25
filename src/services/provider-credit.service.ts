@@ -28,8 +28,12 @@ const chargeProviderCredits = async (
   if (!Number.isFinite(costUsd) || costUsd <= 0) return false;
   const rows: unknown[] = await userRepository.query(
     `UPDATE "user"
-     SET "providerCreditsUsd" = "providerCreditsUsd" - $1
-     WHERE "id" = $2 AND "providerCreditsUsd" >= $1
+     SET "providerCreditsUsd" = CASE
+         WHEN "dailyQuotaUsd" IS NULL THEN "providerCreditsUsd"
+         ELSE "providerCreditsUsd" - $1
+       END
+     WHERE "id" = $2
+       AND ("dailyQuotaUsd" IS NULL OR "providerCreditsUsd" >= $1)
      RETURNING "id"`,
     [toBillableAmount(costUsd), userId],
   );
@@ -44,7 +48,7 @@ export const refundProviderCredits = async (
   await userRepository.query(
     `UPDATE "user"
      SET "providerCreditsUsd" = LEAST("providerCreditsUsd" + $1, "dailyQuotaUsd")
-     WHERE "id" = $2`,
+     WHERE "id" = $2 AND "dailyQuotaUsd" IS NOT NULL`,
     [toBillableAmount(costUsd), userId],
   );
 };

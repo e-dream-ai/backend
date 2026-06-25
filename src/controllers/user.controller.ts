@@ -442,13 +442,31 @@ export const handleUpdateUser = async (
       return handleForbidden(req as RequestType, res);
     }
 
+    const {
+      providerCreditsUsd,
+      dailyQuotaUsd,
+      role: requestedRoleId,
+      ...restBody
+    } = req.body;
+
     const updateData: Partial<User> = {
-      ...(req.body as Omit<UpdateUserRequest, "role">),
+      ...(restBody as Omit<
+        UpdateUserRequest,
+        "role" | "providerCreditsUsd" | "dailyQuotaUsd"
+      >),
     };
 
     if (isAdmin(requestUser)) {
-      const role = req.body.role
-        ? await roleRepository.findOneBy({ id: req.body.role })
+      if (providerCreditsUsd !== undefined) {
+        updateData.providerCreditsUsd = providerCreditsUsd.toFixed(4);
+      }
+      if (dailyQuotaUsd !== undefined) {
+        updateData.dailyQuotaUsd =
+          dailyQuotaUsd === null ? null : dailyQuotaUsd.toFixed(4);
+      }
+
+      const role = requestedRoleId
+        ? await roleRepository.findOneBy({ id: requestedRoleId })
         : null;
 
       if (role) {

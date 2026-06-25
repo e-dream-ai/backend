@@ -213,7 +213,7 @@ export const setDailyUsersQuota = async () => {
 
 export const refillProviderCredits = async () => {
   await userRepository.query(
-    `UPDATE "user" SET "providerCreditsUsd" = "dailyQuotaUsd"`,
+    `UPDATE "user" SET "providerCreditsUsd" = "dailyQuotaUsd" WHERE "dailyQuotaUsd" IS NOT NULL`,
   );
 };
 

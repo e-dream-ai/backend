@@ -20,6 +20,8 @@ export type UpdateUserRequest = {
   enableMarketingEmails?: boolean;
   enableCreatingProprietaryDreams?: boolean;
   quota?: number;
+  providerCreditsUsd?: number;
+  dailyQuotaUsd?: number | null;
 };
 
 export type UpdateUserRoleRequest = {

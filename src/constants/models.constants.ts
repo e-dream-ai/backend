@@ -11,6 +11,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
       durationsSec: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
       supportsSteps: false,
     },
+    pricing: { kind: "perSecond", usdPerSecond: 0.112 },
   },
   {
     id: "kling-25-i2v",
@@ -21,6 +22,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
       durationsSec: [5, 10],
       supportsSteps: false,
     },
+    pricing: { kind: "perSecond", usdPerSecond: 0.07, baseUsd: 0.35 },
   },
   {
     id: "ltx-i2v",
@@ -40,6 +42,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     constraints: {
       imageSizes: ["1024*768", "1024*1024", "768*1024", "1280*720", "720*1280"],
     },
+    pricing: { kind: "perMegapixel", usdPerMegapixel: 0.003 },
   },
   {
     id: "z-image-turbo",
@@ -78,3 +81,6 @@ export const getModelCatalog = (
   }
   return MODEL_CATALOG.filter((model) => model.mediaType === mediaType);
 };
+
+export const getModelById = (id: string): ModelCatalogEntry | undefined =>
+  MODEL_CATALOG.find((model) => model.id === id);

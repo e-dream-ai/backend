@@ -2,21 +2,39 @@ import { NextFunction } from "express";
 import { RequestType, ResponseType } from "types/express.types";
 import env from "shared/env";
 
-// Sanitize sensitive data
-// @ts-expect-error no body type
-function sanitizeBody(body) {
-  if (!body) return body;
+const SENSITIVE_FIELDS = new Set([
+  "password",
+  "token",
+  "key",
+  "apikey",
+  "code",
+  "authorization",
+  "secret",
+  "cookie",
+  "x-internal-key",
+  "x-api-key",
+]);
 
-  const sanitized = { ...body };
-  const sensitiveFields = ["password", "token", "key", "apiKey", "code"];
+function sanitizeBody(value: unknown, depth = 0): unknown {
+  if (value == null || depth > 6) return value;
 
-  sensitiveFields.forEach((field) => {
-    if (sanitized[field]) {
-      sanitized[field] = "[HIDDEN]";
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeBody(item, depth + 1));
+  }
+
+  if (typeof value === "object") {
+    const sanitized: Record<string, unknown> = {};
+    for (const [field, fieldValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      sanitized[field] = SENSITIVE_FIELDS.has(field.toLowerCase())
+        ? "[HIDDEN]"
+        : sanitizeBody(fieldValue, depth + 1);
     }
-  });
+    return sanitized;
+  }
 
-  return sanitized;
+  return value;
 }
 
 /**
@@ -56,7 +74,7 @@ export const requestLogger = (
       url: req.url,
       params: req.params,
       query: req.query,
-      headers: req.headers,
+      headers: sanitizeBody(req.headers),
       body: JSON.stringify(sanitizeBody(req.body)),
     },
   });

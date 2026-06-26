@@ -74,8 +74,10 @@ export const getRoleSelectedColumns = (): FindOptionsSelect<Role> => {
 
 export const getUserSelectedColumns = ({
   userEmail,
+  includeCredits,
 }: {
   userEmail?: boolean;
+  includeCredits?: boolean;
 } = {}): FindOptionsSelect<User> => {
   return {
     id: true,
@@ -89,6 +91,8 @@ export const getUserSelectedColumns = ({
     enableMarketingEmails: true,
     enableCreatingProprietaryDreams: true,
     quota: true,
+    providerCreditsUsd: !!includeCredits,
+    dailyQuotaUsd: !!includeCredits,
     last_login_at: true,
     last_client_ping_at: true,
     last_client_version: true,
@@ -205,6 +209,12 @@ export const setDailyUsersQuota = async () => {
   for (const user of users) {
     await userRepository.update(user.id, { quota: DAILY_USER_DEFAULT_QUOTA });
   }
+};
+
+export const refillProviderCredits = async () => {
+  await userRepository.query(
+    `UPDATE "user" SET "providerCreditsUsd" = "dailyQuotaUsd" WHERE "dailyQuotaUsd" IS NOT NULL`,
+  );
 };
 
 export const getNextQuotaResetAt = (now: Date = new Date()): Date => {

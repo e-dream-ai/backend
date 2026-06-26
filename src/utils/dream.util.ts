@@ -15,11 +15,50 @@ import {
   mapAlgorithmToQueue,
 } from "./prompt.util";
 import { queueWorkerJob, queueVideoIngestJob } from "./worker-queue.util";
+import { getModelById } from "constants/models.constants";
+import { calculateJobCostUsd, InvalidJobParamsError } from "./cost.util";
+import { PROVIDERS } from "types/model.types";
+import {
+  InsufficientCreditsError,
+  resolveProviderKeyDecision,
+  refundProviderCredits,
+} from "services/provider-credit.service";
+import { emitDreamJobStatus } from "services/job-progress.service";
 
 const dreamRepository = appDataSource.getRepository(Dream);
 const feedRepository = appDataSource.getRepository(FeedItem);
 const voteRepository = appDataSource.getRepository(Vote);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
+
+const failDreamWithError = async (dream: Dream, message: string) => {
+  await dreamRepository.update(
+    { uuid: dream.uuid },
+    { status: DreamStatusType.FAILED, error: message },
+  );
+  await emitDreamJobStatus({
+    userId: dream.user.id,
+    dreamUuid: dream.uuid,
+    status: DreamStatusType.FAILED,
+  });
+};
+
+export const refundReservedDreamCost = async (
+  dreamUuid: string,
+  userId: number,
+): Promise<void> => {
+  const rows: Array<{ reservedCostUsd: string | null }> =
+    await dreamRepository.query(
+      `UPDATE "dream" SET "reservedCostUsd" = NULL
+       WHERE "uuid" = $1 AND "reservedCostUsd" IS NOT NULL
+       RETURNING "reservedCostUsd"`,
+      [dreamUuid],
+    );
+
+  const reserved = rows[0]?.reservedCostUsd;
+  if (reserved != null && Number(reserved) > 0) {
+    await refundProviderCredits(userId, Number(reserved));
+  }
+};
 
 export const processDreamRequest = async (
   dream: Dream,
@@ -38,22 +77,82 @@ export const processDreamRequest = async (
           `Processing dream ${dream.uuid} with algorithm ${algorithm}`,
         );
 
+        let useGlobalKey = true;
+        let chargedUsd: number | null = null;
+        const model = getModelById(algorithm);
+        if (model?.provider === PROVIDERS.FAL && model.pricing) {
+          try {
+            const costUsd = calculateJobCostUsd(algorithm, {
+              durationSec:
+                typeof promptJson.duration === "number"
+                  ? promptJson.duration
+                  : undefined,
+              imageSize:
+                typeof promptJson.size === "string"
+                  ? promptJson.size
+                  : undefined,
+            });
+            useGlobalKey = await resolveProviderKeyDecision({
+              userId: dream.user.id,
+              provider: PROVIDERS.FAL,
+              costUsd: costUsd!,
+            });
+            if (useGlobalKey) chargedUsd = costUsd;
+          } catch (error) {
+            if (
+              error instanceof InsufficientCreditsError ||
+              error instanceof InvalidJobParamsError
+            ) {
+              await failDreamWithError(dream, error.message);
+              return {
+                status: "rejected",
+                errorCode: error.code,
+                isPromptBased: true,
+              };
+            }
+            throw error;
+          }
+        }
+
         const jobData = {
+          ...promptJson,
           dream_uuid: dream.uuid,
           user_id: dream.user.id,
+          use_global_key: useGlobalKey,
+          infinidream_algorithm: algorithm,
           auto_upload: true,
           previous_dream_status: previousStatus,
-          ...promptJson,
         };
 
-        const result = await queueWorkerJob(queueName, jobData);
+        let result;
+        try {
+          result = await queueWorkerJob(queueName, jobData);
+        } catch (queueError) {
+          APP_LOGGER.error(
+            `queueWorkerJob threw for dream ${dream.uuid}:`,
+            queueError,
+          );
+          if (chargedUsd != null) {
+            await refundProviderCredits(dream.user.id, chargedUsd);
+          }
+          throw queueError;
+        }
 
         if (result.success) {
+          if (chargedUsd != null) {
+            await dreamRepository.update(
+              { uuid: dream.uuid },
+              { reservedCostUsd: chargedUsd },
+            );
+          }
           return { id: result.jobId, status: "queued", isPromptBased: true };
         } else {
           APP_LOGGER.error(
             `Failed to queue worker job for dream ${dream.uuid}: ${result.error}`,
           );
+          if (chargedUsd != null) {
+            await refundProviderCredits(dream.user.id, chargedUsd);
+          }
         }
       }
     } else {

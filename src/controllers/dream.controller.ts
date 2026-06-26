@@ -49,9 +49,11 @@ import {
   getDreamSelectedColumns,
   handleVoteDream,
   processDreamRequest,
+  refundReservedDreamCost,
 } from "utils/dream.util";
 import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { canExecuteAction } from "utils/permissions.util";
+import { INSUFFICIENT_CREDITS_CODE } from "services/provider-credit.service";
 import {
   refreshPlaylistUpdatedAtTimestampFromPlaylistItems,
   computePlaylistThumbnailRecursive,
@@ -998,7 +1000,28 @@ export const handleProcessDream = async (
     // Store the current status before processing so we can restore it on cancel
     const previousStatus = dream.status;
 
-    await processDreamRequest(dream, previousStatus);
+    const result = await processDreamRequest(dream, previousStatus);
+
+    if (result?.status === "rejected") {
+      const [failedDream] = await dreamRepository.find({
+        where: { uuid: dreamUUID },
+        relations: { user: true },
+        select: getDreamSelectedColumns(),
+      });
+
+      const status =
+        result.errorCode === INSUFFICIENT_CREDITS_CODE
+          ? httpStatus.PAYMENT_REQUIRED
+          : httpStatus.BAD_REQUEST;
+
+      return res.status(status).json(
+        jsonResponse({
+          success: false,
+          message: failedDream?.error ?? "Unable to process this dream.",
+          data: { dream: failedDream },
+        }),
+      );
+    }
 
     const updatedDream = await dreamRepository.save({
       ...dream,
@@ -1142,6 +1165,7 @@ export const handleSetDreamStatusProcessed = async (
       render_duration,
       activityLevel,
       md5,
+      reservedCostUsd: null,
     };
 
     if (mediaType === DreamMediaType.IMAGE) {
@@ -1242,10 +1266,13 @@ export const handleSetDreamStatusFailed = async (
       return handleNotFound(req as RequestType, res);
     }
 
+    await refundReservedDreamCost(dreamUUID, dream.user.id);
+
     const updatedDream = await dreamRepository.save({
       ...dream,
       status: DreamStatusType.FAILED,
       error: error || null,
+      reservedCostUsd: null,
     });
 
     await emitDreamJobStatus({
@@ -1804,12 +1831,26 @@ export const handleCancelDreamJob = async (
       `Cancel job request for dream ${dreamUUID}: ${result.message}`,
     );
 
+    if (result.jobFound) {
+      try {
+        await refundReservedDreamCost(dreamUUID, dream.user.id);
+      } catch (refundError: unknown) {
+        APP_LOGGER.error(
+          `Failed to refund provider credits for cancelled dream ${dreamUUID}:`,
+          refundError instanceof Error
+            ? refundError.message
+            : String(refundError),
+        );
+      }
+    }
+
     // Restore the previous dream status if the job was found and had a previous status
     if (result.jobFound && result.previousStatus) {
       try {
         await dreamRepository.save({
           ...dream,
           status: result.previousStatus as DreamStatusType,
+          reservedCostUsd: null,
         });
         APP_LOGGER.info(
           `Restored dream ${dreamUUID} status from queue to ${result.previousStatus}`,

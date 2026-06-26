@@ -46,8 +46,8 @@ const validatorMiddleware = (schema: RequestValidationSchema) => {
       next();
     } else {
       // mapping erros to response
-      APP_LOGGER.error(error);
       const errors = mapValidatorErrors(error);
+      APP_LOGGER.error({ msg: "Validation error", errors });
 
       res.status(httpStatus.BAD_REQUEST).json(
         jsonResponse({

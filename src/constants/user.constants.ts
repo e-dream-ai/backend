@@ -22,3 +22,9 @@ export const MIN_USER_QUOTA = 0;
  * UTC hour when the daily quota reset cron runs: `0 7 * * *`.
  */
 export const DAILY_USER_QUOTA_RESET_UTC_HOUR = 7;
+
+/**
+ * default daily provider-credit quota (USD) spent against the company key
+ * before a user falls back to their own provider key
+ */
+export const DEFAULT_DAILY_PROVIDER_QUOTA_USD = 10;

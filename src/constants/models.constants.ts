@@ -71,6 +71,15 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
       imageSizes: ["1280*720", "1024*1024", "720*1280", "512*512"],
     },
   },
+  {
+    id: "flux-kontext-i2i",
+    label: "FLUX.1 Kontext",
+    provider: PROVIDERS.FAL,
+    mediaType: DreamMediaType.IMAGE,
+    // Image-to-image: the size follows the source image; no imageSizes constraint.
+    constraints: {},
+    pricing: { kind: "perImage", usdPerImage: 0.04 },
+  },
 ];
 
 export const getModelCatalog = (

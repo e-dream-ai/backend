@@ -21,6 +21,7 @@ const SUPPORTED_ALGORITHMS = [
   "kling-25-i2v",
   "nvidia-uprez",
   "discodiffusion",
+  "flux-kontext-i2i",
 ] as const;
 export type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
 
@@ -39,6 +40,7 @@ const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
   "kling-25-i2v": "falvideo",
   "nvidia-uprez": "nvidiavsr",
   discodiffusion: "discodiffusion",
+  "flux-kontext-i2i": "falimage",
 };
 
 export const GENERATION_QUEUES: string[] = [
@@ -96,6 +98,7 @@ export const isImageGenerationAlgorithm = (algorithm: string): boolean => {
   return (
     algorithm === "qwen-image" ||
     algorithm === "z-image-turbo" ||
-    algorithm === "flux-schnell"
+    algorithm === "flux-schnell" ||
+    algorithm === "flux-kontext-i2i"
   );
 };

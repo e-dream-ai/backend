@@ -22,6 +22,19 @@ import {
 } from "types/dream.types";
 import { RequestValidationSchema } from "types/validator.types";
 
+const sourceUrlSchema = Joi.alternatives()
+  .try(
+    Joi.string()
+      .uri({ scheme: ["http", "https"], allowRelative: false })
+      .max(500),
+    Joi.string().uuid(),
+  )
+  .optional()
+  .allow("")
+  .messages({
+    "alternatives.match": "Source must be a valid http(s) URL or a dream UUID.",
+  });
+
 export const requestDreamSchema: RequestValidationSchema = {
   params: Joi.object<DreamParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -35,18 +48,7 @@ export const createDreamSchema: RequestValidationSchema = {
       .try(Joi.string().max(30000), Joi.object())
       .optional(),
     description: Joi.string().optional().allow("").max(4000),
-    sourceUrl: Joi.string()
-      .uri({
-        scheme: ["http", "https"],
-        allowRelative: false,
-      })
-      .optional()
-      .allow("")
-      .max(500)
-      .messages({
-        "string.uri":
-          "Invalid URL format. URL must start with http:// or https://",
-      }),
+    sourceUrl: sourceUrlSchema,
     nsfw: Joi.boolean(),
     hidden: Joi.boolean().when("$isUserAdmin", {
       is: true,
@@ -54,6 +56,7 @@ export const createDreamSchema: RequestValidationSchema = {
       otherwise: Joi.forbidden(),
     }),
     ccbyLicense: Joi.boolean(),
+    draft: Joi.boolean().optional(),
     mediaType: Joi.string()
       .valid(...Object.values(DreamMediaType))
       .optional(),
@@ -82,18 +85,7 @@ export const updateDreamSchema: RequestValidationSchema = {
     }),
     description: Joi.string().optional().allow("").max(4000),
     prompt: Joi.string().optional().allow("").max(30000),
-    sourceUrl: Joi.string()
-      .uri({
-        scheme: ["http", "https"],
-        allowRelative: false,
-      })
-      .optional()
-      .allow("")
-      .max(500)
-      .messages({
-        "string.uriCustomScheme":
-          "Invalid URL format. URL must start with http:// or https://",
-      }),
+    sourceUrl: sourceUrlSchema,
     nsfw: Joi.boolean(),
     hidden: Joi.boolean().when("$isUserAdmin", {
       is: true,

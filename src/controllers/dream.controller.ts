@@ -157,6 +157,7 @@ export const handleCreateDream = async (
     const sourceUrl = req.body.sourceUrl;
     const nsfw = req.body.nsfw;
     const hidden = req.body.hidden;
+    const draft = req.body.draft ?? false;
     const ccbyLicense = user.enableCreatingProprietaryDreams
       ? req.body.ccbyLicense
       : true;
@@ -204,7 +205,7 @@ export const handleCreateDream = async (
     dream.hidden = hidden ?? false;
     dream.ccbyLicense = ccbyLicense ?? false;
     dream.mediaType = mediaType;
-    dream.status = DreamStatusType.QUEUE;
+    dream.status = draft ? DreamStatusType.NONE : DreamStatusType.QUEUE;
 
     await dreamRepository.save(dream);
 
@@ -214,7 +215,7 @@ export const handleCreateDream = async (
       select: getDreamSelectedColumns(),
     });
 
-    if (prompt) {
+    if (prompt && !draft) {
       await processDreamRequest(savedDream);
     }
 

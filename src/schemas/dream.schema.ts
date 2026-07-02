@@ -72,6 +72,18 @@ export const getDreamsSchema: RequestValidationSchema = {
   }),
 };
 
+export const getMyDreamsSchema: RequestValidationSchema = {
+  query: Joi.object().keys({
+    take: Joi.number(),
+    skip: Joi.number(),
+    search: Joi.string().allow("").optional(),
+    mediaType: Joi.string()
+      .valid(...Object.values(DreamMediaType))
+      .optional(),
+    userUUID: Joi.string().uuid().optional(),
+  }),
+};
+
 export const updateDreamSchema: RequestValidationSchema = {
   body: Joi.object<UpdateDreamRequest>().keys({
     name: Joi.string(),

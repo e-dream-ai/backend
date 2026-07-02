@@ -12,6 +12,7 @@ import {
   createMultipartUploadDreamSchema,
   createMultipartUploadFileSchema,
   getDreamsSchema,
+  getMyDreamsSchema,
   refreshMultipartUploadUrlSchema,
   requestDreamSchema,
   setDreamStatusFailedSchema,
@@ -444,7 +445,10 @@ dreamRouter.post(
  *    tags:
  *      - dream
  *    summary: Gets user dreams
- *    description: Handles get user dreams
+ *    description: >-
+ *      Returns the authenticated user's dreams across all statuses (drafts,
+ *      uploads, processing, failed, processed), newest first. Admins may pass
+ *      `userUUID` to inspect another user's dreams; it is ignored for non-admins.
  *    parameters:
  *      - schema:
  *          type: number
@@ -454,6 +458,25 @@ dreamRouter.post(
  *          type: number
  *        name: skip
  *        in: query
+ *      - schema:
+ *          type: string
+ *        name: search
+ *        in: query
+ *        description: Filters dreams by name (case-insensitive, partial match).
+ *      - schema:
+ *          type: string
+ *          enum: [video, image]
+ *        name: mediaType
+ *        in: query
+ *        description: Filters dreams by media type.
+ *      - schema:
+ *          type: string
+ *          format: uuid
+ *        name: userUUID
+ *        in: query
+ *        description: >-
+ *          Admin-only. Returns the specified user's dreams instead of the
+ *          caller's. Ignored for non-admin users.
  *    responses:
  *      '200':
  *        description: Get user dreams
@@ -491,6 +514,7 @@ dreamRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
+  validatorMiddleware(getMyDreamsSchema),
   dreamController.handleGetMyDreams,
 );
 

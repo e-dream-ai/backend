@@ -13,6 +13,7 @@ export type CreateDreamRequest = {
   hidden?: boolean;
   ccbyLicense?: boolean;
   mediaType?: DreamMediaType;
+  draft?: boolean;
 };
 
 export type Frame = { frameNumber: number; url: string };

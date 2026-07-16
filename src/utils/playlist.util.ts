@@ -64,6 +64,7 @@ export const getPlaylistSelectedColumns = ({
     name: true,
     description: true,
     thumbnail: true,
+    prompt: true,
     // items: getPlaylistItemSelectedColumns(),
     created_at: true,
     updated_at: true,

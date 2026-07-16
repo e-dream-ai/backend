@@ -21,6 +21,7 @@ export type CreatePlaylistRequest = {
   nsfw?: boolean;
   hidden?: boolean;
   loops?: number;
+  prompt?: Record<string, unknown> | string;
 };
 
 export type UpdatePlaylistRequest = {
@@ -32,6 +33,7 @@ export type UpdatePlaylistRequest = {
   hidden?: boolean;
   loops?: number;
   user?: string;
+  prompt?: Record<string, unknown> | string;
 };
 
 export type OrderPlaylist = {

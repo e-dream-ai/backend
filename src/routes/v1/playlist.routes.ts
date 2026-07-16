@@ -16,6 +16,7 @@ import {
   removePlaylistItemSchema,
   removePlaylistKeyframeSchema,
   requestPlaylistSchema,
+  runPlaylistSchema,
   updatePlaylistSchema,
 } from "schemas/playlist.schema";
 const playlistRouter = Router();
@@ -962,6 +963,88 @@ playlistRouter.post(
   ]),
   validatorMiddleware(linkPlaylistKeyframesSchema),
   playlistController.handleLinkPlaylistKeyframes,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/run:
+ *  post:
+ *    tags:
+ *      - playlist
+ *    summary: Run (or re-run) a playlist-level algorithm (e.g. uprez_playlist)
+ *    description: Syncs a derived uprez playlist with its source playlist and enqueues uprez jobs for dreams that need it.
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: Playlist uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Run summary
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.post(
+  "/:uuid/run",
+  requireAuth,
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(runPlaylistSchema),
+  playlistController.handleRunPlaylist,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/cancel:
+ *  post:
+ *    tags:
+ *      - playlist
+ *    summary: Cancel in-flight worker jobs for a playlist's derived dreams
+ *    description: Cancels any running uprez jobs for the derived dreams of a playlist.
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: Playlist uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Cancel summary
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.post(
+  "/:uuid/cancel",
+  requireAuth,
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(runPlaylistSchema),
+  playlistController.handleCancelPlaylist,
 );
 
 /**

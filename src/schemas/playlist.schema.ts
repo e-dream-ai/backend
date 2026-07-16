@@ -40,6 +40,10 @@ export const createPlaylistSchema: RequestValidationSchema = {
       otherwise: Joi.forbidden(),
     }),
     loops: Joi.number().integer().min(0),
+    prompt: Joi.alternatives().try(
+      Joi.object().unknown(true),
+      Joi.string().max(30000),
+    ),
   }),
 };
 
@@ -60,7 +64,17 @@ export const updatePlaylistSchema: RequestValidationSchema = {
       then: Joi.allow(),
       otherwise: Joi.forbidden(),
     }),
+    prompt: Joi.alternatives().try(
+      Joi.object().unknown(true),
+      Joi.string().max(30000),
+    ),
   }),
+  params: Joi.object<PlaylistParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const runPlaylistSchema: RequestValidationSchema = {
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
   }),

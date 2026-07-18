@@ -20,6 +20,7 @@ import {
   playlistItemRepository,
 } from "database/repositories";
 import {
+  Dream,
   FeedItem,
   Playlist,
   PlaylistItem,
@@ -58,6 +59,8 @@ import {
 import {
   deletePlaylistItemAndResetOrder,
   deletePlaylistKeyframeAndResetOrder,
+  detectPlaylistKeyframeLoop,
+  hasLinkedPlaylistKeyframes,
   linkPlaylistKeyframes,
   findOnePlaylist,
   findOnePlaylistWithoutItems,
@@ -1067,6 +1070,19 @@ export const handleOrderPlaylist = async (
       return handleForbidden(req as RequestType, res);
     }
 
+    const dreamItemsBeforeReorder = await playlistItemRepository.find({
+      where: { playlist: { id: playlist.id }, type: PlaylistItemType.DREAM },
+      relations: { dreamItem: { startKeyframe: true, endKeyframe: true } },
+      order: { order: "ASC" },
+    });
+    const dreamsBeforeReorder = dreamItemsBeforeReorder
+      .map((item) => item.dreamItem)
+      .filter((dream): dream is Dream => Boolean(dream));
+    const wasKeyframeLinked = hasLinkedPlaylistKeyframes(dreamsBeforeReorder);
+    const loop = wasKeyframeLinked
+      ? detectPlaylistKeyframeLoop(dreamsBeforeReorder)
+      : false;
+
     /**
      * update item order
      */
@@ -1080,6 +1096,15 @@ export const handleOrderPlaylist = async (
         },
         { order: item.order },
       );
+    }
+
+    if (wasKeyframeLinked) {
+      await linkPlaylistKeyframes({
+        playlistId: playlist.id,
+        userId: user.id,
+        loop,
+        clear: true,
+      });
     }
 
     /**

@@ -12,6 +12,7 @@ import { parsePromptJson } from "./prompt.util";
 import { processDreamRequest } from "./dream.util";
 import {
   bulkDeletePlaylistItemsAndResetOrder,
+  detectPlaylistKeyframeLoop,
   linkPlaylistKeyframes,
   refreshPlaylistUpdatedAtTimestamp,
 } from "./playlist.util";
@@ -71,13 +72,7 @@ export const runUprezPlaylist = async ({
   const sourceUuidSet = new Set(sourceDreams.map((dream) => dream.uuid));
   const sourceOrder = new Map<string, number>();
   sourceDreams.forEach((dream, index) => sourceOrder.set(dream.uuid, index));
-  const firstSource = sourceDreams[0];
-  const lastSource = sourceDreams[sourceDreams.length - 1];
-  const loop = Boolean(
-    firstSource?.startKeyframe?.uuid &&
-      lastSource?.endKeyframe?.uuid &&
-      lastSource.endKeyframe.uuid === firstSource.startKeyframe.uuid,
-  );
+  const loop = detectPlaylistKeyframeLoop(sourceDreams);
 
   const derivedItems = await getOrderedDreamItems(playlist.id);
   const existingBySource = new Map<string, PlaylistItem>();

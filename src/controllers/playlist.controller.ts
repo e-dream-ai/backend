@@ -49,6 +49,12 @@ import {
 } from "types/playlist.types";
 import { computeDefaultPlaylistFromUserId } from "utils/default-playlist.util";
 import { canExecuteAction } from "utils/permissions.util";
+import { parsePromptJson, serializePrompt } from "utils/prompt.util";
+import { isUprezPlaylistPrompt } from "utils/playlist-prompt.util";
+import {
+  runUprezPlaylist,
+  cancelUprezPlaylist,
+} from "utils/uprez-playlist.util";
 import {
   deletePlaylistItemAndResetOrder,
   deletePlaylistKeyframeAndResetOrder,
@@ -661,7 +667,7 @@ export const handleCreatePlaylist = async (
   req: RequestType<CreatePlaylistRequest>,
   res: ResponseType,
 ) => {
-  const { name, description, nsfw, hidden, loops } = req.body;
+  const { name, description, nsfw, hidden, loops, prompt } = req.body;
   const user = res.locals.user!;
 
   try {
@@ -672,6 +678,7 @@ export const handleCreatePlaylist = async (
     playlist.nsfw = nsfw ?? false;
     playlist.hidden = hidden ?? false;
     playlist.loops = loops ?? 0;
+    playlist.prompt = serializePrompt(prompt);
     playlist.user = user!;
     const createdPlaylist = await playlistRepository.save(playlist);
 
@@ -752,6 +759,7 @@ export const handleUpdatePlaylist = async (
     const {
       displayedOwner: _displayedOwner,
       user: _user,
+      prompt: _prompt,
       ...sanitizedData
     } = req.body;
     /* eslint-enable @typescript-eslint/no-unused-vars */
@@ -759,8 +767,15 @@ export const handleUpdatePlaylist = async (
     // Define an object to hold the fields that are allowed to be updated
     let updateData: Partial<Playlist> = sanitizedData as Omit<
       UpdatePlaylistRequest,
-      "displayedOwner" | "user"
+      "displayedOwner" | "user" | "prompt"
     >;
+
+    if (req.body.prompt !== undefined) {
+      updateData = {
+        ...updateData,
+        prompt: serializePrompt(req.body.prompt),
+      };
+    }
 
     let displayedOwner: User | null = null;
     if (isAdmin(user) && req.body.displayedOwner) {
@@ -1549,6 +1564,91 @@ export const handleLinkPlaylistKeyframes = async (
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { linkedDreams } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+const loadPlaylistForOwnerAction = async (
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+): Promise<Playlist | null> => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+
+  const playlist = await playlistRepository.findOne({
+    where: { uuid },
+    select: { id: true, uuid: true, prompt: true, user: { id: true } },
+    relations: { user: true },
+  });
+
+  if (!playlist) {
+    handleNotFound(req as RequestType, res);
+    return null;
+  }
+
+  const isAllowed = canExecuteAction({
+    isOwner: playlist.user.id === user.id,
+    allowedRoles: [ROLES.ADMIN_GROUP],
+    userRole: user?.role?.name,
+  });
+
+  if (!isAllowed) {
+    handleForbidden(req as RequestType, res);
+    return null;
+  }
+
+  return playlist;
+};
+
+export const handleRunPlaylist = async (
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+) => {
+  try {
+    const playlist = await loadPlaylistForOwnerAction(req, res);
+    if (!playlist) return;
+
+    const prompt = parsePromptJson(playlist);
+
+    if (!isUprezPlaylistPrompt(prompt)) {
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message: "Playlist is not a runnable uprez playlist",
+        }),
+      );
+    }
+
+    const result = await runUprezPlaylist({
+      playlist,
+      prompt,
+      userId: res.locals.user!.id,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { result } }));
+  } catch (err) {
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+export const handleCancelPlaylist = async (
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+) => {
+  try {
+    const playlist = await loadPlaylistForOwnerAction(req, res);
+    if (!playlist) return;
+
+    const result = await cancelUprezPlaylist(playlist.id);
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { result } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

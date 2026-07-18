@@ -1,10 +1,23 @@
-import { Dream } from "entities";
 import { APP_LOGGER } from "shared/logger";
 
 export interface PromptJson {
   infinidream_algorithm: string;
   [key: string]: unknown;
 }
+
+export interface PromptCarrier {
+  uuid: string;
+  prompt?: string | null;
+}
+
+export const serializePrompt = (
+  prompt?: Record<string, unknown> | string | null,
+): string | null => {
+  if (prompt === undefined || prompt === null) {
+    return null;
+  }
+  return typeof prompt === "string" ? prompt : JSON.stringify(prompt);
+};
 
 const SUPPORTED_ALGORITHMS = [
   "animatediff",
@@ -45,20 +58,20 @@ export const GENERATION_QUEUES: string[] = [
   ...new Set(Object.values(ALGORITHM_TO_QUEUE_MAP)),
 ];
 
-export const parsePromptJson = (dream: Dream): PromptJson | null => {
-  if (!dream.prompt) {
+export const parsePromptJson = (entity: PromptCarrier): PromptJson | null => {
+  if (!entity.prompt) {
     return null;
   }
 
   try {
     const parsed =
-      typeof dream.prompt === "string"
-        ? JSON.parse(dream.prompt)
-        : dream.prompt;
+      typeof entity.prompt === "string"
+        ? JSON.parse(entity.prompt)
+        : entity.prompt;
 
     if (!parsed.infinidream_algorithm) {
       APP_LOGGER.warn(
-        `Dream ${dream.uuid} has prompt but missing infinidream_algorithm`,
+        `Entity ${entity.uuid} has prompt but missing infinidream_algorithm`,
       );
       return null;
     }
@@ -66,7 +79,7 @@ export const parsePromptJson = (dream: Dream): PromptJson | null => {
     return parsed as PromptJson;
   } catch (error) {
     APP_LOGGER.error(
-      `Failed to parse prompt JSON for dream ${dream.uuid}:`,
+      `Failed to parse prompt JSON for entity ${entity.uuid}:`,
       error,
     );
     return null;

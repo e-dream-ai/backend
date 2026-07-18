@@ -57,6 +57,9 @@ export class Playlist {
   @Column({ nullable: true, type: "varchar" })
   thumbnail?: string | null;
 
+  @Column({ nullable: true, type: "json" })
+  prompt?: string | null;
+
   /**
    * Items which belong to current playlist
    */

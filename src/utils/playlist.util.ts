@@ -760,6 +760,19 @@ export const deletePlaylistKeyframeAndResetOrder = async ({
   });
 };
 
+export const hasLinkedPlaylistKeyframes = (dreams: Dream[]): boolean =>
+  dreams.some((dream) => dream.startKeyframe || dream.endKeyframe);
+
+export const detectPlaylistKeyframeLoop = (dreams: Dream[]): boolean => {
+  const first = dreams[0];
+  const last = dreams[dreams.length - 1];
+  return Boolean(
+    first?.startKeyframe?.uuid &&
+      last?.endKeyframe?.uuid &&
+      last.endKeyframe.uuid === first.startKeyframe.uuid,
+  );
+};
+
 export const linkPlaylistKeyframes = async ({
   playlistId,
   userId,

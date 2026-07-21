@@ -6,7 +6,6 @@ import {
   GetPlaylistQuery,
   GetPlaylistItemsQuery,
   GetPlaylistKeyframesQuery,
-  LinkPlaylistKeyframesRequest,
   OrderPlaylist,
   OrderPlaylistRequest,
   PlaylistItemType,
@@ -128,16 +127,6 @@ export const removePlaylistKeyframeSchema: RequestValidationSchema = {
   params: Joi.object<RemovePlaylistKeyframeRequest>().keys({
     uuid: Joi.string().uuid().required(),
     playlistKeyframeId: Joi.number().integer().positive().required(),
-  }),
-};
-
-export const linkPlaylistKeyframesSchema: RequestValidationSchema = {
-  body: Joi.object<LinkPlaylistKeyframesRequest>().keys({
-    loop: Joi.boolean(),
-    clear: Joi.boolean(),
-  }),
-  params: Joi.object<PlaylistParamsRequest>().keys({
-    uuid: Joi.string().uuid().required(),
   }),
 };
 

@@ -20,7 +20,6 @@ import {
   playlistItemRepository,
 } from "database/repositories";
 import {
-  Dream,
   FeedItem,
   Playlist,
   PlaylistItem,
@@ -40,7 +39,6 @@ import {
   GetPlaylistQuery,
   GetPlaylistItemsQuery,
   GetPlaylistKeyframesQuery,
-  LinkPlaylistKeyframesRequest,
   OrderPlaylistRequest,
   PlaylistItemType,
   PlaylistParamsRequest,
@@ -59,8 +57,6 @@ import {
 import {
   deletePlaylistItemAndResetOrder,
   deletePlaylistKeyframeAndResetOrder,
-  getOwnedPlaylistKeyframeLinkState,
-  linkPlaylistKeyframes,
   findOnePlaylist,
   findOnePlaylistWithoutItems,
   getPaginatedPlaylistItems,
@@ -1069,19 +1065,6 @@ export const handleOrderPlaylist = async (
       return handleForbidden(req as RequestType, res);
     }
 
-    const dreamItemsBeforeReorder = await playlistItemRepository.find({
-      where: { playlist: { id: playlist.id }, type: PlaylistItemType.DREAM },
-      relations: { dreamItem: { startKeyframe: true, endKeyframe: true } },
-      order: { order: "ASC" },
-    });
-    const dreamsBeforeReorder = dreamItemsBeforeReorder
-      .map((item) => item.dreamItem)
-      .filter((dream): dream is Dream => Boolean(dream));
-    const keyframeLinkState = await getOwnedPlaylistKeyframeLinkState({
-      playlistId: playlist.id,
-      dreams: dreamsBeforeReorder,
-    });
-
     /**
      * update item order
      */
@@ -1095,15 +1078,6 @@ export const handleOrderPlaylist = async (
         },
         { order: item.order },
       );
-    }
-
-    if (keyframeLinkState) {
-      await linkPlaylistKeyframes({
-        playlistId: playlist.id,
-        userId: user.id,
-        loop: keyframeLinkState.loop,
-        clear: true,
-      });
     }
 
     /**
@@ -1521,73 +1495,6 @@ export const handleRemovePlaylistKeyframe = async (
     await refreshPlaylistUpdatedAtTimestamp(playlist.id);
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
-  } catch (err) {
-    const error = err as Error;
-    return handleInternalServerError(error, req as RequestType, res);
-  }
-};
-
-/**
- * Handles linking a playlist's dreams together with shared keyframes so
- * playback is seamless (dream[i].end === dream[i+1].start; wraps to the first
- * dream when looping). Keyframes are created without images.
- *
- * @param {RequestType} req - Request object
- * @param {Response} res - Response object
- *
- * @returns {Response} Returns response
- * OK 200 - number of linked dreams
- * NOT_FOUND 404 - playlist not found
- * FORBIDDEN 403 - not the owner
- */
-export const handleLinkPlaylistKeyframes = async (
-  req: RequestType<
-    LinkPlaylistKeyframesRequest,
-    unknown,
-    PlaylistParamsRequest
-  >,
-  res: ResponseType,
-) => {
-  const uuid: string = req.params.uuid!;
-  const user = res.locals.user!;
-  const loop = req.body.loop ?? false;
-  const clear = req.body.clear ?? false;
-
-  try {
-    const playlist = await playlistRepository.findOne({
-      where: { uuid },
-      select: { id: true, user: { id: true } },
-      relations: {
-        user: true,
-      },
-    });
-
-    if (!playlist) {
-      return handleNotFound(req as RequestType, res);
-    }
-
-    const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user.id,
-      allowedRoles: [ROLES.ADMIN_GROUP],
-      userRole: user?.role?.name,
-    });
-
-    if (!isAllowed) {
-      return handleForbidden(req as RequestType, res);
-    }
-
-    const linkedDreams = await linkPlaylistKeyframes({
-      playlistId: playlist.id,
-      userId: user.id,
-      loop,
-      clear,
-    });
-
-    await refreshPlaylistUpdatedAtTimestamp(playlist.id);
-
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { linkedDreams } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);

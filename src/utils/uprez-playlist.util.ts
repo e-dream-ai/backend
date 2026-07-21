@@ -1,4 +1,12 @@
-import { Dream, Playlist, PlaylistItem, User } from "entities";
+import {
+  Dream,
+  Keyframe,
+  Playlist,
+  PlaylistItem,
+  PlaylistKeyframe,
+  User,
+} from "entities";
+import appDataSource from "database/app-data-source";
 import {
   dreamRepository,
   playlistItemRepository,
@@ -12,8 +20,6 @@ import { parsePromptJson } from "./prompt.util";
 import { processDreamRequest } from "./dream.util";
 import {
   bulkDeletePlaylistItemsAndResetOrder,
-  detectPlaylistKeyframeLoop,
-  linkPlaylistKeyframes,
   refreshPlaylistUpdatedAtTimestamp,
 } from "./playlist.util";
 import { cancelJobAcrossQueues } from "./job-cancel.util";
@@ -39,6 +45,82 @@ const getOrderedDreamItems = (playlistId: number): Promise<PlaylistItem[]> =>
     where: { playlist: { id: playlistId }, type: PlaylistItemType.DREAM },
     relations: { dreamItem: { startKeyframe: true, endKeyframe: true } },
     order: { order: "ASC" },
+  });
+
+const detectSourceLoop = (dreams: Dream[]): boolean => {
+  const first = dreams[0];
+  const last = dreams[dreams.length - 1];
+  return Boolean(
+    first?.startKeyframe?.uuid &&
+      last?.endKeyframe?.uuid &&
+      last.endKeyframe.uuid === first.startKeyframe.uuid,
+  );
+};
+
+const linkUprezPlaylistKeyframes = async ({
+  playlistId,
+  userId,
+  loop,
+}: {
+  playlistId: number;
+  userId: number;
+  loop: boolean;
+}): Promise<number> =>
+  appDataSource.transaction(async (manager) => {
+    const items = await manager.find(PlaylistItem, {
+      where: { playlist: { id: playlistId }, type: PlaylistItemType.DREAM },
+      relations: { dreamItem: true },
+      order: { order: "ASC" },
+    });
+    const dreams = items
+      .map((item) => item.dreamItem)
+      .filter((dream): dream is Dream => Boolean(dream));
+
+    if (dreams.length === 0) return 0;
+
+    const existing = await manager.find(PlaylistKeyframe, {
+      where: { playlist: { id: playlistId } },
+    });
+    if (existing.length > 0) await manager.softRemove(existing);
+
+    const userRef = { id: userId } as User;
+    const playlistRef = { id: playlistId } as Playlist;
+    const keyframeNames = dreams.map(
+      (dream, index) => `kf_${dream.name ?? index}`,
+    );
+    if (!loop) {
+      const lastDream = dreams[dreams.length - 1];
+      keyframeNames.push(`kf_end_${lastDream.name ?? dreams.length - 1}`);
+    }
+
+    const keyframes = await manager.save(
+      keyframeNames.map((name) => {
+        const keyframe = new Keyframe();
+        keyframe.name = name;
+        keyframe.user = userRef;
+        return keyframe;
+      }),
+    );
+
+    await manager.save(
+      keyframes.map((keyframe, order) => {
+        const playlistKeyframe = new PlaylistKeyframe();
+        playlistKeyframe.playlist = playlistRef;
+        playlistKeyframe.keyframe = keyframe;
+        playlistKeyframe.order = order;
+        return playlistKeyframe;
+      }),
+    );
+
+    for (let index = 0; index < dreams.length; index++) {
+      const endKeyframe = keyframes[index + 1] ?? (loop ? keyframes[0] : null);
+      await manager.update(Dream, dreams[index].id, {
+        startKeyframe: keyframes[index],
+        endKeyframe,
+      });
+    }
+
+    return dreams.length;
   });
 
 export const runUprezPlaylist = async ({
@@ -72,7 +154,7 @@ export const runUprezPlaylist = async ({
   const sourceUuidSet = new Set(sourceDreams.map((dream) => dream.uuid));
   const sourceOrder = new Map<string, number>();
   sourceDreams.forEach((dream, index) => sourceOrder.set(dream.uuid, index));
-  const loop = detectPlaylistKeyframeLoop(sourceDreams);
+  const loop = detectSourceLoop(sourceDreams);
 
   const derivedItems = await getOrderedDreamItems(playlist.id);
   const existingBySource = new Map<string, PlaylistItem>();
@@ -203,11 +285,10 @@ export const runUprezPlaylist = async ({
     }
   }
 
-  result.linked = await linkPlaylistKeyframes({
+  result.linked = await linkUprezPlaylistKeyframes({
     playlistId: playlist.id,
     userId,
     loop,
-    clear: true,
   });
 
   await refreshPlaylistUpdatedAtTimestamp(playlist.id);

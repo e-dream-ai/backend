@@ -11,7 +11,6 @@ import {
   createPlaylistSchema,
   getPlaylistItemsSchema,
   getPlaylistKeyframesSchema,
-  linkPlaylistKeyframesSchema,
   orderPlaylistSchema,
   removePlaylistItemSchema,
   removePlaylistKeyframeSchema,
@@ -908,61 +907,6 @@ playlistRouter.post(
   ]),
   validatorMiddleware(addPlaylistKeyframeSchema),
   playlistController.handleAddPlaylistKeyframe,
-);
-
-/**
- * @swagger
- * /api/v1/playlist/{uuid}/link-keyframes:
- *  post:
- *    tags:
- *      - playlist
- *    summary: Links a playlist's dreams with shared keyframes for seamless playback
- *    description: Creates one imageless keyframe per dream and chains them so each dream's end keyframe is the next dream's start keyframe (wraps to the first dream when loop is true).
- *    parameters:
- *      - name: uuid
- *        in: path
- *        description: Playlist uuid
- *        required: true
- *        schema:
- *          type: string
- *    requestBody:
- *      content:
- *        application/json:
- *          schema:
- *            type: object
- *            properties:
- *              loop:
- *                type: boolean
- *              clear:
- *                type: boolean
- *    responses:
- *      '200':
- *        description: Number of linked dreams
- *        content:
- *          application/json:
- *            schema:
- *              allOf:
- *                - $ref: '#/components/schemas/ApiResponse'
- *      '400':
- *        description: Bad request
- *        content:
- *          application/json:
- *            schema:
- *              $ref: '#/components/schemas/BadApiResponse'
- *    security:
- *      - bearerAuth: []
- *      - apiKeyAuth: []
- */
-playlistRouter.post(
-  "/:uuid/link-keyframes",
-  requireAuth,
-  checkRoleMiddleware([
-    ROLES.USER_GROUP,
-    ROLES.CREATOR_GROUP,
-    ROLES.ADMIN_GROUP,
-  ]),
-  validatorMiddleware(linkPlaylistKeyframesSchema),
-  playlistController.handleLinkPlaylistKeyframes,
 );
 
 /**

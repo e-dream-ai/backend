@@ -760,8 +760,52 @@ export const deletePlaylistKeyframeAndResetOrder = async ({
   });
 };
 
-export const hasLinkedPlaylistKeyframes = (dreams: Dream[]): boolean =>
-  dreams.some((dream) => dream.startKeyframe || dream.endKeyframe);
+const getLinkedPlaylistKeyframeName = (dream: Dream, index: number): string =>
+  `kf_${dream.name ?? index}`;
+
+export const getOwnedPlaylistKeyframeLinkState = async ({
+  playlistId,
+  dreams,
+}: {
+  playlistId: number;
+  dreams: Dream[];
+}): Promise<{ loop: boolean } | null> => {
+  if (dreams.length === 0) {
+    return null;
+  }
+
+  const playlistKeyframes = await playlistKeyframeRepository.find({
+    where: { playlist: { id: playlistId } },
+    relations: { keyframe: true },
+    order: { order: "ASC" },
+  });
+
+  if (playlistKeyframes.length !== dreams.length) {
+    return null;
+  }
+
+  const loop = detectPlaylistKeyframeLoop(dreams);
+  const firstKeyframeUUID = playlistKeyframes[0].keyframe.uuid;
+  const ownsSequentialChain = dreams.every((dream, index) => {
+    const { keyframe, order } = playlistKeyframes[index];
+    const expectedEndKeyframeUUID =
+      playlistKeyframes[index + 1]?.keyframe.uuid ??
+      (loop ? firstKeyframeUUID : null);
+
+    return (
+      order === index &&
+      keyframe.name === getLinkedPlaylistKeyframeName(dream, index) &&
+      dream.startKeyframe?.uuid === keyframe.uuid &&
+      (dream.endKeyframe?.uuid ?? null) === expectedEndKeyframeUUID
+    );
+  });
+
+  if (!ownsSequentialChain) {
+    return null;
+  }
+
+  return { loop };
+};
 
 export const detectPlaylistKeyframeLoop = (dreams: Dream[]): boolean => {
   const first = dreams[0];
@@ -814,7 +858,7 @@ export const linkPlaylistKeyframes = async ({
     const keyframes = await manager.save(
       dreams.map((dream, i) => {
         const keyframe = new Keyframe();
-        keyframe.name = `kf_${dream.name ?? i}`;
+        keyframe.name = getLinkedPlaylistKeyframeName(dream, i);
         keyframe.user = userRef;
         return keyframe;
       }),

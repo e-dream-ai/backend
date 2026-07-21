@@ -85,10 +85,18 @@ const linkUprezPlaylistKeyframes = async ({
 
     const userRef = { id: userId } as User;
     const playlistRef = { id: playlistId } as Playlist;
+    const keyframeNames = dreams.map(
+      (dream, index) => `kf_${dream.name ?? index}`,
+    );
+    if (!loop) {
+      const lastDream = dreams[dreams.length - 1];
+      keyframeNames.push(`kf_end_${lastDream.name ?? dreams.length - 1}`);
+    }
+
     const keyframes = await manager.save(
-      dreams.map((dream, index) => {
+      keyframeNames.map((name) => {
         const keyframe = new Keyframe();
-        keyframe.name = `kf_${dream.name ?? index}`;
+        keyframe.name = name;
         keyframe.user = userRef;
         return keyframe;
       }),

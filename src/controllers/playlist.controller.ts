@@ -59,8 +59,7 @@ import {
 import {
   deletePlaylistItemAndResetOrder,
   deletePlaylistKeyframeAndResetOrder,
-  detectPlaylistKeyframeLoop,
-  hasLinkedPlaylistKeyframes,
+  getOwnedPlaylistKeyframeLinkState,
   linkPlaylistKeyframes,
   findOnePlaylist,
   findOnePlaylistWithoutItems,
@@ -1078,10 +1077,10 @@ export const handleOrderPlaylist = async (
     const dreamsBeforeReorder = dreamItemsBeforeReorder
       .map((item) => item.dreamItem)
       .filter((dream): dream is Dream => Boolean(dream));
-    const wasKeyframeLinked = hasLinkedPlaylistKeyframes(dreamsBeforeReorder);
-    const loop = wasKeyframeLinked
-      ? detectPlaylistKeyframeLoop(dreamsBeforeReorder)
-      : false;
+    const keyframeLinkState = await getOwnedPlaylistKeyframeLinkState({
+      playlistId: playlist.id,
+      dreams: dreamsBeforeReorder,
+    });
 
     /**
      * update item order
@@ -1098,11 +1097,11 @@ export const handleOrderPlaylist = async (
       );
     }
 
-    if (wasKeyframeLinked) {
+    if (keyframeLinkState) {
       await linkPlaylistKeyframes({
         playlistId: playlist.id,
         userId: user.id,
-        loop,
+        loop: keyframeLinkState.loop,
         clear: true,
       });
     }

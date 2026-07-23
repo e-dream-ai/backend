@@ -25,26 +25,33 @@ const SUPPORTED_ALGORITHMS = [
 ] as const;
 export type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
 
-const ALGORITHM_TO_QUEUE_MAP: Record<SupportedAlgorithm, string> = {
-  animatediff: "video",
-  deforum: "deforumvideo",
-  uprez: "uprezvideo",
-  "qwen-image": "qwenimage",
-  "z-image-turbo": "zimageturbo",
-  "flux-schnell": "falimage",
-  "wan-t2v": "want2v",
-  "wan-i2v": "wani2v",
-  "wan-i2v-lora": "wani2vlora",
-  "ltx-i2v": "ltxi2v",
-  "kling-i2v": "falvideo",
-  "kling-25-i2v": "falvideo",
-  "nvidia-uprez": "nvidiavsr",
-  discodiffusion: "discodiffusion",
-  "flux-kontext-i2i": "falimage",
+type AlgorithmMedia = "image" | "video";
+
+interface AlgorithmSpec {
+  queue: string;
+  media: AlgorithmMedia;
+}
+
+const ALGORITHM_REGISTRY: Record<SupportedAlgorithm, AlgorithmSpec> = {
+  animatediff: { queue: "video", media: "video" },
+  deforum: { queue: "deforumvideo", media: "video" },
+  uprez: { queue: "uprezvideo", media: "video" },
+  "qwen-image": { queue: "qwenimage", media: "image" },
+  "z-image-turbo": { queue: "zimageturbo", media: "image" },
+  "flux-schnell": { queue: "falimage", media: "image" },
+  "wan-t2v": { queue: "want2v", media: "video" },
+  "wan-i2v": { queue: "wani2v", media: "video" },
+  "wan-i2v-lora": { queue: "wani2vlora", media: "video" },
+  "ltx-i2v": { queue: "ltxi2v", media: "video" },
+  "kling-i2v": { queue: "falvideo", media: "video" },
+  "kling-25-i2v": { queue: "falvideo", media: "video" },
+  "nvidia-uprez": { queue: "nvidiavsr", media: "video" },
+  discodiffusion: { queue: "discodiffusion", media: "video" },
+  "flux-kontext-i2i": { queue: "falimage", media: "image" },
 };
 
 export const GENERATION_QUEUES: string[] = [
-  ...new Set(Object.values(ALGORITHM_TO_QUEUE_MAP)),
+  ...new Set(Object.values(ALGORITHM_REGISTRY).map((spec) => spec.queue)),
 ];
 
 export const parsePromptJson = (dream: Dream): PromptJson | null => {
@@ -91,14 +98,9 @@ export const mapAlgorithmToQueue = (algorithm: string): string | null => {
   if (!isValidAlgorithm(algorithm)) {
     return null;
   }
-  return ALGORITHM_TO_QUEUE_MAP[algorithm];
+  return ALGORITHM_REGISTRY[algorithm].queue;
 };
 
-export const isImageGenerationAlgorithm = (algorithm: string): boolean => {
-  return (
-    algorithm === "qwen-image" ||
-    algorithm === "z-image-turbo" ||
-    algorithm === "flux-schnell" ||
-    algorithm === "flux-kontext-i2i"
-  );
-};
+export const isImageGenerationAlgorithm = (algorithm: string): boolean =>
+  isValidAlgorithm(algorithm) &&
+  ALGORITHM_REGISTRY[algorithm].media === "image";

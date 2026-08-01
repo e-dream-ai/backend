@@ -10,6 +10,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     constraints: {
       durationsSec: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
       supportsSteps: false,
+      supportsNegativePrompt: true,
     },
     pricing: { kind: "perSecond", usdPerSecond: 0.112 },
   },
@@ -21,6 +22,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     constraints: {
       durationsSec: [5, 10],
       supportsSteps: false,
+      supportsNegativePrompt: true,
     },
     pricing: { kind: "perSecond", usdPerSecond: 0.07, baseUsd: 0.35 },
   },
@@ -32,6 +34,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     constraints: {
       durationsSec: [5, 10, 15, 20],
       supportsSteps: true,
+      supportsNegativePrompt: true,
     },
   },
   {
@@ -41,6 +44,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     mediaType: DreamMediaType.IMAGE,
     constraints: {
       imageSizes: ["1024*768", "1024*1024", "768*1024", "1280*720", "720*1280"],
+      supportsNegativePrompt: false,
     },
     pricing: { kind: "perMegapixel", usdPerMegapixel: 0.003 },
   },
@@ -60,6 +64,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
         "1024*768",
         "768*1024",
       ],
+      supportsNegativePrompt: false,
     },
   },
   {
@@ -69,6 +74,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     mediaType: DreamMediaType.IMAGE,
     constraints: {
       imageSizes: ["1280*720", "1024*1024", "720*1280", "512*512"],
+      supportsNegativePrompt: true,
     },
   },
   {
@@ -77,7 +83,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     provider: PROVIDERS.FAL,
     mediaType: DreamMediaType.IMAGE,
     // Image-to-image: the size follows the source image; no imageSizes constraint.
-    constraints: {},
+    constraints: { supportsNegativePrompt: false },
     pricing: { kind: "perImage", usdPerImage: 0.04 },
   },
 ];

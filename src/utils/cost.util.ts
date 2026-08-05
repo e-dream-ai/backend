@@ -58,7 +58,7 @@ const assertValidParams = (
 
 // KEEP IN SYNC with frontend/src/utils/model-cost.util.ts (estimateUnitCostUsd).
 // The frontend mirrors this formula for the cost estimate UI. If you change one, change the other.
-const priceFromPricing = (
+export const priceFromPricing = (
   pricing: ModelPricing,
   params: JobCostParams,
 ): number => {
@@ -69,6 +69,10 @@ const priceFromPricing = (
       );
     case "perMegapixel":
       return pricing.usdPerMegapixel * parseMegapixels(params.imageSize!)!;
+    case "perImage":
+      // Flat per-image cost. This codebase always generates qty 1
+      // (JobCostParams carries no count), so there is no quantity term.
+      return pricing.usdPerImage;
   }
 };
 

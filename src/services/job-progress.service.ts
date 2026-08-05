@@ -1,8 +1,10 @@
 import { QueueEvents, Queue } from "bullmq";
+import { Socket } from "socket.io";
 import { redisClient } from "clients/redis.client";
 import { getIo } from "socket/io";
 import { APP_LOGGER } from "shared/logger";
 import { GENERATION_QUEUES } from "utils/prompt.util";
+import { findOneDream } from "utils/dream.util";
 
 const toNumber = (v: unknown): number | undefined => {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -45,6 +47,29 @@ const isTerminalStatus = (status: string) =>
 const clearDreamProgressCache = async (dreamUuid: string) => {
   await redisClient.del(getJobProgressKey(dreamUuid));
   await redisClient.del(`job:preview:${dreamUuid}`);
+};
+
+export const hydrateDreamProgress = async (
+  socket: Socket,
+  dreamUuid: string,
+) => {
+  const cached = await redisClient.get(getJobProgressKey(dreamUuid));
+  if (cached) {
+    socket.emit("job:progress", JSON.parse(cached));
+    return;
+  }
+
+  const dream = await findOneDream({
+    where: { uuid: dreamUuid },
+    select: { uuid: true, status: true },
+  });
+  if (!dream) return;
+
+  socket.emit("job:progress", {
+    dream_uuid: dreamUuid,
+    status: DREAM_STATUS_TO_SOCKET[dream.status] ?? dream.status,
+    updated_at: Date.now(),
+  });
 };
 
 export const emitDreamJobStatus = async (params: {
@@ -140,7 +165,7 @@ export class JobProgressService {
           }
 
           const isTerminal = status === "COMPLETED" || status === "FAILED";
-          if (dreamUuid && !isTerminal && (progress !== undefined || status)) {
+          if (dreamUuid && (progress !== undefined || status)) {
             const dreamRoomId = `DREAM:${dreamUuid}`;
             const progressData = {
               jobId,
@@ -151,12 +176,16 @@ export class JobProgressService {
               updated_at: Date.now(),
             };
 
-            await redisClient.set(
-              getJobProgressKey(dreamUuid),
-              JSON.stringify(progressData),
-              "EX",
-              PROGRESS_TTL_SECONDS,
-            );
+            if (isTerminal) {
+              await clearDreamProgressCache(dreamUuid);
+            } else {
+              await redisClient.set(
+                getJobProgressKey(dreamUuid),
+                JSON.stringify(progressData),
+                "EX",
+                PROGRESS_TTL_SECONDS,
+              );
+            }
 
             const nsp = io.of("/remote-control");
             nsp.to(dreamRoomId).emit("job:progress", progressData);

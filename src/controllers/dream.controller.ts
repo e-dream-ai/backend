@@ -1229,13 +1229,11 @@ export const handleSetDreamStatusProcessed = async (
       duration_seconds: framesToSeconds(processedVideoFrames, activityLevel),
     });
 
-    if (processedVideoSize !== undefined) {
-      await emitDreamJobStatus({
-        userId: user.id,
-        dreamUuid: dreamUUID,
-        status: DreamStatusType.PROCESSED,
-      });
-    }
+    await emitDreamJobStatus({
+      userId: user.id,
+      dreamUuid: dreamUUID,
+      status: DreamStatusType.PROCESSED,
+    });
 
     return res
       .status(httpStatus.OK)

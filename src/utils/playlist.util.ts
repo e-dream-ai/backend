@@ -162,6 +162,12 @@ export const findOnePlaylistWithoutItems = async ({
   return playlist;
 };
 
+export const sortNestedPlaylistItems = (items: PlaylistItem[]): void => {
+  for (const item of items) {
+    item.playlistItem?.items?.sort((a, b) => a.order - b.order);
+  }
+};
+
 /**
  * Creates an optimized query builder for playlist items with all necessary relations
  */
@@ -205,9 +211,12 @@ export const getPlaylistItemsQueryBuilder = (
     // Nested items within playlist items
     .leftJoinAndSelect("playlistItem.items", "nestedItems")
     .leftJoinAndSelect("nestedItems.dreamItem", "nestedDreamItem")
+    .leftJoinAndSelect("nestedDreamItem.startKeyframe", "nestedStartKeyframe")
+    .leftJoinAndSelect("nestedDreamItem.endKeyframe", "nestedEndKeyframe")
     .leftJoinAndSelect("nestedItems.playlistItem", "nestedPlaylistItem")
     // Order by item order
-    .orderBy("item.order", "ASC");
+    .orderBy("item.order", "ASC")
+    .addOrderBy("nestedItems.order", "ASC");
 
   // Apply filtering for nsfw
   if (filter?.nsfw === false) {
@@ -376,6 +385,8 @@ export const getPaginatedPlaylistItems = async ({
     // Nested items within playlist items
     .leftJoinAndSelect("playlistItem.items", "nestedItems")
     .leftJoinAndSelect("nestedItems.dreamItem", "nestedDreamItem")
+    .leftJoinAndSelect("nestedDreamItem.startKeyframe", "nestedStartKeyframe")
+    .leftJoinAndSelect("nestedDreamItem.endKeyframe", "nestedEndKeyframe")
     .leftJoinAndSelect("nestedItems.playlistItem", "nestedPlaylistItem");
 
   if (filter?.nsfw === false) {
@@ -403,6 +414,8 @@ export const getPaginatedPlaylistItems = async ({
   queryBuilder = queryBuilder.skip(skip).take(take);
 
   const [items, totalCount] = await queryBuilder.getManyAndCount();
+
+  sortNestedPlaylistItems(items);
 
   return {
     items,

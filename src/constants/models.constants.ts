@@ -11,6 +11,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
       durationsSec: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
       supportsSteps: false,
       supportsNegativePrompt: true,
+      guidance: { min: 0, max: 1, step: 0.05, default: 0.5 },
     },
     pricing: { kind: "perSecond", usdPerSecond: 0.112 },
   },
@@ -23,6 +24,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
       durationsSec: [5, 10],
       supportsSteps: false,
       supportsNegativePrompt: true,
+      guidance: { min: 0, max: 1, step: 0.05, default: 0.5 },
     },
     pricing: { kind: "perSecond", usdPerSecond: 0.07, baseUsd: 0.35 },
   },
@@ -35,6 +37,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
       durationsSec: [5, 10, 15, 20],
       supportsSteps: true,
       supportsNegativePrompt: true,
+      guidance: { min: 1, max: 5, step: 0.5, default: 1 },
     },
   },
   {

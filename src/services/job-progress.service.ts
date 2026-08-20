@@ -164,13 +164,17 @@ export class JobProgressService {
             }
           }
 
-          const isTerminal = status === "COMPLETED" || status === "FAILED";
-          if (dreamUuid && (progress !== undefined || status)) {
+          const renderFinished = status === "COMPLETED";
+          const relayedStatus = renderFinished ? undefined : status;
+          if (renderFinished && progress === undefined) progress = 100;
+
+          const isTerminal = relayedStatus === "FAILED";
+          if (dreamUuid && (progress !== undefined || relayedStatus)) {
             const dreamRoomId = `DREAM:${dreamUuid}`;
             const progressData = {
               jobId,
               dream_uuid: dreamUuid,
-              status,
+              status: relayedStatus,
               progress,
               countdown_ms: countdownMsFinal,
               updated_at: Date.now(),

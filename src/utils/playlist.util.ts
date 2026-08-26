@@ -12,13 +12,22 @@ import { PlaylistItemType } from "types/playlist.types";
 import { playlistKeyframeRepository } from "database/repositories";
 import { framesToSeconds } from "./video.utils";
 
-type GetPlaylistFilterOptions = {
+interface GetPlaylistFilterOptions {
   // userId from the user that is requesting the playlist
   // needed to handle hidden field on playlist and nested items
   userId: number;
   isAdmin?: boolean;
   nsfw?: boolean;
   onlyProcessedDreams?: boolean;
+}
+
+interface PlaylistThumbnailFilterOptions extends GetPlaylistFilterOptions {
+  rootPlaylistNsfw: boolean;
+}
+
+type PlaylistThumbnailCandidate = Pick<PlaylistItem, "id"> & {
+  dreamItem: Pick<Dream, "id" | "thumbnail"> | null;
+  playlistItem: Pick<Playlist, "id" | "thumbnail"> | null;
 };
 
 const playlistRepository = appDataSource.getRepository(Playlist);
@@ -260,7 +269,7 @@ export const getPlaylistItemsQueryBuilder = (
 
 export const computePlaylistThumbnailRecursive = async (
   playlistId: number,
-  filter: GetPlaylistFilterOptions,
+  filter: PlaylistThumbnailFilterOptions,
   visited: Set<number> = new Set(),
 ): Promise<string | null> => {
   if (visited.has(playlistId)) {
@@ -268,67 +277,77 @@ export const computePlaylistThumbnailRecursive = async (
   }
   visited.add(playlistId);
 
-  const firstItem = await getFirstVisiblePlaylistItem(playlistId, filter);
-  if (!firstItem) return null;
+  const { rootPlaylistNsfw, ...visibilityFilter } = filter;
+  const thumbnailFilter: GetPlaylistFilterOptions = {
+    ...visibilityFilter,
+    nsfw: rootPlaylistNsfw && filter.nsfw === true,
+  };
+  const items = await getVisiblePlaylistItemsForThumbnail(
+    playlistId,
+    thumbnailFilter,
+  );
 
-  if (firstItem.dreamItem?.thumbnail) {
-    return firstItem.dreamItem.thumbnail;
-  }
-
-  if (firstItem.playlistItem) {
-    if (firstItem.playlistItem.thumbnail) {
-      return firstItem.playlistItem.thumbnail;
+  for (const item of items) {
+    if (item.dreamItem?.thumbnail) {
+      return item.dreamItem.thumbnail;
     }
-    return await computePlaylistThumbnailRecursive(
-      firstItem.playlistItem.id,
+
+    if (!item.playlistItem) {
+      continue;
+    }
+
+    if (item.playlistItem.thumbnail) {
+      return item.playlistItem.thumbnail;
+    }
+
+    const nestedThumbnail = await computePlaylistThumbnailRecursive(
+      item.playlistItem.id,
       filter,
       visited,
     );
+
+    if (nestedThumbnail) {
+      return nestedThumbnail;
+    }
   }
 
   return null;
 };
 
 /**
- * Gets the first visible playlist item for a playlist using the same filtering
- * rules as paginated items, ordered by item.order ASC.
+ * Gets ordered playlist items that can provide a thumbnail under the same
+ * visibility rules as playlist contents.
  */
-export const getFirstVisiblePlaylistItem = async (
+export const getVisiblePlaylistItemsForThumbnail = async (
   playlistId: number,
   filter: GetPlaylistFilterOptions,
-) => {
+): Promise<PlaylistThumbnailCandidate[]> => {
   const isAdmin = filter.isAdmin;
   const userId = filter.userId;
 
-  const createUserFieldSelections = (alias: string) => {
-    return [`${alias}.id`, `${alias}.uuid`, `${alias}.name`, `${alias}.avatar`];
-  };
-
-  let queryBuilder = playlistItemRepository
+  const queryBuilder = playlistItemRepository
     .createQueryBuilder("item")
+    .select("item.id")
     .where("item.playlistId = :playlistId", { playlistId })
     .andWhere("item.deleted_at IS NULL")
-    .leftJoinAndSelect("item.dreamItem", "dreamItem")
-    .leftJoin("dreamItem.user", "dreamItemUser")
-    .addSelect(createUserFieldSelections("dreamItemUser"))
-    .leftJoin("dreamItem.displayedOwner", "dreamItemDisplayedOwner")
-    .addSelect(createUserFieldSelections("dreamItemDisplayedOwner"))
-    .leftJoinAndSelect("item.playlistItem", "playlistItem")
-    .leftJoin("playlistItem.user", "playlistItemUser")
-    .addSelect(createUserFieldSelections("playlistItemUser"))
-    .leftJoin("playlistItem.displayedOwner", "playlistItemDisplayedOwner")
-    .addSelect(createUserFieldSelections("playlistItemDisplayedOwner"))
+    .leftJoin("item.dreamItem", "dreamItem")
+    .addSelect(["dreamItem.id", "dreamItem.thumbnail"])
+    .leftJoin("item.playlistItem", "playlistItem")
+    .addSelect(["playlistItem.id", "playlistItem.thumbnail"])
+    .andWhere(
+      "(dreamItem.thumbnail IS NOT NULL OR playlistItem.id IS NOT NULL)",
+    )
     .orderBy("item.order", "ASC")
-    .take(1);
+    .addOrderBy("item.id", "ASC");
 
   if (filter?.nsfw === false) {
-    queryBuilder = queryBuilder
+    queryBuilder
       .andWhere("(dreamItem.nsfw = false OR dreamItem.nsfw IS NULL)")
       .andWhere("(playlistItem.nsfw = false OR playlistItem.nsfw IS NULL)");
   }
 
   if (!isAdmin) {
-    queryBuilder = queryBuilder
+    queryBuilder
       .andWhere(
         "(dreamItem.hidden = false OR dreamItem.hidden IS NULL OR dreamItem.userId = :userId)",
         { userId },
@@ -339,7 +358,21 @@ export const getFirstVisiblePlaylistItem = async (
       );
   }
 
-  return await queryBuilder.getOne();
+  if (filter.onlyProcessedDreams) {
+    queryBuilder.andWhere(
+      `(
+        (dreamItem.status = :status AND
+          (dreamItem.mediaType IS NULL OR dreamItem.mediaType != :imageMediaType)) OR
+        playlistItem.id IS NOT NULL
+      )`,
+      {
+        status: DreamStatusType.PROCESSED,
+        imageMediaType: DreamMediaType.IMAGE,
+      },
+    );
+  }
+
+  return await queryBuilder.getMany();
 };
 
 /**

@@ -846,6 +846,7 @@ export const handleGetDream = async (
             isAdmin: isUserAdmin,
             nsfw: user?.nsfw,
             onlyProcessedDreams: true,
+            rootPlaylistNsfw: pi.playlist.nsfw,
           },
         );
         if (fallbackThumb) {
@@ -1211,6 +1212,7 @@ export const handleSetDreamStatusProcessed = async (
             isAdmin: isUserAdmin,
             nsfw: user?.nsfw,
             onlyProcessedDreams: true,
+            rootPlaylistNsfw: pi.playlist.nsfw,
           },
         );
         if (fallbackThumb) {

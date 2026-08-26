@@ -298,7 +298,12 @@ export const handleGetGroupedFeed = async (
       skip,
     });
 
-    const feed = await formatFeedResponse(rawFeed);
+    const feed = await formatFeedResponse(rawFeed, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw,
+      onlyProcessedDreams: true,
+    });
 
     // Transform feed items to include signed URLs
     const transformedFeed = await transformFeedItemsWithSignedUrls(feed);

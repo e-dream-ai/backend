@@ -211,6 +211,7 @@ export const getFeedPlaylistItemSelectedColumns =
       name: true,
       description: true,
       thumbnail: true,
+      nsfw: true,
       featureRank: true,
       user: getUserSelectedColumns(),
       displayedOwner: getUserSelectedColumns(),
@@ -340,16 +341,16 @@ export const groupFeedDreamItemsByPlaylist = (
   return playlistsMap;
 };
 
-type FeedVisibilityFilter = {
+interface FeedVisibilityFilter {
   userId: number;
   isAdmin?: boolean;
   nsfw?: boolean;
   onlyProcessedDreams?: boolean;
-};
+}
 
 export const formatFeedResponse = async (
   feed: FeedItem[],
-  filter?: FeedVisibilityFilter,
+  filter: FeedVisibilityFilter,
 ): Promise<FeedItem[]> => {
   const processedItems = feed.map(async (item) => {
     /**
@@ -360,11 +361,9 @@ export const formatFeedResponse = async (
     if (item.playlistItem?.id && !item.playlistItem.thumbnail) {
       const fallbackThumbnail = await computePlaylistThumbnailRecursive(
         item.playlistItem.id,
-        filter ?? {
-          userId: 0,
-          isAdmin: false,
-          nsfw: true,
-          onlyProcessedDreams: true,
+        {
+          ...filter,
+          rootPlaylistNsfw: item.playlistItem.nsfw,
         },
       );
       if (fallbackThumbnail) {

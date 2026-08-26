@@ -597,6 +597,8 @@ export const handleCurrentUserPlaylist = async (
           userId: user.id,
           isAdmin: isUserAdmin,
           nsfw: user?.nsfw,
+          onlyProcessedDreams: true,
+          rootPlaylistNsfw: playlist.nsfw,
         },
       );
       if (fallbackThumbnail) {

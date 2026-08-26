@@ -148,6 +148,7 @@ export const handleGetPlaylist = async (
           isAdmin: isUserAdmin,
           nsfw: user?.nsfw,
           onlyProcessedDreams: true,
+          rootPlaylistNsfw: playlist.nsfw,
         },
       );
 
@@ -319,6 +320,7 @@ export const handleGetPlaylistItems = async (
             isAdmin: isUserAdmin,
             nsfw: user?.nsfw,
             onlyProcessedDreams: true,
+            rootPlaylistNsfw: item.playlistItem.nsfw,
           },
         );
         if (fallbackThumbnail) {
@@ -553,6 +555,7 @@ export const handleGetPlaylistReferences = async (
             isAdmin: isUserAdmin,
             nsfw: user?.nsfw,
             onlyProcessedDreams: true,
+            rootPlaylistNsfw: reference.playlist.nsfw,
           },
         );
         if (fallbackThumbnail) {
@@ -628,6 +631,7 @@ export const handleGetPlaylists = async (
         isAdmin: isUserAdmin,
         nsfw: currentUser?.nsfw,
         onlyProcessedDreams: true,
+        rootPlaylistNsfw: pl.nsfw,
       });
       if (fallbackThumbnail) {
         pl.thumbnail = fallbackThumbnail;
@@ -852,6 +856,7 @@ export const handleUpdatePlaylist = async (
           isAdmin: isUserAdmin,
           nsfw: user?.nsfw,
           onlyProcessedDreams: true,
+          rootPlaylistNsfw: updatedPlaylist.nsfw,
         },
       );
 
@@ -1105,6 +1110,7 @@ export const handleOrderPlaylist = async (
             isAdmin: isUserAdmin,
             nsfw: user?.nsfw,
             onlyProcessedDreams: true,
+            rootPlaylistNsfw: item.playlistItem.nsfw,
           },
         );
         if (fallbackThumbnail) {

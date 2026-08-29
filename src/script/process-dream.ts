@@ -32,7 +32,7 @@ const main = async () => {
       status: DreamStatusType.QUEUE,
     });
 
-    return processDreamRequest(dream);
+    return processDreamRequest(dream, dream.status);
   });
 
   const results = await Promise.allSettled(promises);

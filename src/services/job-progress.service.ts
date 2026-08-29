@@ -39,12 +39,15 @@ const DREAM_STATUS_TO_SOCKET: Record<string, string> = {
   processing: "IN_PROGRESS",
   processed: "COMPLETED",
   failed: "FAILED",
+  none: "CANCELLED",
 };
 
-const isTerminalStatus = (status: string) =>
-  status === "processed" || status === "failed";
+const TERMINAL_DREAM_STATUSES = new Set(["processed", "failed", "none"]);
 
-const clearDreamProgressCache = async (dreamUuid: string) => {
+const isTerminalStatus = (status: string) =>
+  TERMINAL_DREAM_STATUSES.has(status);
+
+export const clearDreamProgressCache = async (dreamUuid: string) => {
   await redisClient.del(getJobProgressKey(dreamUuid));
   await redisClient.del(`job:preview:${dreamUuid}`);
 };

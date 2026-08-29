@@ -276,7 +276,7 @@ export const runUprezPlaylist = async ({
 
   for (const dream of dreamsToEnqueue) {
     try {
-      await processDreamRequest(dream);
+      await processDreamRequest(dream, DreamStatusType.NONE);
     } catch (error) {
       APP_LOGGER.error(
         `Failed to enqueue uprez job for dream ${dream.uuid} in playlist ${playlist.uuid}:`,

@@ -691,7 +691,12 @@ dreamRouter.post(
  *    tags:
  *      - dream
  *    summary: Cancel ongoing dream job
- *    description: Cancel ongoing dream job (render/processing). Does not change dream state.
+ *    description: >
+ *      Cancels the queued or running job for a dream. Idempotent: when no job
+ *      is in flight the call still succeeds with jobFound=false and the dream
+ *      is left untouched. When a job is cancelled the dream is taken out of
+ *      queue/processing, any reserved credits are refunded, and the updated
+ *      dream is returned.
  *    parameters:
  *      - name: uuid
  *        in: path
@@ -718,6 +723,11 @@ dreamRouter.post(
  *                          type: boolean
  *                        runpodCancelled:
  *                          type: boolean
+ *                        statusRestored:
+ *                          type: boolean
+ *                          description: whether the dream status was reset
+ *                        dream:
+ *                          $ref: '#/components/schemas/Dream'
  *      '404':
  *        description: Dream not found
  *        content:

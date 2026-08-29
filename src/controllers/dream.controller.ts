@@ -47,6 +47,7 @@ import {
   createFeedItem,
   findDreamPlaylistItems,
   getDreamSelectedColumns,
+  getIdleDreamStatus,
   handleVoteDream,
   processDreamRequest,
   refundReservedDreamCost,
@@ -91,7 +92,15 @@ import {
   setFilmstripVersion,
   setThumbVersion,
 } from "utils/uploadVersion.util";
-import { emitDreamJobStatus } from "services/job-progress.service";
+import {
+  clearDreamProgressCache,
+  emitDreamJobStatus,
+} from "services/job-progress.service";
+
+const PENDING_DREAM_STATUSES = new Set<string>([
+  DreamStatusType.QUEUE,
+  DreamStatusType.PROCESSING,
+]);
 
 /**
  * Handles get dreams
@@ -216,7 +225,7 @@ export const handleCreateDream = async (
     });
 
     if (prompt && !draft) {
-      await processDreamRequest(savedDream);
+      await processDreamRequest(savedDream, DreamStatusType.NONE);
     }
 
     tracker.sendEventWithRequestContext(
@@ -580,6 +589,7 @@ export const handleCompleteMultipartUpload = async (
     }
 
     let filePath: string;
+    const statusBeforeUpload = dream.status;
     /**
      * dream owner uuid to generate r2 file path
      */
@@ -668,7 +678,7 @@ export const handleCompleteMultipartUpload = async (
       /**
        * process dream requests: it needs to provide updated dream with originalVideo value
        */
-      await processDreamRequest(updatedDream);
+      await processDreamRequest(updatedDream, statusBeforeUpload);
     }
 
     tracker.sendEventWithRequestContext(res, user.uuid, "USER_NEW_UPLOAD", {});
@@ -1795,15 +1805,7 @@ export const handleCancelDreamJob = async (
     const [dream] = await dreamRepository.find({
       where: { uuid: dreamUUID! },
       relations: { user: true },
-      select: {
-        id: true,
-        uuid: true,
-        status: true,
-        user: {
-          id: true,
-          uuid: true,
-        },
-      },
+      select: getDreamSelectedColumns(),
     });
 
     if (!dream) {
@@ -1826,52 +1828,75 @@ export const handleCancelDreamJob = async (
     // Cancel the job across all queues
     const result = await cancelJobAcrossQueues(dreamUUID, true);
 
-    try {
-      const previewKey = `job:preview:${dreamUUID}`;
-      await redisClient.del(previewKey);
-    } catch (redisError) {
-      APP_LOGGER.error(
-        `Failed to clear preview for dream ${dreamUUID}:`,
-        redisError,
-      );
-    }
-
     APP_LOGGER.info(
       `Cancel job request for dream ${dreamUUID}: ${result.message}`,
     );
 
-    if (result.jobFound) {
-      try {
-        await refundReservedDreamCost(dreamUUID, dream.user.id);
-      } catch (refundError: unknown) {
-        APP_LOGGER.error(
-          `Failed to refund provider credits for cancelled dream ${dreamUUID}:`,
-          refundError instanceof Error
-            ? refundError.message
-            : String(refundError),
-        );
-      }
+    if (!result.jobFound) {
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          data: {
+            message: result.message,
+            jobFound: false,
+            runpodCancelled: false,
+            statusRestored: false,
+            dream,
+          },
+        }),
+      );
     }
 
-    // Restore the previous dream status if the job was found and had a previous status
-    if (result.jobFound && result.previousStatus) {
-      try {
-        await dreamRepository.save({
-          ...dream,
-          status: result.previousStatus as DreamStatusType,
-          reservedCostUsd: null,
-        });
-        APP_LOGGER.info(
-          `Restored dream ${dreamUUID} status from queue to ${result.previousStatus}`,
-        );
-      } catch (statusError: unknown) {
-        APP_LOGGER.error(
-          `Failed to restore dream ${dreamUUID} status:`,
-          statusError instanceof Error
-            ? statusError.message
-            : String(statusError),
-        );
-      }
+    try {
+      await refundReservedDreamCost(dreamUUID, dream.user.id);
+    } catch (refundError: unknown) {
+      APP_LOGGER.error(
+        `Failed to refund provider credits for cancelled dream ${dreamUUID}:`,
+        refundError instanceof Error
+          ? refundError.message
+          : String(refundError),
+      );
+    }
+
+    const restoredStatus =
+      result.previousStatus &&
+      !PENDING_DREAM_STATUSES.has(result.previousStatus)
+        ? (result.previousStatus as DreamStatusType)
+        : getIdleDreamStatus(dream);
+
+    let statusRestored = false;
+    try {
+      await dreamRepository.update(
+        { uuid: dreamUUID },
+        { status: restoredStatus, reservedCostUsd: null },
+      );
+      dream.status = restoredStatus;
+      dream.reservedCostUsd = null;
+      statusRestored = true;
+      APP_LOGGER.info(
+        `Restored dream ${dreamUUID} status from queue to ${restoredStatus}`,
+      );
+    } catch (statusError: unknown) {
+      APP_LOGGER.error(
+        `Failed to restore dream ${dreamUUID} status:`,
+        statusError instanceof Error
+          ? statusError.message
+          : String(statusError),
+      );
+    }
+
+    try {
+      await clearDreamProgressCache(dreamUUID);
+      await emitDreamJobStatus({
+        userId: dream.user.id,
+        dreamUuid: dreamUUID,
+        status: restoredStatus,
+      });
+    } catch (redisError) {
+      APP_LOGGER.error(
+        `Failed to clear cached progress for dream ${dreamUUID}:`,
+        redisError,
+      );
     }
 
     return res.status(httpStatus.OK).json(
@@ -1879,9 +1904,10 @@ export const handleCancelDreamJob = async (
         success: true,
         data: {
           message: result.message,
-          jobFound: result.jobFound,
+          jobFound: true,
           runpodCancelled: result.runpodCancelled,
-          statusRestored: result.jobFound && !!result.previousStatus,
+          statusRestored,
+          dream,
         },
       }),
     );

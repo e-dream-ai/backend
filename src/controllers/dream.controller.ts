@@ -46,11 +46,14 @@ import { VoteType } from "types/vote.types";
 import {
   createFeedItem,
   findDreamPlaylistItems,
+  failDreamWithError,
   getDreamSelectedColumns,
   getIdleDreamStatus,
   handleVoteDream,
   processDreamRequest,
+  QUEUE_FAILURE_MESSAGE,
   refundReservedDreamCost,
+  resolveDreamQueue,
 } from "utils/dream.util";
 import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { canExecuteAction } from "utils/permissions.util";
@@ -101,6 +104,12 @@ const PENDING_DREAM_STATUSES = new Set<string>([
   DreamStatusType.QUEUE,
   DreamStatusType.PROCESSING,
 ]);
+
+const ORPHANED_DREAM_GRACE_MS = 60_000;
+
+const isOrphanedDream = (dream: Dream): boolean =>
+  PENDING_DREAM_STATUSES.has(dream.status) &&
+  Date.now() - new Date(dream.updated_at).getTime() > ORPHANED_DREAM_GRACE_MS;
 
 /**
  * Handles get dreams
@@ -225,7 +234,15 @@ export const handleCreateDream = async (
     });
 
     if (prompt && !draft) {
-      await processDreamRequest(savedDream, DreamStatusType.NONE);
+      const result = await processDreamRequest(
+        savedDream,
+        DreamStatusType.NONE,
+      );
+      if (result?.status === "failed") {
+        await failDreamWithError(savedDream, QUEUE_FAILURE_MESSAGE);
+        savedDream.status = DreamStatusType.FAILED;
+        savedDream.error = QUEUE_FAILURE_MESSAGE;
+      }
     }
 
     tracker.sendEventWithRequestContext(
@@ -678,7 +695,15 @@ export const handleCompleteMultipartUpload = async (
       /**
        * process dream requests: it needs to provide updated dream with originalVideo value
        */
-      await processDreamRequest(updatedDream, statusBeforeUpload);
+      const result = await processDreamRequest(
+        updatedDream,
+        statusBeforeUpload,
+      );
+      if (result?.status === "failed") {
+        await failDreamWithError(updatedDream, QUEUE_FAILURE_MESSAGE);
+        updatedDream.status = DreamStatusType.FAILED;
+        updatedDream.error = QUEUE_FAILURE_MESSAGE;
+      }
     }
 
     tracker.sendEventWithRequestContext(res, user.uuid, "USER_NEW_UPLOAD", {});
@@ -1039,6 +1064,17 @@ export const handleProcessDream = async (
           success: false,
           message: failedDream?.error ?? "Unable to process this dream.",
           data: { dream: failedDream },
+        }),
+      );
+    }
+
+    if (result?.status === "failed") {
+      await failDreamWithError(dream, QUEUE_FAILURE_MESSAGE);
+      return res.status(httpStatus.SERVICE_UNAVAILABLE).json(
+        jsonResponse({
+          success: false,
+          message: QUEUE_FAILURE_MESSAGE,
+          data: { dream: { ...dream, status: DreamStatusType.FAILED } },
         }),
       );
     }
@@ -1823,16 +1859,26 @@ export const handleCancelDreamJob = async (
     }
 
     // Import the cancel utility
-    const { cancelJobAcrossQueues } = await import("utils/job-cancel.util");
+    const { cancelJobByDreamUuid, cancelJobAcrossQueues } = await import(
+      "utils/job-cancel.util"
+    );
 
-    // Cancel the job across all queues
-    const result = await cancelJobAcrossQueues(dreamUUID, true);
+    const dreamQueue = resolveDreamQueue(dream);
+    let result = dreamQueue
+      ? await cancelJobByDreamUuid(dreamQueue, dreamUUID, true)
+      : null;
+
+    if (!result?.jobFound) {
+      result = await cancelJobAcrossQueues(dreamUUID, true);
+    }
 
     APP_LOGGER.info(
       `Cancel job request for dream ${dreamUUID}: ${result.message}`,
     );
 
-    if (!result.jobFound) {
+    const orphaned = !result.jobFound && isOrphanedDream(dream);
+
+    if (!result.jobFound && !orphaned) {
       return res.status(httpStatus.OK).json(
         jsonResponse({
           success: true,
@@ -1844,6 +1890,12 @@ export const handleCancelDreamJob = async (
             dream,
           },
         }),
+      );
+    }
+
+    if (orphaned) {
+      APP_LOGGER.warn(
+        `Dream ${dreamUUID} is ${dream.status} with no job behind it, clearing stale state`,
       );
     }
 
@@ -1872,6 +1924,7 @@ export const handleCancelDreamJob = async (
       );
       dream.status = restoredStatus;
       dream.reservedCostUsd = null;
+      dream.updated_at = new Date();
       statusRestored = true;
       APP_LOGGER.info(
         `Restored dream ${dreamUUID} status from queue to ${restoredStatus}`,
@@ -1903,8 +1956,10 @@ export const handleCancelDreamJob = async (
       jsonResponse({
         success: true,
         data: {
-          message: result.message,
-          jobFound: true,
+          message: orphaned
+            ? "No active job found, cleared stale queued state"
+            : result.message,
+          jobFound: result.jobFound,
           runpodCancelled: result.runpodCancelled,
           statusRestored,
           dream,

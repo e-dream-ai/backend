@@ -13,6 +13,7 @@ import {
   getAlgorithmFromPrompt,
   isValidAlgorithm,
   mapAlgorithmToQueue,
+  PromptCarrier,
 } from "./prompt.util";
 import { queueWorkerJob, queueVideoIngestJob } from "./worker-queue.util";
 import { getModelById } from "constants/models.constants";
@@ -30,7 +31,10 @@ const feedRepository = appDataSource.getRepository(FeedItem);
 const voteRepository = appDataSource.getRepository(Vote);
 const playlistItemRepository = appDataSource.getRepository(PlaylistItem);
 
-const failDreamWithError = async (dream: Dream, message: string) => {
+export const QUEUE_FAILURE_MESSAGE =
+  "Could not queue this dream for rendering. Please try again.";
+
+export const failDreamWithError = async (dream: Dream, message: string) => {
   await dreamRepository.update(
     { uuid: dream.uuid },
     { status: DreamStatusType.FAILED, error: message },
@@ -58,6 +62,16 @@ export const refundReservedDreamCost = async (
   if (reserved != null && Number(reserved) > 0) {
     await refundProviderCredits(userId, Number(reserved));
   }
+};
+
+export const resolveDreamQueue = (dream: PromptCarrier): string | null => {
+  const promptJson = parsePromptJson(dream);
+  if (!promptJson) return null;
+
+  const algorithm = getAlgorithmFromPrompt(promptJson);
+  if (!algorithm || !isValidAlgorithm(algorithm)) return null;
+
+  return mapAlgorithmToQueue(algorithm) ?? null;
 };
 
 export const getIdleDreamStatus = (
@@ -151,14 +165,15 @@ export const processDreamRequest = async (
             );
           }
           return { id: result.jobId, status: "queued", isPromptBased: true };
-        } else {
-          APP_LOGGER.error(
-            `Failed to queue worker job for dream ${dream.uuid}: ${result.error}`,
-          );
-          if (chargedUsd != null) {
-            await refundProviderCredits(dream.user.id, chargedUsd);
-          }
         }
+
+        APP_LOGGER.error(
+          `Failed to queue worker job for dream ${dream.uuid}: ${result.error}`,
+        );
+        if (chargedUsd != null) {
+          await refundProviderCredits(dream.user.id, chargedUsd);
+        }
+        return { status: "failed", isPromptBased: true };
       }
     } else {
       APP_LOGGER.warn(

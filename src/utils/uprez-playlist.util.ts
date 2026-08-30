@@ -17,7 +17,11 @@ import { PlaylistItemType } from "types/playlist.types";
 import { APP_LOGGER } from "shared/logger";
 import { UprezPlaylistPromptJson } from "./playlist-prompt.util";
 import { parsePromptJson } from "./prompt.util";
-import { processDreamRequest } from "./dream.util";
+import {
+  failDreamWithError,
+  processDreamRequest,
+  QUEUE_FAILURE_MESSAGE,
+} from "./dream.util";
 import {
   bulkDeletePlaylistItemsAndResetOrder,
   refreshPlaylistUpdatedAtTimestamp,
@@ -276,7 +280,10 @@ export const runUprezPlaylist = async ({
 
   for (const dream of dreamsToEnqueue) {
     try {
-      await processDreamRequest(dream, DreamStatusType.NONE);
+      const result = await processDreamRequest(dream, DreamStatusType.NONE);
+      if (result?.status === "failed") {
+        await failDreamWithError(dream, QUEUE_FAILURE_MESSAGE);
+      }
     } catch (error) {
       APP_LOGGER.error(
         `Failed to enqueue uprez job for dream ${dream.uuid} in playlist ${playlist.uuid}:`,

@@ -60,9 +60,14 @@ export const refundReservedDreamCost = async (
   }
 };
 
+export const getIdleDreamStatus = (
+  dream: Pick<Dream, "video">,
+): DreamStatusType =>
+  dream.video ? DreamStatusType.PROCESSED : DreamStatusType.NONE;
+
 export const processDreamRequest = async (
   dream: Dream,
-  previousStatus?: string,
+  previousStatus: string = getIdleDreamStatus(dream),
 ) => {
   const promptJson = parsePromptJson(dream);
 

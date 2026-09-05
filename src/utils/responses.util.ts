@@ -21,6 +21,10 @@ import {
 } from "constants/messages/auth.constant";
 import { User } from "entities";
 import { AccountDeletedError } from "./account-status.util";
+import {
+  WORKOS_SESSION_COOKIE,
+  workOSCookieConfig,
+} from "constants/cookie.constants";
 
 export const jsonResponse: (response: JsonResponse) => JsonResponse = (
   response,
@@ -116,7 +120,7 @@ export const handleWorkosError = (
   res: ResponseType,
 ) => {
   if (error instanceof AccountDeletedError) {
-    res.clearCookie("wos-session");
+    res.clearCookie(WORKOS_SESSION_COOKIE, workOSCookieConfig);
     return res.status(httpStatus.UNAUTHORIZED).json(
       jsonResponse({
         success: false,

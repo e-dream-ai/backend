@@ -51,10 +51,18 @@ const EARLY_NEXT_WINDOW_MS = 300;
 const STATE_SYNC_TTL_SECONDS = 300;
 const getUserStateSyncKey = (userId: number) => `user:state_sync:${userId}`;
 
+const ACCOUNT_STATUS_CHECK_INTERVAL_MS = 60_000;
+
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
 
+  let accountCheckedAt = Date.now();
   socket.use(async (_packet, next) => {
+    if (Date.now() - accountCheckedAt < ACCOUNT_STATUS_CHECK_INTERVAL_MS) {
+      return next();
+    }
+    accountCheckedAt = Date.now();
+
     try {
       if (!(await userRepository.existsBy({ id: user.id }))) {
         socket.disconnect(true);
@@ -63,7 +71,7 @@ export const remoteControlConnectionListener = async (socket: Socket) => {
       next();
     } catch (error) {
       APP_LOGGER.error("Could not verify socket account status", error);
-      socket.disconnect(true);
+      next();
     }
   });
 

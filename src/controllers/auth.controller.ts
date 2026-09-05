@@ -886,9 +886,9 @@ export const handleWorkOSCallback = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    res.cookie("wos-session", sealedSession, workOSCookieConfig);
-
     const user = await syncWorkOSUser(workOSUser);
+
+    res.cookie("wos-session", sealedSession, workOSCookieConfig);
 
     await setUserLastLoginAt(user);
 

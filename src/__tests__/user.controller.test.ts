@@ -1,3 +1,4 @@
+import { IsNull } from "typeorm";
 import type { RequestType, ResponseType } from "types/express.types";
 
 describe("user.controller", () => {
@@ -247,7 +248,7 @@ describe("user.controller", () => {
         .fn()
         .mockResolvedValueOnce(existing)
         .mockResolvedValueOnce(updated),
-      update: jest.fn().mockResolvedValue({}),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     jest.mock("database/repositories", () => ({
       __esModule: true,
@@ -286,7 +287,10 @@ describe("user.controller", () => {
 
     const { handleUpdateUser } = await import("controllers/user.controller");
     await handleUpdateUser(req, res);
-    expect(userRepository.update).toHaveBeenCalledWith(2, { name: "John" });
+    expect(userRepository.update).toHaveBeenCalledWith(
+      { id: 2, deleted_at: IsNull() },
+      { name: "John" },
+    );
     expect(status).toHaveBeenCalledWith(200);
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -307,7 +311,7 @@ describe("user.controller", () => {
     const user = { id: 1, uuid: "u1" };
     const userRepository = {
       findOne: jest.fn().mockResolvedValue(user),
-      save: jest.fn().mockResolvedValue({ ...user, avatar: "u1/avatar.jpeg" }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     jest.mock("database/repositories", () => ({
       __esModule: true,
@@ -352,7 +356,8 @@ describe("user.controller", () => {
     );
     await handleUpdateUserAvatar(req, res);
     expect(send).toHaveBeenCalled();
-    expect(userRepository.save).toHaveBeenCalledWith(
+    expect(userRepository.update).toHaveBeenCalledWith(
+      { id: 1, deleted_at: IsNull() },
       expect.objectContaining({
         avatar: expect.stringContaining("u1/avatar-"),
       }),
@@ -374,7 +379,7 @@ describe("user.controller", () => {
     const user = { id: 1, uuid: "u1" };
     const userRepository = {
       findOne: jest.fn().mockResolvedValue(user),
-      save: jest.fn().mockResolvedValue({ ...user, role: { name: "admin" } }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     const roleRepository = {
       findOneBy: jest.fn().mockResolvedValue({ id: 9, name: "admin" }),
@@ -398,7 +403,10 @@ describe("user.controller", () => {
     const { handleUpdateRole } = await import("controllers/user.controller");
     await handleUpdateRole(req, res);
     expect(roleRepository.findOneBy).toHaveBeenCalledWith({ name: "admin" });
-    expect(userRepository.save).toHaveBeenCalled();
+    expect(userRepository.update).toHaveBeenCalledWith(
+      { id: 1, deleted_at: IsNull() },
+      { role: { id: 9, name: "admin" } },
+    );
     expect(status).toHaveBeenCalledWith(200);
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({

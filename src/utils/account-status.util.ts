@@ -17,18 +17,28 @@ export const isAccountDeleted = async (
   email: string,
   workOSId?: string,
 ): Promise<boolean> => {
-  const query = userRepository
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const accounts = await userRepository
     .createQueryBuilder("account")
     .withDeleted()
-    .where("account.deleted_at IS NOT NULL")
-    .andWhere(
+    .select(["account.id", "account.deleted_at", "account.workOSId"])
+    .where(
       workOSId
         ? `(LOWER(account.email) = :email OR account."workOSId" = :workOSId)`
         : "LOWER(account.email) = :email",
-      { email: email.trim().toLowerCase(), workOSId },
-    );
+      { email: normalizedEmail, workOSId },
+    )
+    .getMany();
 
-  return query.getExists();
+  if (!accounts.length) return false;
+
+  if (workOSId) {
+    const identity = accounts.find((account) => account.workOSId === workOSId);
+    if (identity) return identity.deleted_at !== null;
+  }
+
+  return accounts.every((account) => account.deleted_at !== null);
 };
 
 export const assertAccountActive = async (

@@ -16,6 +16,7 @@ export const getKeyframeSelectedColumns = ({
 } = {}): FindOptionsSelect<Keyframe> => {
   return {
     id: true,
+    userId: true,
     uuid: true,
     name: true,
     image: true,

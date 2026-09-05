@@ -62,6 +62,7 @@ export const getPlaylistSelectedColumns = ({
 } = {}): FindOptionsSelect<Playlist> => {
   return {
     id: true,
+    userId: true,
     uuid: true,
     name: true,
     description: true,

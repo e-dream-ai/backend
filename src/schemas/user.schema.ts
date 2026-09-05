@@ -21,6 +21,12 @@ export const requestUserSchema: RequestValidationSchema = {
   }),
 };
 
+export const deleteAccountSchema: RequestValidationSchema = {
+  body: Joi.object({
+    confirmation: Joi.string().valid("DELETE").required(),
+  }).required(),
+};
+
 export const getUsersSchema = {
   query: Joi.object<GetUsersQuery>().keys({
     role: Joi.string().valid(...Object.values(ROLES)),

@@ -21,6 +21,10 @@ import {
 import { fetchCognitoUser } from "controllers/auth.controller";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import { VoteType } from "types/vote.types";
+import {
+  assertAccountActive,
+  normalizedEmailCondition,
+} from "./account-status.util";
 
 /**
  * Repositories
@@ -36,6 +40,7 @@ export const authenticateUser = async ({
   username?: string;
   password?: string;
 }) => {
+  await assertAccountActive(username!);
   const command = new InitiateAuthCommand({
     AuthFlow: AuthFlowType.USER_PASSWORD_AUTH,
     ClientId: AWS_COGNITO_APP_CLIENT_ID,
@@ -141,9 +146,10 @@ export const syncWorkOSUser = async (
     invite?: Invite;
   },
 ) => {
+  await assertAccountActive(workOSUser.email, workOSUser.id);
   let user = await userRepository.findOne({
     where: {
-      email: workOSUser.email,
+      email: normalizedEmailCondition(workOSUser.email),
     },
     relations: {
       role: true,

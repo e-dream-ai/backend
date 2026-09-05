@@ -16,6 +16,7 @@ import { GenericServerException } from "@workos-inc/node";
 import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 import { applySimulatedAuthFailure } from "utils/simulate-auth-failure.util";
+import { AccountDeletedError } from "utils/account-status.util";
 
 const AUTH_TIMEOUT_MS = 10_000;
 
@@ -120,6 +121,9 @@ const workOSAuth = async (
     );
     return next();
   } catch (e) {
+    if (e instanceof AccountDeletedError) {
+      return handleWorkOSAuthFailure(res);
+    }
     APP_LOGGER.error("workOSAuth error", e);
 
     // Transient errors: return 503 without clearing the cookie

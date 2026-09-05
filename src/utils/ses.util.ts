@@ -1,6 +1,7 @@
 import { SendEmailCommand, SendEmailCommandInput } from "@aws-sdk/client-ses";
 import { sesClient } from "clients/ses.client";
 import { APP_LOGGER } from "shared/logger";
+import { isAccountDeleted } from "./account-status.util";
 
 /**
  * Sends an email using AWS SES
@@ -22,9 +23,15 @@ export const sendEmail = async ({
   subject: string;
   fromAddress: string;
 }) => {
+  const eligibility = await Promise.all(
+    toAddresses.map(async (email) => !(await isAccountDeleted(email))),
+  );
+  const recipients = toAddresses.filter((_email, index) => eligibility[index]);
+  if (!recipients.length) return;
+
   const params: SendEmailCommandInput = {
     Destination: {
-      ToAddresses: toAddresses,
+      ToAddresses: recipients,
     },
     Message: {
       Body: {

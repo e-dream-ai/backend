@@ -1,3 +1,4 @@
+import { getOwnerId, getRetainedOwner } from "utils/ownership.util";
 import { ILike } from "typeorm";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
@@ -389,7 +390,7 @@ export const handleCreateMultipartUploadDreamFile = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner: getOwnerId(dream) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -402,7 +403,7 @@ export const handleCreateMultipartUploadDreamFile = async (
     /**
      * dream owner uuid to generate r2 file path
      */
-    const userIdentifier = getUserIdentifier(dream.user);
+    const userIdentifier = getUserIdentifier(await getRetainedOwner(dream));
 
     /**
      * filePath r2 generation
@@ -493,7 +494,7 @@ export const handleRefreshMultipartUploadUrl = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner: getOwnerId(dream) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -506,7 +507,7 @@ export const handleRefreshMultipartUploadUrl = async (
     /**
      * dream owner uuid to generate r2 file path
      */
-    const userIdentifier = getUserIdentifier(dream.user);
+    const userIdentifier = getUserIdentifier(await getRetainedOwner(dream));
 
     /**
      * filePath r2 generation
@@ -596,7 +597,7 @@ export const handleCompleteMultipartUpload = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner: getOwnerId(dream) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -610,7 +611,7 @@ export const handleCompleteMultipartUpload = async (
     /**
      * dream owner uuid to generate r2 file path
      */
-    const userIdentifier = getUserIdentifier(dream.user);
+    const userIdentifier = getUserIdentifier(await getRetainedOwner(dream));
 
     /**
      * filePath r2 generation, updates database values if needed
@@ -714,7 +715,7 @@ export const handleCompleteMultipartUpload = async (
   } catch (err) {
     if (dream) {
       dream.status = DreamStatusType.FAILED;
-      await dreamRepository.save(dream);
+      await dreamRepository.update(dream.id, { status: dream.status });
     }
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -756,7 +757,7 @@ export const handleAbortMultipartUpload = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner: getOwnerId(dream) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -780,7 +781,7 @@ export const handleAbortMultipartUpload = async (
      * update dream
      */
     dream.status = DreamStatusType.FAILED;
-    await dreamRepository.save(dream);
+    await dreamRepository.update(dream.id, { status: dream.status });
     await dreamRepository.softDelete({ id: dream.id });
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
@@ -890,7 +891,7 @@ export const handleGetDream = async (
       }
     }
 
-    const isOwner = dream.user.id === user?.id;
+    const isOwner = getOwnerId(dream) === user?.id;
 
     const isAllowed = canExecuteAction({
       isOwner,
@@ -1033,7 +1034,7 @@ export const handleProcessDream = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner: getOwnerId(dream) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1081,6 +1082,8 @@ export const handleProcessDream = async (
 
     const updatedDream = await dreamRepository.save({
       ...dream,
+      user: dream.user ?? undefined,
+      displayedOwner: dream.displayedOwner ?? undefined,
       status: DreamStatusType.QUEUE,
     });
 
@@ -1125,11 +1128,13 @@ export const handleSetDreamStatusProcessing = async (
 
     const updatedDream = await dreamRepository.save({
       ...dream,
+      user: dream.user ?? undefined,
+      displayedOwner: dream.displayedOwner ?? undefined,
       status: DreamStatusType.PROCESSING,
     });
 
     await emitDreamJobStatus({
-      userId: dream.user.id,
+      userId: getOwnerId(dream),
       dreamUuid: dreamUUID,
       status: DreamStatusType.PROCESSING,
     });
@@ -1189,7 +1194,7 @@ export const handleSetDreamStatusProcessed = async (
      * Save processed dream data
      */
 
-    const user = dream.user;
+    const user = await getRetainedOwner(dream);
     const filmstripVersion = filmstrip
       ? await getFilmstripVersion(dreamUUID)
       : undefined;
@@ -1321,17 +1326,19 @@ export const handleSetDreamStatusFailed = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    await refundReservedDreamCost(dreamUUID, dream.user.id);
+    await refundReservedDreamCost(dreamUUID, getOwnerId(dream));
 
     const updatedDream = await dreamRepository.save({
       ...dream,
+      user: dream.user ?? undefined,
+      displayedOwner: dream.displayedOwner ?? undefined,
       status: DreamStatusType.FAILED,
       error: error || null,
       reservedCostUsd: null,
     });
 
     await emitDreamJobStatus({
-      userId: dream.user.id,
+      userId: getOwnerId(dream),
       dreamUuid: dreamUUID,
       status: DreamStatusType.FAILED,
     });
@@ -1394,7 +1401,7 @@ export const handleUpdateDream = async (
     );
 
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner: getOwnerId(dream) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1594,7 +1601,7 @@ export const handleUpdateThumbnailDream = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner: getOwnerId(dream) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1609,7 +1616,7 @@ export const handleUpdateThumbnailDream = async (
     const fileMymeType = req.file?.mimetype;
     const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
     const filePath = generateThumbnailPath({
-      userIdentifier: getUserIdentifier(dream.user),
+      userIdentifier: getUserIdentifier(await getRetainedOwner(dream)),
       dreamUUID,
       extension: fileExtension,
       renderVersion: Date.now(),
@@ -1629,6 +1636,8 @@ export const handleUpdateThumbnailDream = async (
 
     const updatedDream = await dreamRepository.save({
       ...dream,
+      user: dream.user ?? undefined,
+      displayedOwner: dream.displayedOwner ?? undefined,
       thumbnail: thumbnailBuffer ? filePath : null,
     });
 
@@ -1795,7 +1804,7 @@ export const handleDeleteDream = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner: getOwnerId(dream) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1849,7 +1858,7 @@ export const handleCancelDreamJob = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: dream.user.id === user?.id,
+      isOwner: getOwnerId(dream) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1900,7 +1909,7 @@ export const handleCancelDreamJob = async (
     }
 
     try {
-      await refundReservedDreamCost(dreamUUID, dream.user.id);
+      await refundReservedDreamCost(dreamUUID, getOwnerId(dream));
     } catch (refundError: unknown) {
       APP_LOGGER.error(
         `Failed to refund provider credits for cancelled dream ${dreamUUID}:`,
@@ -1941,7 +1950,7 @@ export const handleCancelDreamJob = async (
     try {
       await clearDreamProgressCache(dreamUUID);
       await emitDreamJobStatus({
-        userId: dream.user.id,
+        userId: getOwnerId(dream),
         dreamUuid: dreamUUID,
         status: restoredStatus,
       });
@@ -2040,7 +2049,7 @@ export const handleGetDreamThumbnail = async (
     return handleNotFound(req, res);
   }
 
-  const isOwner = dream.user.id === user?.id;
+  const isOwner = getOwnerId(dream) === user?.id;
   const isAllowed = canExecuteAction({
     isOwner,
     allowedRoles: [ROLES.ADMIN_GROUP],

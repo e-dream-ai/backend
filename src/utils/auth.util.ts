@@ -85,7 +85,7 @@ export const validateApiKey = async (apiKey: string) => {
   });
 
   if (dbApiKey) {
-    return dbApiKey?.user.id;
+    return dbApiKey.user?.id;
   }
 
   return undefined;

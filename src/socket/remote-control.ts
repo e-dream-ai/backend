@@ -2,6 +2,7 @@ import { tracker } from "clients/google-analytics";
 import { redisClient } from "clients/redis.client";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { User } from "entities";
+import { userRepository } from "database/repositories";
 import { remoteControlSchema } from "schemas/socket.schema";
 import { APP_LOGGER } from "shared/logger";
 import { Socket } from "socket.io";
@@ -52,6 +53,19 @@ const getUserStateSyncKey = (userId: number) => `user:state_sync:${userId}`;
 
 export const remoteControlConnectionListener = async (socket: Socket) => {
   const user: User = socket.data.user;
+
+  socket.use(async (_packet, next) => {
+    try {
+      if (!(await userRepository.existsBy({ id: user.id }))) {
+        socket.disconnect(true);
+        return;
+      }
+      next();
+    } catch (error) {
+      APP_LOGGER.error("Could not verify socket account status", error);
+      socket.disconnect(true);
+    }
+  });
 
   const clientInfo = getRequestContext(socket.request.headers);
 

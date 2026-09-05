@@ -71,6 +71,10 @@ import {
   syncWorkOSUser,
 } from "utils/user.util";
 import { workos, workOSCookieConfig } from "utils/workos.util";
+import {
+  assertAccountActive,
+  isAccountDeleted,
+} from "utils/account-status.util";
 import env from "shared/env";
 import {
   // GenericServerException,
@@ -156,6 +160,7 @@ export const handleLoginWithCode = async (
 ) => {
   try {
     const { username } = req.body;
+    await assertAccountActive(username!);
 
     const command = new InitiateAuthCommand({
       AuthFlow: AuthFlowType.CUSTOM_AUTH,
@@ -239,6 +244,7 @@ export const handleSignUp = async (
   try {
     const isSignupCodeActive = await isFeatureActive(FEATURES.SIGNUP_WITH_CODE);
     const { email, password, code } = req.body;
+    await assertAccountActive(email!);
 
     const getUserCommand = new AdminGetUserCommand({
       UserPoolId: AWS_COGNITO_USER_POOL_ID,
@@ -470,6 +476,8 @@ export const fetchCognitoUser = async (accessToken: string) => {
     (userAttribute) => userAttribute.Name === UserAttributes.EMAIL,
   )?.Value;
 
+  if (email) await assertAccountActive(email);
+
   return {
     id: commandResponse.Username,
     email: email,
@@ -686,6 +694,9 @@ export const handleRefresh = async (
     });
 
     const commandResponse = await cognitoIdentityProviderClient.send(command);
+    const accessToken = commandResponse.AuthenticationResult?.AccessToken;
+    if (!accessToken) throw new Error(AUTH_MESSAGES.INVALID_CREDENTIALS);
+    await fetchCognitoUser(accessToken);
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
@@ -766,6 +777,14 @@ export const handleForgotPassword = async (
   const { username } = req.body;
 
   try {
+    if (await isAccountDeleted(username!)) {
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          message: AUTH_MESSAGES.FORGOT_PASSWORD_REQUEST,
+        }),
+      );
+    }
     const command = new ForgotPasswordCommand({
       ClientId: AWS_COGNITO_APP_CLIENT_ID,
       Username: username,
@@ -901,6 +920,7 @@ export const loginWithPassword = async (
   const password = req.body.password!;
 
   try {
+    await assertAccountActive(email);
     const workOSResponse = await workos.userManagement.authenticateWithPassword(
       {
         clientId: env.WORKOS_CLIENT_ID,
@@ -959,6 +979,15 @@ export const loginWithMagicAuth = async (
   const email = req.body.email!;
   const code = req.body.code;
   try {
+    if (!code && (await isAccountDeleted(email))) {
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          message: AUTH_MESSAGES.SENT_CODE_TO_EMAIL,
+        }),
+      );
+    }
+    await assertAccountActive(email);
     const simulated = applySimulatedAuthFailureForMagicValidate(
       res as ResponseType,
     );
@@ -1226,6 +1255,7 @@ export const handleSignUpV2 = async (
   try {
     // const password = req.body.password!;
     const { email, firstname, lastname, code } = req.body;
+    await assertAccountActive(email!);
     const invite = code ? await validateAndUseCode(code) : undefined;
 
     const isSignupCodeActive = await isFeatureActive(FEATURES.SIGNUP_WITH_CODE);
@@ -1377,9 +1407,9 @@ export const handleCreatePasswordReset = async (
   try {
     const email = req.body.email!;
 
-    await workos.userManagement.createPasswordReset({
-      email,
-    });
+    if (!(await isAccountDeleted(email))) {
+      await workos.userManagement.createPasswordReset({ email });
+    }
 
     logWorkOS({
       action: "createPasswordReset",

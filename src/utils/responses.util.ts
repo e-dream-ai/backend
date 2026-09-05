@@ -20,6 +20,7 @@ import {
   AuthErrorCode,
 } from "constants/messages/auth.constant";
 import { User } from "entities";
+import { AccountDeletedError } from "./account-status.util";
 
 export const jsonResponse: (response: JsonResponse) => JsonResponse = (
   response,
@@ -114,6 +115,16 @@ export const handleWorkosError = (
   req: RequestType,
   res: ResponseType,
 ) => {
+  if (error instanceof AccountDeletedError) {
+    res.clearCookie("wos-session");
+    return res.status(httpStatus.UNAUTHORIZED).json(
+      jsonResponse({
+        success: false,
+        message: AUTH_MESSAGES.INVALID_CREDENTIALS,
+        errorCode: AUTH_ERROR_CODES.USER_NOT_FOUND,
+      }),
+    );
+  }
   APP_LOGGER.error(error);
 
   if (error instanceof RateLimitExceededException) {

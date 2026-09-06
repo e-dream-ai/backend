@@ -32,6 +32,9 @@ export class Playlist {
   @Index()
   user: User;
 
+  @Column({ type: "integer", nullable: true })
+  userId: number | null;
+
   /**
    * displayed owner
    */

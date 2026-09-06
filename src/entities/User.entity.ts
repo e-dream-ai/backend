@@ -26,6 +26,7 @@ import { Keyframe } from "./Keyframe.entity";
 import { Report } from "./Report.entity";
 
 @Entity()
+@Index("IDX_USER_EMAIL_LOWER", { synchronize: false })
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
@@ -194,7 +195,7 @@ export class User {
   updated_at: Date;
 
   @DeleteDateColumn()
-  deleted_at: Date;
+  deleted_at: Date | null;
 
   @BeforeInsert()
   setQuota() {

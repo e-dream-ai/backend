@@ -1,3 +1,4 @@
+import { getOwnerId, getRetainedOwner } from "utils/ownership.util";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
 import { Keyframe, User } from "entities";
@@ -208,7 +209,7 @@ export const handleInitKeyframeImageUpload = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: keyframe.user.id === user?.id,
+      isOwner: getOwnerId(keyframe) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -219,7 +220,7 @@ export const handleInitKeyframeImageUpload = async (
     /**
      * keyframe owner uuid to generate r2 file path
      */
-    const userIdentifier = getUserIdentifier(keyframe.user);
+    const userIdentifier = getUserIdentifier(await getRetainedOwner(keyframe));
 
     /**
      * filePath r2 generation
@@ -288,7 +289,7 @@ export const handleCompleteKeyframeImageUpload = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: keyframe.user.id === user?.id,
+      isOwner: getOwnerId(keyframe) === user?.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -300,7 +301,7 @@ export const handleCompleteKeyframeImageUpload = async (
     /**
      * keyframe owner uuid to generate r2 file path
      */
-    const userIdentifier = getUserIdentifier(keyframe.user);
+    const userIdentifier = getUserIdentifier(await getRetainedOwner(keyframe));
 
     /**
      * filePath r2 generation, updates database values if needed
@@ -359,7 +360,7 @@ export const handleUpdateKeyframe = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: keyframe.user.id === user.id,
+      isOwner: getOwnerId(keyframe) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -435,7 +436,7 @@ export const handleDeleteImageKeyframe = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: keyframe.user.id === user.id,
+      isOwner: getOwnerId(keyframe) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -487,7 +488,7 @@ export const handleDeleteKeyframe = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: keyframe.user.id === user.id,
+      isOwner: getOwnerId(keyframe) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });

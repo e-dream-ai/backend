@@ -15,7 +15,7 @@ import { ApiKey } from "entities/ApiKey.entity";
 import { Role } from "entities/Role.entity";
 import httpStatus from "http-status";
 import env from "shared/env";
-import { FindOptionsWhere, ILike, In } from "typeorm";
+import { FindOptionsWhere, ILike, In, IsNull } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import {
   GetUsersQuery,
@@ -46,12 +46,50 @@ import {
   getNextQuotaResetAt,
   isAdmin,
 } from "utils/user.util";
-import { workos } from "utils/workos.util";
+import { workos, workOSCookieConfig } from "utils/workos.util";
+import { softDeleteAccount } from "services/account-deletion.service";
+import { getIo } from "socket/io";
+import { APP_LOGGER } from "shared/logger";
 import {
   transformUsersWithSignedUrls,
   transformUserWithSignedUrls,
   transformDreamsWithSignedUrls,
 } from "utils/transform.util";
+
+export const handleDeleteAccount = async (
+  req: RequestType,
+  res: ResponseType,
+) => {
+  const user = res.locals.user;
+  if (!user || !res.locals.workosUser) {
+    return handleForbidden(req, res);
+  }
+
+  const origin = req.get("origin");
+  if (
+    (origin && origin !== new URL(env.FRONTEND_URL).origin) ||
+    (!origin && !req.headers.authorization?.startsWith("Bearer "))
+  ) {
+    return handleForbidden(req, res);
+  }
+
+  try {
+    await softDeleteAccount(user);
+  } catch (error) {
+    return handleInternalServerError(error as Error, req, res);
+  }
+
+  res.clearCookie("wos-session", workOSCookieConfig);
+  try {
+    getIo()
+      ?.of("/remote-control")
+      .in(`USER:${user.id}`)
+      .disconnectSockets(true);
+  } catch (error) {
+    APP_LOGGER.error("Failed to disconnect deleted account sockets", error);
+  }
+  return res.status(httpStatus.NO_CONTENT).send();
+};
 
 /**
  * Handles get roles
@@ -499,7 +537,11 @@ export const handleUpdateUser = async (
       }
     }
 
-    await userRepository.update(user.id, updateData);
+    const update = await userRepository.update(
+      { id: user.id, deleted_at: IsNull() },
+      updateData,
+    );
+    if (!update.affected) return handleNotFound(req as RequestType, res);
 
     const updatedUser = await userRepository.findOne({
       where: { id: user.id },
@@ -583,10 +625,13 @@ export const handleUpdateUserAvatar = async (
       await r2Client.send(command);
     }
 
-    const updatedUser = await userRepository.save({
-      ...user,
-      avatar: avatarBuffer ? filePath : null,
-    });
+    const avatar = avatarBuffer ? filePath : null;
+    const update = await userRepository.update(
+      { id: user.id, deleted_at: IsNull() },
+      { avatar },
+    );
+    if (!update.affected) return handleNotFound(req as RequestType, res);
+    const updatedUser = { ...user, avatar };
 
     return res
       .status(httpStatus.OK)
@@ -628,7 +673,12 @@ export const handleUpdateRole = async (
     const role = await roleRepository.findOneBy({ name: requestRole });
     user.role = role!;
 
-    const updatedUser = await userRepository.save(user);
+    const update = await userRepository.update(
+      { id: user.id, deleted_at: IsNull() },
+      { role: role! },
+    );
+    if (!update.affected) return handleNotFound(req as RequestType, res);
+    const updatedUser = user;
 
     return res
       .status(httpStatus.OK)

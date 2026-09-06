@@ -1,15 +1,13 @@
 import { ResponseType } from "types/express.types";
 import { WorkOS, GenericServerException } from "@workos-inc/node";
 import env from "shared/env";
-import { CookieOptions } from "express";
 import { syncWorkOSUser } from "./user.util";
+import { workOSCookieConfig } from "constants/cookie.constants";
 import { jsonResponse } from "./responses.util";
 import httpStatus from "http-status";
 import { AUTH_MESSAGES } from "constants/messages/auth.constant";
 import type { SessionCookieData, User as WorkOSUser } from "@workos-inc/node";
 import { APP_LOGGER } from "shared/logger";
-
-const IS_DEVELOPMENT = env.NODE_ENV === "development";
 
 /**
  * WorkOS client
@@ -19,16 +17,7 @@ export const workos = new WorkOS({
   clientId: env.WORKOS_CLIENT_ID,
 });
 
-/**
- * Configuration for the WorkOS session cookie
- */
-export const workOSCookieConfig: CookieOptions = {
-  httpOnly: true,
-  secure: !IS_DEVELOPMENT,
-  sameSite: "lax" as const,
-  // 365 days in ms (same config as in workos configuration for authentication panel)
-  maxAge: 365 * 24 * 60 * 60 * 1000,
-};
+export { workOSCookieConfig };
 
 /**
  * Authenticates a user with WorkOS and retrieves their session

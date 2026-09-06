@@ -23,6 +23,10 @@ import {
 import { ResendEmailError, sendTemplateEmail } from "utils/resend.util";
 import Joi from "joi";
 import { mapValidatorErrors } from "middlewares/validator.middleware";
+import {
+  isAccountDeleted,
+  normalizedEmailCondition,
+} from "utils/account-status.util";
 
 const sendMarketingSchema = Joi.object({
   templateId: Joi.string().required(),
@@ -363,6 +367,32 @@ export const handleSendOneMarketingEmail = async (
     }
 
     const { email, templateId, unsubscribeToken } = value;
+
+    const verification = verifyUnsubscribeToken(unsubscribeToken);
+    if (
+      !verification.valid ||
+      verification.payload.email.toLowerCase() !== email.toLowerCase()
+    ) {
+      return res
+        .status(httpStatus.BAD_REQUEST)
+        .json(
+          jsonResponse({ success: false, message: "Invalid recipient token" }),
+        );
+    }
+
+    const recipient = await userRepository.findOne({
+      where: {
+        id: verification.payload.userId,
+        email: normalizedEmailCondition(email),
+        enableMarketingEmails: true,
+      },
+      select: { id: true },
+    });
+    if (!recipient || (await isAccountDeleted(email))) {
+      return res
+        .status(httpStatus.OK)
+        .json(jsonResponse({ success: true, data: { status: "skipped" } }));
+    }
 
     const encodedToken = encodeURIComponent(unsubscribeToken);
     const headerUnsubscribeUrl = `${env.BACKEND_DOMAIN}/v1/marketing/unsubscribe?token=${encodedToken}`;

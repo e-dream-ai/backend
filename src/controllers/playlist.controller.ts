@@ -1,3 +1,4 @@
+import { getOwnerId } from "utils/ownership.util";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
 import { r2Client } from "clients/r2.client";
@@ -114,7 +115,7 @@ export const handleGetPlaylist = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    const isOwner = playlist.user.id === user.id;
+    const isOwner = getOwnerId(playlist) === user.id;
 
     const isAllowed = canExecuteAction({
       isOwner,
@@ -287,7 +288,7 @@ export const handleGetPlaylistItems = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    const isOwner = playlist.user.id === user.id;
+    const isOwner = getOwnerId(playlist) === user.id;
     const isAllowed = canExecuteAction({
       isOwner,
       allowedRoles: [ROLES.ADMIN_GROUP],
@@ -367,7 +368,7 @@ export const handleGetPlaylistPlaybackItems = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    const isOwner = playlist.user.id === user.id;
+    const isOwner = getOwnerId(playlist) === user.id;
     const isAllowed = canExecuteAction({
       isOwner,
       allowedRoles: [ROLES.ADMIN_GROUP],
@@ -423,7 +424,7 @@ export const handleGetPlaylistKeyframes = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    const isOwner = playlist.user.id === user.id;
+    const isOwner = getOwnerId(playlist) === user.id;
     const isAllowed = canExecuteAction({
       isOwner,
       allowedRoles: [ROLES.ADMIN_GROUP],
@@ -483,7 +484,7 @@ export const handleGetPlaylistReferences = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    const isOwner = playlist.user.id === user.id;
+    const isOwner = getOwnerId(playlist) === user.id;
     const isAllowed = canExecuteAction({
       isOwner,
       allowedRoles: [ROLES.ADMIN_GROUP],
@@ -532,7 +533,7 @@ export const handleGetPlaylistReferences = async (
     const references = unfilteredReferences.filter((reference) => {
       const parentPlaylist = reference.playlist;
       if (!parentPlaylist) return false;
-      const isParentOwner = parentPlaylist.user.id === user.id;
+      const isParentOwner = getOwnerId(parentPlaylist) === user.id;
 
       if (
         parentPlaylist.nsfw &&
@@ -748,7 +749,7 @@ export const handleUpdatePlaylist = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user.id,
+      isOwner: getOwnerId(playlist) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -915,7 +916,7 @@ export const handleUpdateThumbnailPlaylist = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user.id,
+      isOwner: getOwnerId(playlist) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1003,7 +1004,7 @@ export const handleDeletePlaylist = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user.id,
+      isOwner: getOwnerId(playlist) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1061,7 +1062,7 @@ export const handleOrderPlaylist = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user.id,
+      isOwner: getOwnerId(playlist) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1173,7 +1174,7 @@ export const handleAddPlaylistItem = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user.id,
+      isOwner: getOwnerId(playlist) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1307,7 +1308,7 @@ export const handleRemovePlaylistItem = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user.id,
+      isOwner: getOwnerId(playlist) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1372,7 +1373,7 @@ export const handleAddPlaylistKeyframe = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user.id,
+      isOwner: getOwnerId(playlist) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1476,7 +1477,7 @@ export const handleRemovePlaylistKeyframe = async (
     }
 
     const isAllowed = canExecuteAction({
-      isOwner: playlist.user.id === user.id,
+      isOwner: getOwnerId(playlist) === user.id,
       allowedRoles: [ROLES.ADMIN_GROUP],
       userRole: user?.role?.name,
     });
@@ -1526,7 +1527,7 @@ const loadPlaylistForOwnerAction = async (
   }
 
   const isAllowed = canExecuteAction({
-    isOwner: playlist.user.id === user.id,
+    isOwner: getOwnerId(playlist) === user.id,
     allowedRoles: [ROLES.ADMIN_GROUP],
     userRole: user?.role?.name,
   });

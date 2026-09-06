@@ -1,3 +1,4 @@
+import { getOwnerId } from "utils/ownership.util";
 import { Dream, FeedItem, PlaylistItem, User, Vote } from "entities";
 import appDataSource from "database/app-data-source";
 import { FindOptionsSelect, FindOptionsWhere, ILike } from "typeorm";
@@ -40,7 +41,7 @@ export const failDreamWithError = async (dream: Dream, message: string) => {
     { status: DreamStatusType.FAILED, error: message },
   );
   await emitDreamJobStatus({
-    userId: dream.user.id,
+    userId: getOwnerId(dream),
     dreamUuid: dream.uuid,
     status: DreamStatusType.FAILED,
   });
@@ -112,7 +113,7 @@ export const processDreamRequest = async (
                   : undefined,
             });
             useGlobalKey = await resolveProviderKeyDecision({
-              userId: dream.user.id,
+              userId: getOwnerId(dream),
               provider: PROVIDERS.FAL,
               costUsd: costUsd!,
             });
@@ -136,7 +137,7 @@ export const processDreamRequest = async (
         const jobData = {
           ...promptJson,
           dream_uuid: dream.uuid,
-          user_id: dream.user.id,
+          user_id: getOwnerId(dream),
           use_global_key: useGlobalKey,
           infinidream_algorithm: algorithm,
           auto_upload: true,
@@ -152,7 +153,7 @@ export const processDreamRequest = async (
             queueError,
           );
           if (chargedUsd != null) {
-            await refundProviderCredits(dream.user.id, chargedUsd);
+            await refundProviderCredits(getOwnerId(dream), chargedUsd);
           }
           throw queueError;
         }
@@ -171,7 +172,7 @@ export const processDreamRequest = async (
           `Failed to queue worker job for dream ${dream.uuid}: ${result.error}`,
         );
         if (chargedUsd != null) {
-          await refundProviderCredits(dream.user.id, chargedUsd);
+          await refundProviderCredits(getOwnerId(dream), chargedUsd);
         }
         return { status: "failed", isPromptBased: true };
       }
@@ -253,6 +254,7 @@ export const getDreamSelectedColumns = ({
 } = {}): FindOptionsSelect<Dream> => {
   return {
     id: true,
+    userId: true,
     uuid: true,
     name: true,
     video: true,
@@ -332,7 +334,9 @@ export const createFeedItem = async (dream: Dream) => {
   if (!feedItem) {
     feedItem = new FeedItem();
     feedItem.type = FeedItemType.DREAM;
-    feedItem.user = dream.user;
+    feedItem.user = appDataSource
+      .getRepository(User)
+      .create({ id: getOwnerId(dream) });
     feedItem.dreamItem = dream;
     await feedRepository.save(feedItem);
   }

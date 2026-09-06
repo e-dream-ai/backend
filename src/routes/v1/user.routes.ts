@@ -6,6 +6,7 @@ import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import {
+  deleteAccountSchema,
   getUsersSchema,
   requestUserSchema,
   requestVotedDreamsSchema,
@@ -14,6 +15,45 @@ import {
 } from "schemas/user.schema";
 
 const userRouter = Router();
+
+/**
+ * @swagger
+ * /api/v1/user/me:
+ *  delete:
+ *    tags: [user]
+ *    summary: Soft-delete the authenticated account
+ *    description: Requires a WorkOS session, not an API key. Retains data and email, disables email delivery and revokes access. Browser Origin must match FRONTEND_URL.
+ *    requestBody:
+ *      required: true
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            required: [confirmation]
+ *            properties:
+ *              confirmation:
+ *                type: string
+ *                enum: [DELETE]
+ *    responses:
+ *      '204':
+ *        description: Account soft-deleted
+ *      '400':
+ *        description: Missing or invalid confirmation
+ *      '401':
+ *        description: Invalid session or account already deleted
+ *      '403':
+ *        description: API key or untrusted browser origin
+ *      '500':
+ *        description: Deletion could not be completed; sign in and retry
+ *    security:
+ *      - bearerAuth: []
+ */
+userRouter.delete(
+  "/me",
+  requireAuth,
+  validatorMiddleware(deleteAccountSchema),
+  userController.handleDeleteAccount,
+);
 
 /**
  * @swagger

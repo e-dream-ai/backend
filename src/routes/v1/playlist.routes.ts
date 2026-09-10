@@ -7,6 +7,7 @@ import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import {
   addPlaylistItemSchema,
+  addPlaylistItemsSchema,
   addPlaylistKeyframeSchema,
   createPlaylistSchema,
   getPlaylistItemsSchema,
@@ -775,6 +776,90 @@ playlistRouter.put(
  *      - bearerAuth: []
  *      - apiKeyAuth: []
  */
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/items:
+ *   post:
+ *     tags: [playlist]
+ *     summary: Append up to 500 items atomically, preserving request order
+ *     security:
+ *       - bearerAuth: []
+ *       - apiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [items]
+ *             properties:
+ *               items:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 500
+ *                 items:
+ *                   type: object
+ *                   required: [type, uuid]
+ *                   properties:
+ *                     type: { type: string, enum: [dream, playlist] }
+ *                     uuid: { type: string, format: uuid }
+ *     responses:
+ *       '201':
+ *         description: All items appended; data.added contains the inserted count
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       required: [added]
+ *                       properties:
+ *                         added: { type: integer, minimum: 1, maximum: 500 }
+ *       '400':
+ *         description: Invalid request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadApiResponse'
+ *       '403':
+ *         description: Not authorized or attempting to add the playlist to itself
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadApiResponse'
+ *       '404':
+ *         description: Playlist or requested item does not exist; nothing inserted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadApiResponse'
+ *       '409':
+ *         description: Duplicate item; nothing inserted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BadApiResponse'
+ */
+playlistRouter.post(
+  "/:uuid/items",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(addPlaylistItemsSchema),
+  playlistController.handleAddPlaylistItems,
+);
+
 playlistRouter.put(
   "/:uuid/add-item",
   requireAuth,

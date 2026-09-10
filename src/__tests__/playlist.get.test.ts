@@ -45,8 +45,11 @@ describe("playlist get endpoints", () => {
       findOnePlaylistWithoutItems: jest.fn().mockResolvedValue(playlist),
       getPlaylistSelectedColumns: () => ({}),
       computePlaylistThumbnailRecursive: jest.fn(),
-      computePlaylistTotalDurationSeconds: jest.fn().mockResolvedValue(123),
-      computePlaylistTotalDreamCount: jest.fn().mockResolvedValue(7),
+    }));
+    jest.mock("utils/playlist-summary.util", () => ({
+      computePlaylistTotals: jest
+        .fn()
+        .mockResolvedValue({ totalDurationSeconds: 123, totalDreamCount: 7 }),
     }));
     jest.mock("utils/transform.util", () => ({
       __esModule: true,
@@ -72,5 +75,47 @@ describe("playlist get endpoints", () => {
     const payload = json.mock.calls[0][0];
     expect(payload.data.playlist.totalDurationSeconds).toBe(123);
     expect(payload.data.playlist.totalDreamCount).toBe(7);
+  });
+
+  it("handleGetPlaylistItems selects the retained owner id", async () => {
+    const { req, res, status } = createReqRes();
+    (req as unknown as { params: { uuid: string } }).params.uuid = "p1";
+    const findOne = jest.fn().mockResolvedValue({
+      id: 9,
+      userId: 92,
+      user: null,
+      hidden: false,
+    });
+    jest.doMock("database/repositories", () => ({
+      playlistRepository: { findOne },
+    }));
+    jest.doMock("utils/playlist.util", () => ({
+      getPaginatedPlaylistItems: jest.fn().mockResolvedValue({
+        items: [],
+        totalCount: 0,
+      }),
+      computePlaylistThumbnailRecursive: jest.fn(),
+    }));
+    jest.doMock("utils/transform.util", () => ({
+      transformPlaylistItemsWithSignedUrls: jest.fn().mockResolvedValue([]),
+    }));
+    jest.doMock("utils/user.util", () => ({ isAdmin: () => false }));
+    jest.doMock("utils/responses.util", () => ({
+      jsonResponse: (payload: unknown) => payload,
+      handleNotFound: jest.fn(),
+      handleInternalServerError: jest.fn(),
+    }));
+
+    const { handleGetPlaylistItems } = await import(
+      "controllers/playlist.controller"
+    );
+    await handleGetPlaylistItems(req, res);
+
+    expect(findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({ userId: true }),
+      }),
+    );
+    expect(status).toHaveBeenCalledWith(200);
   });
 });

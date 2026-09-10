@@ -1,3 +1,4 @@
+import { isAdmin } from "./user.util";
 import {
   Dream,
   Keyframe,
@@ -27,6 +28,21 @@ import {
   refreshPlaylistUpdatedAtTimestamp,
 } from "./playlist.util";
 import { cancelJobAcrossQueues } from "./job-cancel.util";
+
+export class UprezSourceAccessError extends Error {
+  constructor() {
+    super("Source playlist is unavailable");
+    this.name = "UprezSourceAccessError";
+  }
+}
+
+const canReadSource = (
+  content: Pick<Playlist, "hidden" | "nsfw" | "userId">,
+  user: User,
+): boolean =>
+  content.userId === user.id ||
+  isAdmin(user) ||
+  (!content.hidden && (!content.nsfw || user.nsfw));
 
 export interface RunUprezPlaylistResult {
   created: number;
@@ -116,12 +132,23 @@ const linkUprezPlaylistKeyframes = async ({
       }),
     );
 
-    for (let index = 0; index < dreams.length; index++) {
-      const endKeyframe = keyframes[index + 1] ?? (loop ? keyframes[0] : null);
-      await manager.update(Dream, dreams[index].id, {
-        startKeyframe: keyframes[index],
-        endKeyframe,
-      });
+    for (let offset = 0; offset < dreams.length; offset += 500) {
+      const batch = dreams.slice(offset, offset + 500);
+      await manager.query(
+        `UPDATE dream AS dream
+         SET "startKeyframeId" = links.start_id, "endKeyframeId" = links.end_id, updated_at = NOW()
+         FROM unnest($1::int[], $2::int[], $3::int[]) AS links(id, start_id, end_id)
+         WHERE dream.id = links.id AND dream.deleted_at IS NULL`,
+        [
+          batch.map((dream) => dream.id),
+          batch.map((_, index) => keyframes[offset + index].id),
+          batch.map(
+            (_, index) =>
+              (keyframes[offset + index + 1] ?? (loop ? keyframes[0] : null))
+                ?.id ?? null,
+          ),
+        ],
+      );
     }
 
     return dreams.length;
@@ -130,30 +157,34 @@ const linkUprezPlaylistKeyframes = async ({
 export const runUprezPlaylist = async ({
   playlist,
   prompt,
-  userId,
+  user,
 }: {
   playlist: Pick<Playlist, "id" | "uuid">;
   prompt: UprezPlaylistPromptJson;
-  userId: number;
+  user: User;
 }): Promise<RunUprezPlaylistResult> => {
+  const userId = user.id;
   const dreamAlgorithm = prompt.dream_algorithm ?? "uprez";
   const params = prompt.params ?? {};
 
   const source = await playlistRepository.findOne({
     where: { uuid: prompt.source_playlist_uuid },
-    select: { id: true, uuid: true },
+    select: { id: true, uuid: true, userId: true, hidden: true, nsfw: true },
   });
 
-  if (!source) {
-    throw new Error(
-      `Source playlist ${prompt.source_playlist_uuid} not found for uprez playlist ${playlist.uuid}`,
-    );
+  if (!source || !canReadSource(source, user)) {
+    throw new UprezSourceAccessError();
   }
 
   const sourceItems = await getOrderedDreamItems(source.id);
   const sourceDreams = sourceItems
     .map((item) => item.dreamItem)
     .filter((dream): dream is Dream => Boolean(dream));
+
+  // Check every source before mutating the destination or queuing work.
+  if (sourceDreams.some((dream) => !canReadSource(dream, user))) {
+    throw new UprezSourceAccessError();
+  }
 
   const sourceUuidSet = new Set(sourceDreams.map((dream) => dream.uuid));
   const sourceOrder = new Map<string, number>();
@@ -269,14 +300,22 @@ export const runUprezPlaylist = async ({
   );
   const ordered = [...orderedManaged, ...unmanaged];
 
-  await Promise.all(
-    ordered
-      .map((item, index) => ({ item, index }))
-      .filter(({ item, index }) => item.order !== index)
-      .map(({ item, index }) =>
-        playlistItemRepository.update(item.id, { order: index }),
-      ),
-  );
+  const changedOrders = ordered
+    .map((item, order) => ({ id: item.id, previousOrder: item.order, order }))
+    .filter((item) => item.previousOrder !== item.order);
+  for (let offset = 0; offset < changedOrders.length; offset += 500) {
+    const batch = changedOrders.slice(offset, offset + 500);
+    await playlistItemRepository.query(
+      `UPDATE playlist_item AS item SET "order" = positions.position, updated_at = NOW()
+       FROM unnest($1::int[], $2::int[]) AS positions(id, position)
+       WHERE item.id = positions.id AND item."playlistId" = $3 AND item.deleted_at IS NULL`,
+      [
+        batch.map((item) => item.id),
+        batch.map((item) => item.order),
+        playlist.id,
+      ],
+    );
+  }
 
   for (const dream of dreamsToEnqueue) {
     try {

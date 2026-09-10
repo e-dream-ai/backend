@@ -95,13 +95,15 @@ export const orderPlaylistSchema: RequestValidationSchema = {
   }),
 };
 
+const playlistItemBody = Joi.object<AddPlaylistItemRequest>().keys({
+  type: Joi.string()
+    .required()
+    .valid(PlaylistItemType.DREAM, PlaylistItemType.PLAYLIST),
+  uuid: Joi.string().uuid().required(),
+});
+
 export const addPlaylistItemSchema: RequestValidationSchema = {
-  body: Joi.object<AddPlaylistItemRequest>().keys({
-    type: Joi.string()
-      .required()
-      .valid(PlaylistItemType.DREAM, PlaylistItemType.PLAYLIST),
-    uuid: Joi.string().uuid().required(),
-  }),
+  body: playlistItemBody,
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
   }),
@@ -147,5 +149,12 @@ export const getPlaylistKeyframesSchema: RequestValidationSchema = {
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const addPlaylistItemsSchema: RequestValidationSchema = {
+  params: addPlaylistItemSchema.params,
+  body: Joi.object({
+    items: Joi.array().items(playlistItemBody).min(1).max(500).required(),
   }),
 };

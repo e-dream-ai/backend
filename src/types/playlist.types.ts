@@ -73,3 +73,7 @@ export type GetPlaylistKeyframesQuery = {
   take?: number;
   skip?: number;
 };
+
+export interface AddPlaylistItemsRequest {
+  items: AddPlaylistItemRequest[];
+}

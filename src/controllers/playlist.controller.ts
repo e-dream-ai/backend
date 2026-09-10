@@ -1,3 +1,8 @@
+import { addPlaylistItems } from "utils/playlist-items.util";
+import {
+  computePlaylistTotals,
+  populatePlaylistThumbnails,
+} from "utils/playlist-summary.util";
 import { getOwnerId } from "utils/ownership.util";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
@@ -14,27 +19,20 @@ import {
   defaultPlaylistRepository,
   playlistRepository,
   playlistKeyframeRepository,
-  dreamRepository,
   keyframeRepository,
   feedItemRepository,
   userRepository,
   playlistItemRepository,
 } from "database/repositories";
-import {
-  FeedItem,
-  Playlist,
-  PlaylistItem,
-  PlaylistKeyframe,
-  User,
-} from "entities";
+import { FeedItem, Playlist, PlaylistKeyframe, User } from "entities";
 import httpStatus from "http-status";
 import env from "shared/env";
 import { ILike } from "typeorm";
-import { DreamStatusType } from "types/dream.types";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
 import {
   AddPlaylistItemRequest,
+  AddPlaylistItemsRequest,
   AddPlaylistKeyframeRequest,
   CreatePlaylistRequest,
   GetPlaylistQuery,
@@ -53,6 +51,7 @@ import { parsePromptJson, serializePrompt } from "utils/prompt.util";
 import { isUprezPlaylistPrompt } from "utils/playlist-prompt.util";
 import {
   runUprezPlaylist,
+  UprezSourceAccessError,
   cancelUprezPlaylist,
 } from "utils/uprez-playlist.util";
 import {
@@ -66,9 +65,7 @@ import {
   getPlaylistSelectedColumns,
   populateDefautPlaylist,
   refreshPlaylistUpdatedAtTimestamp,
-  computePlaylistTotalDurationSeconds,
   computePlaylistThumbnailRecursive,
-  computePlaylistTotalDreamCount,
   getPlaylistPlaybackItems,
 } from "utils/playlist.util";
 import {
@@ -161,22 +158,12 @@ export const handleGetPlaylist = async (
     // Transform playlist to include signed URLs
     const transformedPlaylist = await transformPlaylistWithSignedUrls(playlist);
 
-    // Compute total duration across all playlist items (recursive, non-paginated)
-    const totalDurationSeconds = await computePlaylistTotalDurationSeconds(
-      playlist.id,
-      {
+    const { totalDurationSeconds, totalDreamCount } =
+      await computePlaylistTotals(playlist.id, {
         userId: user.id,
         isAdmin: isUserAdmin,
         nsfw: user?.nsfw,
-      },
-    );
-
-    const totalDreamCount = await computePlaylistTotalDreamCount(playlist.id, {
-      userId: user.id,
-      isAdmin: isUserAdmin,
-      nsfw: user?.nsfw,
-      onlyProcessedDreams: true,
-    });
+      });
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -280,7 +267,7 @@ export const handleGetPlaylistItems = async (
     // First verify the playlist exists and user has access
     const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: { id: true, user: { id: true }, hidden: true },
+      select: { id: true, userId: true, user: { id: true }, hidden: true },
       relations: { user: true },
     });
 
@@ -360,7 +347,7 @@ export const handleGetPlaylistPlaybackItems = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: { id: true, user: { id: true }, hidden: true },
+      select: { id: true, userId: true, user: { id: true }, hidden: true },
       relations: { user: true },
     });
 
@@ -416,7 +403,13 @@ export const handleGetPlaylistKeyframes = async (
     // First verify the playlist exists and user has access
     const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: { id: true, user: { id: true }, hidden: true, nsfw: true },
+      select: {
+        id: true,
+        userId: true,
+        user: { id: true },
+        hidden: true,
+        nsfw: true,
+      },
       relations: { user: true },
     });
 
@@ -617,7 +610,7 @@ export const handleGetPlaylists = async (
     const [playlists, count] = await playlistRepository.findAndCount({
       where,
       select: getPlaylistSelectedColumns(),
-      order: { updated_at: "DESC" },
+      order: { updated_at: "DESC", id: "DESC" },
       relations: {},
       take,
       skip,
@@ -625,19 +618,11 @@ export const handleGetPlaylists = async (
 
     const currentUser = res.locals.user;
     const isUserAdmin = isAdmin(currentUser);
-    for (const pl of playlists) {
-      if (pl.thumbnail) continue;
-      const fallbackThumbnail = await computePlaylistThumbnailRecursive(pl.id, {
-        userId: currentUser!.id,
-        isAdmin: isUserAdmin,
-        nsfw: currentUser?.nsfw,
-        onlyProcessedDreams: true,
-        rootPlaylistNsfw: pl.nsfw,
-      });
-      if (fallbackThumbnail) {
-        pl.thumbnail = fallbackThumbnail;
-      }
-    }
+    await populatePlaylistThumbnails(playlists, {
+      userId: currentUser!.id,
+      isAdmin: isUserAdmin,
+      nsfw: currentUser?.nsfw,
+    });
 
     // Transform playlists to include signed URLs
     const transformedPlaylists =
@@ -991,7 +976,7 @@ export const handleDeletePlaylist = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
-      select: { user: { id: true } },
+      select: { userId: true, user: { id: true } },
       relations: {
         user: true,
         feedItem: true,
@@ -1051,7 +1036,7 @@ export const handleOrderPlaylist = async (
     const playlist = await playlistRepository.findOne({
       where: { uuid },
       // only need to query the user id
-      select: { user: { id: true } },
+      select: { userId: true, user: { id: true } },
       relations: {
         user: true,
       },
@@ -1150,131 +1135,72 @@ export const handleOrderPlaylist = async (
  * BAD_REQUEST 400 - error adding playlist item
  *
  */
-export const handleAddPlaylistItem = async (
-  req: RequestType<AddPlaylistItemRequest, unknown, PlaylistParamsRequest>,
+const handleAddItems = async (
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
   res: ResponseType,
+  items: AddPlaylistItemRequest[],
+  single: boolean,
 ) => {
-  const uuid: string = req.params.uuid!;
-  const type = req.body.type!;
-  const itemUUID = req.body.uuid!;
   const user = res.locals.user!;
-
   try {
-    const playlist = await playlistRepository.findOne({
-      where: { uuid },
-      // only need to query the user id
-      select: { user: { id: true } },
-      relations: {
-        user: true,
-      },
-    });
-
-    if (!playlist) {
-      return handleNotFound(req as RequestType, res);
-    }
-
-    const isAllowed = canExecuteAction({
-      isOwner: getOwnerId(playlist) === user.id,
-      allowedRoles: [ROLES.ADMIN_GROUP],
-      userRole: user?.role?.name,
-    });
-
-    if (!isAllowed) {
-      return handleForbidden(req as RequestType, res);
-    }
-
-    /**
-     * Handle adding playlist itself
-     */
-    if (PlaylistItemType.PLAYLIST && playlist.uuid === itemUUID) {
-      return handleForbidden(req as RequestType, res);
-    }
-
-    /**
-     * Handle duplicated item
-     */
-    const playlistSearch =
-      type === PlaylistItemType.DREAM
-        ? { dreamItem: { uuid: itemUUID } }
-        : { playlistItem: { uuid: itemUUID } };
-
-    let [playlistItem] = await playlistItemRepository.find({
-      where: { playlist: { uuid }, type: type, ...playlistSearch },
-    });
-
-    if (playlistItem) {
-      return res.status(httpStatus.CONFLICT).json(
-        jsonResponse({
-          success: false,
-          message: GENERAL_MESSAGES.DUPLICATED,
-        }),
-      );
-    }
-
-    /**
-     * Creating playlist item
-     */
-    playlistItem = new PlaylistItem();
-    playlistItem.playlist = playlist;
-    playlistItem.type = type!;
-
-    /**
-     * Set the order of the new item based on the current number of items in the playlist
-     */
-    const itemsCount = await playlistItemRepository.count({
-      where: {
-        playlist: { id: playlist.id },
-      },
-    });
-    playlistItem.order = itemsCount;
-
-    let shouldUpdatePlaylistTimestamp = false;
-
-    if (type === PlaylistItemType.DREAM) {
-      const dreamToAdd = await dreamRepository.findOne({
-        where: { uuid: itemUUID },
-      });
-
-      if (!dreamToAdd) {
+    const result = await addPlaylistItems(req.params.uuid!, items, user);
+    switch (result.status) {
+      case "not-found":
         return handleNotFound(req as RequestType, res);
+      case "forbidden":
+        return handleForbidden(req as RequestType, res);
+      case "conflict":
+        return res.status(httpStatus.CONFLICT).json(
+          jsonResponse({
+            success: false,
+            message: GENERAL_MESSAGES.DUPLICATED,
+          }),
+        );
+      case "created": {
+        tracker.sendEventWithRequestContext(
+          res,
+          user.uuid,
+          "PLAYLIST_ITEM_ADDED",
+          {
+            playlist_uuid: result.playlist.uuid,
+          },
+        );
+        return res.status(httpStatus.CREATED).json(
+          jsonResponse({
+            success: true,
+            data: single
+              ? { playlistItem: result.items[0] }
+              : { added: result.items.length },
+          }),
+        );
       }
-
-      playlistItem.dreamItem = dreamToAdd;
-      shouldUpdatePlaylistTimestamp =
-        dreamToAdd.status === DreamStatusType.PROCESSED;
-    } else if (type === PlaylistItemType.PLAYLIST) {
-      const playlistToAdd = await playlistRepository.findOne({
-        where: { uuid: itemUUID },
-      });
-
-      if (!playlistToAdd) {
-        return handleNotFound(req as RequestType, res);
-      }
-
-      playlistItem.playlistItem = playlistToAdd;
     }
-
-    const createdPlaylistItem = await playlistItemRepository.save(playlistItem);
-
-    if (shouldUpdatePlaylistTimestamp) {
-      refreshPlaylistUpdatedAtTimestamp(playlist.id);
-    }
-
-    tracker.sendEventWithRequestContext(res, user.uuid, "PLAYLIST_ITEM_ADDED", {
-      playlist_uuid: playlist.uuid,
-    });
-
-    return res.status(httpStatus.CREATED).json(
-      jsonResponse({
-        success: true,
-        data: { playlistItem: createdPlaylistItem },
-      }),
-    );
-  } catch (err) {
-    const error = err as Error;
-    return handleInternalServerError(error, req as RequestType, res);
+  } catch (error) {
+    return handleInternalServerError(error as Error, req as RequestType, res);
   }
 };
+
+export const handleAddPlaylistItem = (
+  req: RequestType<AddPlaylistItemRequest, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+) =>
+  handleAddItems(
+    req,
+    res,
+    [{ type: req.body.type!, uuid: req.body.uuid! }],
+    true,
+  );
+
+export const handleAddPlaylistItems = (
+  req: RequestType<AddPlaylistItemsRequest, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+) =>
+  handleAddItems(
+    req,
+    res,
+    req.body.items!.map((item) => ({ type: item.type!, uuid: item.uuid! })),
+    false,
+  );
 
 /**
  * Handles remove item from playlist
@@ -1298,7 +1224,7 @@ export const handleRemovePlaylistItem = async (
     const playlist = await playlistRepository.findOne({
       where: { uuid },
       // only need to query the user id
-      select: { user: { id: true } },
+      select: { userId: true, user: { id: true } },
       relations: {
         user: true,
       },
@@ -1362,7 +1288,7 @@ export const handleAddPlaylistKeyframe = async (
     const playlist = await playlistRepository.findOne({
       where: { uuid },
       // only need to query the user id
-      select: { user: { id: true } },
+      select: { userId: true, user: { id: true } },
       relations: {
         user: true,
       },
@@ -1466,7 +1392,7 @@ export const handleRemovePlaylistKeyframe = async (
     const playlist = await playlistRepository.findOne({
       where: { uuid },
       // only need to query the user id
-      select: { user: { id: true } },
+      select: { userId: true, user: { id: true } },
       relations: {
         user: true,
       },
@@ -1517,7 +1443,13 @@ const loadPlaylistForOwnerAction = async (
 
   const playlist = await playlistRepository.findOne({
     where: { uuid },
-    select: { id: true, uuid: true, prompt: true, user: { id: true } },
+    select: {
+      id: true,
+      uuid: true,
+      prompt: true,
+      userId: true,
+      user: { id: true },
+    },
     relations: { user: true },
   });
 
@@ -1562,13 +1494,15 @@ export const handleRunPlaylist = async (
     const result = await runUprezPlaylist({
       playlist,
       prompt,
-      userId: res.locals.user!.id,
+      user: res.locals.user!,
     });
 
     return res
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { result } }));
   } catch (err) {
+    if (err instanceof UprezSourceAccessError)
+      return handleNotFound(req as RequestType, res);
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
   }

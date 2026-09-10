@@ -10,9 +10,8 @@ import appDataSource from "database/app-data-source";
 import { DreamMediaType, DreamStatusType } from "types/dream.types";
 import { PlaylistItemType } from "types/playlist.types";
 import { playlistKeyframeRepository } from "database/repositories";
-import { framesToSeconds } from "./video.utils";
 
-interface GetPlaylistFilterOptions {
+export interface GetPlaylistFilterOptions {
   // userId from the user that is requesting the playlist
   // needed to handle hidden field on playlist and nested items
   userId: number;
@@ -25,7 +24,8 @@ interface PlaylistThumbnailFilterOptions extends GetPlaylistFilterOptions {
   rootPlaylistNsfw: boolean;
 }
 
-type PlaylistThumbnailCandidate = Pick<PlaylistItem, "id"> & {
+export type PlaylistThumbnailCandidate = Pick<PlaylistItem, "id"> & {
+  playlist: Pick<Playlist, "id">;
   dreamItem: Pick<Dream, "id" | "thumbnail"> | null;
   playlistItem: Pick<Playlist, "id" | "thumbnail"> | null;
 };
@@ -320,16 +320,21 @@ export const computePlaylistThumbnailRecursive = async (
  * visibility rules as playlist contents.
  */
 export const getVisiblePlaylistItemsForThumbnail = async (
-  playlistId: number,
+  playlistId: number | number[],
   filter: GetPlaylistFilterOptions,
 ): Promise<PlaylistThumbnailCandidate[]> => {
+  if (Array.isArray(playlistId) && playlistId.length === 0) return [];
   const isAdmin = filter.isAdmin;
   const userId = filter.userId;
 
   const queryBuilder = playlistItemRepository
     .createQueryBuilder("item")
     .select("item.id")
-    .where("item.playlistId = :playlistId", { playlistId })
+    .innerJoin("item.playlist", "parent")
+    .addSelect("parent.id")
+    .where("item.playlistId IN (:...playlistIds)", {
+      playlistIds: Array.isArray(playlistId) ? playlistId : [playlistId],
+    })
     .andWhere("item.deleted_at IS NULL")
     .leftJoin("item.dreamItem", "dreamItem")
     .addSelect(["dreamItem.id", "dreamItem.thumbnail"])
@@ -455,81 +460,6 @@ export const getPaginatedPlaylistItems = async ({
     items,
     totalCount,
   };
-};
-
-export const computePlaylistTotalDurationSeconds = async (
-  playlistId: number,
-  filter: GetPlaylistFilterOptions,
-  visitedPlaylistIds: Set<number> = new Set(),
-): Promise<number> => {
-  if (!playlistId || visitedPlaylistIds.has(playlistId)) return 0;
-  visitedPlaylistIds.add(playlistId);
-
-  let totalSeconds = 0;
-
-  // Get all items for this playlist using the same logic as getPaginatedPlaylistItems
-  const items = await getPlaylistItemsQueryBuilder(playlistId, filter);
-
-  for (const item of items) {
-    // If it's a dream item, add its duration
-    if (
-      item.dreamItem &&
-      item.dreamItem.processedVideoFrames &&
-      item.dreamItem.activityLevel
-    ) {
-      totalSeconds += framesToSeconds(
-        item.dreamItem.processedVideoFrames,
-        item.dreamItem.activityLevel,
-      );
-    }
-
-    // If it's a nested playlist, recursively calculate its duration
-    if (item.playlistItem) {
-      const nestedDuration = await computePlaylistTotalDurationSeconds(
-        item.playlistItem.id,
-        filter,
-        visitedPlaylistIds,
-      );
-      totalSeconds += nestedDuration;
-    }
-  }
-
-  return totalSeconds;
-};
-
-export const computePlaylistTotalDreamCount = async (
-  playlistId: number,
-  filter: GetPlaylistFilterOptions,
-  visitedPlaylistIds: Set<number> = new Set(),
-): Promise<number> => {
-  if (!playlistId || visitedPlaylistIds.has(playlistId)) return 0;
-  visitedPlaylistIds.add(playlistId);
-
-  let totalDreamCount = 0;
-
-  const items = await getPlaylistItemsQueryBuilder(playlistId, filter);
-
-  for (const item of items) {
-    if (item.dreamItem) {
-      if (
-        !filter.onlyProcessedDreams ||
-        item.dreamItem.status === DreamStatusType.PROCESSED
-      ) {
-        totalDreamCount++;
-      }
-    }
-
-    if (item.playlistItem) {
-      const nestedDreamCount = await computePlaylistTotalDreamCount(
-        item.playlistItem.id,
-        filter,
-        visitedPlaylistIds,
-      );
-      totalDreamCount += nestedDreamCount;
-    }
-  }
-
-  return totalDreamCount;
 };
 
 /**
@@ -711,11 +641,11 @@ export const deletePlaylistItemAndResetOrder = async ({
       .createQueryBuilder()
       .update(PlaylistItem)
       .set({
-        order: () => "\"order\" - 1",
+        order: () => `"order" - 1`,
       })
       .where("playlistId = :playlistId", { playlistId })
       .andWhere("deleted_at IS NULL")
-      .andWhere("\"order\" > :deletedOrder", { deletedOrder })
+      .andWhere(`"order" > :deletedOrder`, { deletedOrder })
       .execute();
   });
 };
@@ -791,11 +721,11 @@ export const deletePlaylistKeyframeAndResetOrder = async ({
       .createQueryBuilder()
       .update(PlaylistKeyframe)
       .set({
-        order: () => "\"order\" - 1",
+        order: () => `"order" - 1`,
       })
       .where("playlistId = :playlistId", { playlistId })
       .andWhere("deleted_at IS NULL")
-      .andWhere("\"order\" > :deletedOrder", { deletedOrder })
+      .andWhere(`"order" > :deletedOrder`, { deletedOrder })
       .execute();
   });
 };

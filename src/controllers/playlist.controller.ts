@@ -1,5 +1,7 @@
 import { addPlaylistItems } from "utils/playlist-items.util";
+import { attachDreamProgress } from "services/job-progress.service";
 import {
+  attachPlaylistProgress,
   computePlaylistTotals,
   populatePlaylistThumbnails,
 } from "utils/playlist-summary.util";
@@ -323,6 +325,19 @@ export const handleGetPlaylistItems = async (
       result.items,
     );
 
+    const itemFilter = {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw: user?.nsfw,
+    };
+    await attachPlaylistProgress(
+      transformedItems.map((item) => item.playlistItem),
+      itemFilter,
+    );
+    await attachDreamProgress(
+      transformedItems.flatMap((item) => item.dreamItem ?? []),
+    );
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
@@ -628,6 +643,12 @@ export const handleGetPlaylists = async (
     // Transform playlists to include signed URLs
     const transformedPlaylists =
       await transformPlaylistsWithSignedUrls(playlists);
+
+    await attachPlaylistProgress(transformedPlaylists, {
+      userId: currentUser!.id,
+      isAdmin: isUserAdmin,
+      nsfw: currentUser?.nsfw,
+    });
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -1036,7 +1057,6 @@ export const handleOrderPlaylist = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
-      // only need to query the user id
       select: { id: true, userId: true, user: { id: true } },
       relations: {
         user: true,
@@ -1224,7 +1244,6 @@ export const handleRemovePlaylistItem = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
-      // only need to query the user id
       select: { id: true, userId: true, user: { id: true } },
       relations: {
         user: true,
@@ -1288,7 +1307,6 @@ export const handleAddPlaylistKeyframe = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
-      // only need to query the user id
       select: { id: true, userId: true, user: { id: true } },
       relations: {
         user: true,
@@ -1392,7 +1410,6 @@ export const handleRemovePlaylistKeyframe = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
-      // only need to query the user id
       select: { id: true, userId: true, user: { id: true } },
       relations: {
         user: true,

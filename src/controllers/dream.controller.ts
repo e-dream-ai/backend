@@ -97,6 +97,7 @@ import {
   setThumbVersion,
 } from "utils/uploadVersion.util";
 import {
+  attachDreamProgress,
   getDreamProgressSnapshots,
   emitDreamJobStatus,
 } from "services/job-progress.service";
@@ -151,6 +152,7 @@ export const handleGetDreams = async (
     });
 
     const transformedDreams = await transformDreamsWithSignedUrls(dreams);
+    await attachDreamProgress(transformedDreams);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -1000,6 +1002,7 @@ export const handleGetMyDreams = async (
     });
 
     const transformedDreams = await transformDreamsWithSignedUrls(dreams);
+    await attachDreamProgress(transformedDreams);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

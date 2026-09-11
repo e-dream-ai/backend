@@ -47,6 +47,7 @@ describe("playlist get endpoints", () => {
       computePlaylistThumbnailRecursive: jest.fn(),
     }));
     jest.mock("utils/playlist-summary.util", () => ({
+      attachPlaylistProgress: jest.fn().mockResolvedValue(undefined),
       computePlaylistTotals: jest.fn().mockResolvedValue({
         totalDurationSeconds: 123,
         totalDreamCount: 7,
@@ -117,6 +118,13 @@ describe("playlist get endpoints", () => {
     }));
     jest.doMock("utils/transform.util", () => ({
       transformPlaylistItemsWithSignedUrls: jest.fn().mockResolvedValue([]),
+    }));
+    jest.doMock("utils/playlist-summary.util", () => ({
+      attachPlaylistProgress: jest.fn().mockResolvedValue(undefined),
+      computePlaylistTotals: jest.fn(),
+    }));
+    jest.doMock("services/job-progress.service", () => ({
+      attachDreamProgress: jest.fn().mockResolvedValue(undefined),
     }));
     jest.doMock("utils/user.util", () => ({ isAdmin: () => false }));
     jest.doMock("utils/responses.util", () => ({

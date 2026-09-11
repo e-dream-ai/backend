@@ -1,6 +1,11 @@
-import type { DreamJobProgress, JobStage } from "types/job-progress.types";
+import { VIDEO_INGEST_QUEUE } from "constants/job.constants";
+import type {
+  DreamJobProgress,
+  JobStage,
+  JobStatus,
+} from "types/job-progress.types";
 
-const DREAM_STATES = new Map<string, [string, JobStage]>([
+const DREAM_STATES = new Map<string, [JobStatus, JobStage]>([
   ["queue", ["IN_QUEUE", "queued"]],
   ["processing", ["IN_PROGRESS", "ingesting"]],
   ["processed", ["COMPLETED", "completed"]],
@@ -18,9 +23,20 @@ const STAGE_ORDER: Record<JobStage, number> = {
   idle: 3,
 };
 
+const JOB_STATUSES = new Set<string>([
+  "IN_QUEUE",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "FAILED",
+  "CANCELLED",
+]);
+
 const isJobStage = (value: unknown): value is JobStage =>
   typeof value === "string" &&
   Object.prototype.hasOwnProperty.call(STAGE_ORDER, value);
+
+const isJobStatus = (value: unknown): value is JobStatus =>
+  typeof value === "string" && JOB_STATUSES.has(value);
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -47,13 +63,20 @@ export const isTerminalProgress = ({ stage }: DreamJobProgress): boolean =>
 export function progressFromDreamStatus(
   dreamUuid: string,
   status: string,
+  progress?: number,
 ): DreamJobProgress {
-  const [socketStatus, stage] = DREAM_STATES.get(status) ?? [status, "idle"];
+  const [jobStatus, stage] = DREAM_STATES.get(status) ?? ["CANCELLED", "idle"];
+  const override = finiteNumber(progress);
   return {
     dream_uuid: dreamUuid,
-    status: socketStatus,
+    status: jobStatus,
     stage,
-    progress: stage === "completed" ? 100 : null,
+    progress:
+      override !== undefined
+        ? clampMetric(override, 100)
+        : stage === "completed"
+          ? 100
+          : null,
     countdown_ms: null,
     updated_at: Date.now(),
   };
@@ -63,7 +86,7 @@ function getJobStage(queue: string, status: string, stage: unknown): JobStage {
   if (status === "CANCELLED") return "cancelled";
   if (status === "FAILED" || status === "TIMED_OUT") return "failed";
   if (
-    queue === "videoingest" ||
+    queue === VIDEO_INGEST_QUEUE ||
     stage === "ingesting" ||
     status === "COMPLETED"
   )
@@ -80,7 +103,7 @@ export function normalizeJobProgress(
   const dreamUuid = asString(data.dream_uuid);
   if (!dreamUuid) return;
   if (
-    queue === "videoingest" &&
+    queue === VIDEO_INGEST_QUEUE &&
     data.job_type !== "video" &&
     data.job_type !== "image"
   )
@@ -88,7 +111,7 @@ export function normalizeJobProgress(
 
   const rawStatus = asString(data.status)?.toUpperCase() ?? "IN_PROGRESS";
   const stage = getJobStage(queue, rawStatus, data.stage);
-  let status = rawStatus === "IN_QUEUE" ? "IN_QUEUE" : "IN_PROGRESS";
+  let status: JobStatus = rawStatus === "IN_QUEUE" ? "IN_QUEUE" : "IN_PROGRESS";
   if (stage === "failed") status = "FAILED";
   if (stage === "cancelled") status = "CANCELLED";
 
@@ -102,7 +125,7 @@ export function normalizeJobProgress(
   const resetMetrics =
     STAGE_ORDER[stage] === 3 ||
     rawStatus === "IN_QUEUE" ||
-    (stage === "ingesting" && queue !== "videoingest");
+    (stage === "ingesting" && queue !== VIDEO_INGEST_QUEUE);
 
   return {
     dream_uuid: dreamUuid,
@@ -127,7 +150,7 @@ export function parseCachedProgress(
     if (!isRecord(data) || !isJobStage(data.stage)) return;
     if (
       typeof data.dream_uuid !== "string" ||
-      typeof data.status !== "string" ||
+      !isJobStatus(data.status) ||
       typeof data.updated_at !== "number"
     )
       return;
@@ -149,6 +172,17 @@ export function parseCachedProgress(
   }
 }
 
+const isEquivalentProgress = (
+  current: DreamJobProgress,
+  next: DreamJobProgress,
+): boolean =>
+  current.run_id === next.run_id &&
+  current.queue === next.queue &&
+  current.stage === next.stage &&
+  current.status === next.status &&
+  current.progress === next.progress &&
+  current.countdown_ms === next.countdown_ms;
+
 export function shouldAcceptProgress(
   current: DreamJobProgress | undefined,
   next: DreamJobProgress,
@@ -161,6 +195,7 @@ export function shouldAcceptProgress(
     );
   }
   if (isTerminalProgress(current)) return false;
+  if (isEquivalentProgress(current, next)) return false;
   if (STAGE_ORDER[next.stage] < STAGE_ORDER[current.stage]) return false;
 
   const returnedToQueue =
@@ -169,8 +204,8 @@ export function shouldAcceptProgress(
     next.status === "IN_QUEUE" &&
     (!current.queue || current.queue === next.queue);
   const lateRenderCompletion =
-    current.queue === "videoingest" &&
-    next.queue !== "videoingest" &&
+    current.queue === VIDEO_INGEST_QUEUE &&
+    next.queue !== VIDEO_INGEST_QUEUE &&
     next.stage === "ingesting";
   return !returnedToQueue && !lateRenderCompletion;
 }

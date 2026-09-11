@@ -7,9 +7,16 @@ export type JobStage =
   | "cancelled"
   | "idle";
 
+export type JobStatus =
+  | "IN_QUEUE"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELLED";
+
 export interface DreamJobProgress {
   dream_uuid: string;
-  status: string;
+  status: JobStatus;
   stage: JobStage;
   progress: number | null;
   countdown_ms: number | null;

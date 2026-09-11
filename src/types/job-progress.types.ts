@@ -30,9 +30,10 @@ export interface DreamJobProgress {
 
 export interface PlaylistProgress {
   total: number;
-  completed: number;
   queued: number;
-  inProgress: number;
+  rendering: number;
+  ingesting: number;
+  completed: number;
   failed: number;
   idle: number;
   remaining: number;

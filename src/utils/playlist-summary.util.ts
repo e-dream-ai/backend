@@ -1,4 +1,5 @@
-import type { PlaylistProgress } from "types/job-progress.types";
+import { getDreamProgressSnapshots } from "services/job-progress.service";
+import type { JobStage, PlaylistProgress } from "types/job-progress.types";
 import { Playlist, PlaylistItem } from "entities";
 import { playlistItemRepository } from "database/repositories";
 import { DreamMediaType, DreamStatusType } from "types/dream.types";
@@ -9,17 +10,25 @@ import {
 } from "./playlist.util";
 import { framesToSeconds } from "./video.utils";
 
-type ProgressBucket = "completed" | "failed" | "idle" | "queued" | "inProgress";
+type ProgressBucket =
+  | "queued"
+  | "rendering"
+  | "ingesting"
+  | "completed"
+  | "failed"
+  | "idle";
 
 const QUERY_BATCH_SIZE = 200;
 
-const PROGRESS_BUCKETS = new Map<string, ProgressBucket>([
-  [DreamStatusType.PROCESSED, "completed"],
-  [DreamStatusType.FAILED, "failed"],
-  [DreamStatusType.NONE, "idle"],
-  [DreamStatusType.QUEUE, "queued"],
-  [DreamStatusType.PROCESSING, "inProgress"],
-]);
+const STAGE_BUCKETS: Record<JobStage, ProgressBucket> = {
+  queued: "queued",
+  rendering: "rendering",
+  ingesting: "ingesting",
+  completed: "completed",
+  failed: "failed",
+  cancelled: "idle",
+  idle: "idle",
+};
 
 export const populatePlaylistThumbnails = async (
   playlists: Playlist[],
@@ -92,9 +101,10 @@ const emptyTotals = (): PlaylistTotals => ({
   totalDreamCount: 0,
   progress: {
     total: 0,
-    completed: 0,
     queued: 0,
-    inProgress: 0,
+    rendering: 0,
+    ingesting: 0,
+    completed: 0,
     failed: 0,
     idle: 0,
     remaining: 0,
@@ -113,6 +123,7 @@ const queryPlaylistItems = (
     .leftJoin("item.dreamItem", "dream")
     .addSelect([
       "dream.id",
+      "dream.uuid",
       "dream.processedVideoFrames",
       "dream.activityLevel",
       "dream.status",
@@ -148,6 +159,7 @@ export const computePlaylistTotalsBatch = async (
   const totals = new Map<number, PlaylistTotals>();
   const visited = new Map<number, Set<number>>();
   const countedDreams = new Map<number, Set<number>>();
+  const dreamsById = new Map<number, { uuid: string; status: string }>();
 
   for (const rootId of playlistIds) {
     if (!rootId || totals.has(rootId)) continue;
@@ -200,8 +212,7 @@ export const computePlaylistTotalsBatch = async (
             if (!counted.has(dream.id)) {
               counted.add(dream.id);
               rootTotals.progress.total++;
-              const bucket = PROGRESS_BUCKETS.get(dream.status);
-              if (bucket) rootTotals.progress[bucket]++;
+              dreamsById.set(dream.id, dream);
             }
           }
 
@@ -220,8 +231,17 @@ export const computePlaylistTotalsBatch = async (
     frontier = next;
   }
 
-  for (const { progress } of totals.values()) {
-    progress.remaining = progress.queued + progress.inProgress;
+  const snapshots = await getDreamProgressSnapshots([...dreamsById.values()]);
+
+  for (const [rootId, { progress }] of totals) {
+    for (const dreamId of countedDreams.get(rootId) ?? []) {
+      const dream = dreamsById.get(dreamId);
+      const stage = dream && snapshots.get(dream.uuid)?.stage;
+      if (stage) progress[STAGE_BUCKETS[stage]]++;
+    }
+
+    progress.remaining =
+      progress.queued + progress.rendering + progress.ingesting;
   }
 
   return totals;

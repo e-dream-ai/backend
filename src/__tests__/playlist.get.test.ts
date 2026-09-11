@@ -47,9 +47,19 @@ describe("playlist get endpoints", () => {
       computePlaylistThumbnailRecursive: jest.fn(),
     }));
     jest.mock("utils/playlist-summary.util", () => ({
-      computePlaylistTotals: jest
-        .fn()
-        .mockResolvedValue({ totalDurationSeconds: 123, totalDreamCount: 7 }),
+      computePlaylistTotals: jest.fn().mockResolvedValue({
+        totalDurationSeconds: 123,
+        totalDreamCount: 7,
+        progress: {
+          total: 10,
+          completed: 7,
+          queued: 2,
+          inProgress: 1,
+          failed: 0,
+          idle: 0,
+          remaining: 3,
+        },
+      }),
     }));
     jest.mock("utils/transform.util", () => ({
       __esModule: true,
@@ -75,6 +85,15 @@ describe("playlist get endpoints", () => {
     const payload = json.mock.calls[0][0];
     expect(payload.data.playlist.totalDurationSeconds).toBe(123);
     expect(payload.data.playlist.totalDreamCount).toBe(7);
+    expect(payload.data.playlist.progress).toEqual({
+      total: 10,
+      completed: 7,
+      queued: 2,
+      inProgress: 1,
+      failed: 0,
+      idle: 0,
+      remaining: 3,
+    });
   });
 
   it("handleGetPlaylistItems selects the retained owner id", async () => {

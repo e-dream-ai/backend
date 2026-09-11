@@ -97,7 +97,7 @@ import {
   setThumbVersion,
 } from "utils/uploadVersion.util";
 import {
-  clearDreamProgressCache,
+  getDreamProgressSnapshots,
   emitDreamJobStatus,
 } from "services/job-progress.service";
 
@@ -934,10 +934,19 @@ export const handleGetDream = async (
     }
 
     const transformedDream = await transformDreamWithSignedUrls(dream);
+    const snapshots = await getDreamProgressSnapshots([dream]);
 
-    return res
-      .status(httpStatus.OK)
-      .json(jsonResponse({ success: true, data: { dream: transformedDream } }));
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          dream: {
+            ...transformedDream,
+            jobProgress: snapshots.get(dream.uuid),
+          },
+        },
+      }),
+    );
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req as RequestType, res);
@@ -1948,7 +1957,6 @@ export const handleCancelDreamJob = async (
     }
 
     try {
-      await clearDreamProgressCache(dreamUUID);
       await emitDreamJobStatus({
         userId: getOwnerId(dream),
         dreamUuid: dreamUUID,

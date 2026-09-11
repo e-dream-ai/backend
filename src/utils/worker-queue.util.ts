@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { Queue } from "bullmq";
 import { redisClient } from "clients/redis.client";
 import { APP_LOGGER } from "shared/logger";
@@ -14,6 +15,7 @@ interface VideoIngestJobData {
   type: "video" | "image" | "md5" | "filmstrip";
   dream_uuid: string;
   extension?: string;
+  user_id?: number;
 }
 
 export const queueWorkerJob = async (
@@ -25,12 +27,15 @@ export const queueWorkerJob = async (
       connection: redisClient,
     });
 
-    const job = await queue.add("message", jobData);
+    const run = { run_id: randomUUID(), run_started_at: Date.now() };
+    const job = await queue.add("message", { ...jobData, ...run });
 
     await job.updateProgress({
+      ...run,
       dream_uuid: jobData.dream_uuid,
+      user_id: jobData.user_id,
       status: "IN_QUEUE",
-      progress: 0,
+      progress: null,
     });
 
     await queue.close();
@@ -60,12 +65,17 @@ export const queueVideoIngestJob = async (
       connection: redisClient,
     });
 
-    const job = await queue.add("message", jobData);
+    const run = { run_id: randomUUID(), run_started_at: Date.now() };
+    const job = await queue.add("message", { ...jobData, ...run });
 
     await job.updateProgress({
+      ...run,
       dream_uuid: jobData.dream_uuid,
+      user_id: jobData.user_id,
       status: "IN_QUEUE",
-      progress: 0,
+      stage: "ingesting",
+      job_type: jobData.type,
+      progress: null,
     });
 
     await queue.close();

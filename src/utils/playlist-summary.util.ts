@@ -1,3 +1,5 @@
+import { getDreamProgressSnapshots } from "services/job-progress.service";
+import type { PlaylistProgress } from "types/job-progress.types";
 import { Playlist, PlaylistItem } from "entities";
 import { playlistItemRepository } from "database/repositories";
 import { DreamMediaType, DreamStatusType } from "types/dream.types";
@@ -7,6 +9,14 @@ import {
   PlaylistThumbnailCandidate,
 } from "./playlist.util";
 import { framesToSeconds } from "./video.utils";
+
+const terminalProgressFields = new Map<string, "completed" | "failed" | "idle">(
+  [
+    [DreamStatusType.PROCESSED, "completed"],
+    [DreamStatusType.FAILED, "failed"],
+    [DreamStatusType.NONE, "idle"],
+  ],
+);
 
 export const populatePlaylistThumbnails = async (
   playlists: Playlist[],
@@ -71,6 +81,7 @@ export const populatePlaylistThumbnails = async (
 export interface PlaylistTotals {
   totalDurationSeconds: number;
   totalDreamCount: number;
+  progress: PlaylistProgress;
 }
 
 export const computePlaylistTotals = async (
@@ -80,7 +91,17 @@ export const computePlaylistTotals = async (
   const totals: PlaylistTotals = {
     totalDurationSeconds: 0,
     totalDreamCount: 0,
+    progress: {
+      total: 0,
+      completed: 0,
+      queued: 0,
+      inProgress: 0,
+      failed: 0,
+      idle: 0,
+      remaining: 0,
+    },
   };
+  const dreams = new Map<number, { uuid: string; status: string }>();
   const visited = new Set<number>();
   let pending = playlistId ? [playlistId] : [];
   while (pending.length > 0) {
@@ -94,6 +115,7 @@ export const computePlaylistTotals = async (
         .leftJoin("item.dreamItem", "dream")
         .addSelect([
           "dream.id",
+          "dream.uuid",
           "dream.processedVideoFrames",
           "dream.activityLevel",
           "dream.status",
@@ -122,6 +144,7 @@ export const computePlaylistTotals = async (
       const items: PlaylistItem[] = await query.getMany();
       for (const item of items) {
         const dream = item.dreamItem;
+        if (dream) dreams.set(dream.id, dream);
         if (dream?.processedVideoFrames && dream.activityLevel) {
           totals.totalDurationSeconds += framesToSeconds(
             dream.processedVideoFrames,
@@ -140,5 +163,19 @@ export const computePlaylistTotals = async (
     }
     pending = [...next];
   }
+  const snapshots = await getDreamProgressSnapshots([...dreams.values()]);
+  const { progress } = totals;
+  progress.total = dreams.size;
+
+  for (const dream of dreams.values()) {
+    const jobStatus = snapshots.get(dream.uuid)?.status;
+    const field =
+      terminalProgressFields.get(dream.status) ??
+      (jobStatus === "IN_QUEUE" ? "queued" : "inProgress");
+
+    progress[field]++;
+  }
+
+  progress.remaining = progress.queued + progress.inProgress;
   return totals;
 };

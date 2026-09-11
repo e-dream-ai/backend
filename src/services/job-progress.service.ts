@@ -17,6 +17,7 @@ import {
 } from "utils/job-progress.util";
 
 const PROGRESS_TTL_SECONDS = 10800;
+const PROGRESS_SEQ_TTL_SECONDS = PROGRESS_TTL_SECONDS * 2;
 const SNAPSHOT_BATCH_SIZE = 200;
 const CACHE_WRITE_ATTEMPTS = 5;
 const JOB_DATA_CACHE_LIMIT = 500;
@@ -74,6 +75,21 @@ async function compareAndSet(
 export const getJobProgressKey = (dreamUuid: string): string =>
   `job:progress:${dreamUuid}`;
 
+const getJobProgressSeqKey = (dreamUuid: string): string =>
+  `job:progress:seq:${dreamUuid}`;
+
+async function nextSequence(dreamUuid: string): Promise<number | undefined> {
+  const key = getJobProgressSeqKey(dreamUuid);
+  const results = await redisClient
+    .multi()
+    .incr(key)
+    .expire(key, PROGRESS_SEQ_TTL_SECONDS)
+    .exec();
+
+  const seq = Number(results?.[0]?.[1]);
+  return Number.isFinite(seq) ? seq : undefined;
+}
+
 export async function cacheDreamProgress(
   incoming: DreamJobProgress,
   authoritative = false,
@@ -91,6 +107,7 @@ export async function cacheDreamProgress(
     };
     if (!authoritative && !shouldAcceptProgress(current, next)) return;
 
+    next.seq = await nextSequence(incoming.dream_uuid);
     if (await compareAndSet(key, raw ?? "", JSON.stringify(next))) return next;
   }
 
@@ -119,7 +136,7 @@ async function publishProgress(
 export async function getDreamProgressSnapshots(
   dreams: ReadonlyArray<{ uuid: string; status: string }>,
 ): Promise<Map<string, DreamJobProgress>> {
-  const snapshots = new Map(
+  const snapshots = new Map<string, DreamJobProgress>(
     dreams.map(({ uuid, status }) => [
       uuid,
       progressFromDreamStatus(uuid, status),

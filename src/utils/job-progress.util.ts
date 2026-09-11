@@ -166,6 +166,7 @@ export function parseCachedProgress(
       jobId: asString(data.jobId),
       run_id: asString(data.run_id),
       run_started_at: finiteNumber(data.run_started_at),
+      seq: finiteNumber(data.seq),
     };
   } catch {
     return;

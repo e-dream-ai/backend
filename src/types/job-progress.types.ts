@@ -25,6 +25,7 @@ export interface DreamJobProgress {
   queue?: string;
   run_id?: string;
   run_started_at?: number;
+  seq?: number;
 }
 
 export interface PlaylistProgress {

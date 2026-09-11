@@ -201,6 +201,7 @@ export const processDreamRequest = async (
 
   const result = await queueVideoIngestJob({
     type: jobType,
+    user_id: getOwnerId(dream),
     dream_uuid: dream.uuid,
     extension,
   });

@@ -1,241 +1,347 @@
 import { QueueEvents, Queue } from "bullmq";
-import { Socket } from "socket.io";
+import type { Socket } from "socket.io";
 import { redisClient } from "clients/redis.client";
+import { dreamRepository } from "database/repositories";
 import { getIo } from "socket/io";
 import { APP_LOGGER } from "shared/logger";
 import { GENERATION_QUEUES } from "utils/prompt.util";
-import { findOneDream } from "utils/dream.util";
+import { VIDEO_INGEST_QUEUE } from "constants/job.constants";
+import type { DreamJobProgress } from "types/job-progress.types";
+import {
+  isRecord,
+  isTerminalProgress,
+  normalizeJobProgress,
+  parseCachedProgress,
+  progressFromDreamStatus,
+  shouldAcceptProgress,
+} from "utils/job-progress.util";
 
-const toNumber = (v: unknown): number | undefined => {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
+const PROGRESS_TTL_SECONDS = 10800;
+const SNAPSHOT_BATCH_SIZE = 200;
+const CACHE_WRITE_ATTEMPTS = 5;
+const JOB_DATA_CACHE_LIMIT = 500;
+const COMPARE_AND_SET = `
+if (redis.call('GET', KEYS[1]) or '') ~= ARGV[1] then return 0 end
+redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
+return 1
+`;
 
-  if (typeof v === "string") {
-    const n = Number(v.trim());
-    if (Number.isFinite(n)) return n;
-  }
-
-  return undefined;
-};
-
-const QUEUES = GENERATION_QUEUES;
-
-const PROGRESS_TTL_SECONDS = 10800; // 3 hours is enough for active jobs
-
-interface JobProgressData {
-  user_id: number | string;
-  dream_uuid: string;
-  status?: string;
-  progress?: number;
-  countdown_ms?: number;
-  preview_frame?: string;
-  output?: number | unknown;
+interface ScriptedRedis {
+  casJobProgress?: (
+    key: string,
+    expected: string,
+    next: string,
+    ttl: number,
+  ) => Promise<unknown>;
+  defineCommand?: (
+    name: string,
+    options: { numberOfKeys: number; lua: string },
+  ) => void;
 }
 
-export const getJobProgressKey = (dreamUuid: string) =>
-  `job:progress:${dreamUuid}`;
+let casDefined = false;
 
-const DREAM_STATUS_TO_SOCKET: Record<string, string> = {
-  queue: "IN_QUEUE",
-  processing: "IN_PROGRESS",
-  processed: "COMPLETED",
-  failed: "FAILED",
-  none: "CANCELLED",
-};
+async function compareAndSet(
+  key: string,
+  expected: string,
+  next: string,
+): Promise<boolean> {
+  const client = redisClient as unknown as ScriptedRedis;
 
-const TERMINAL_DREAM_STATUSES = new Set(["processed", "failed", "none"]);
-
-const isTerminalStatus = (status: string) =>
-  TERMINAL_DREAM_STATUSES.has(status);
-
-export const clearDreamProgressCache = async (dreamUuid: string) => {
-  await redisClient.del(getJobProgressKey(dreamUuid));
-  await redisClient.del(`job:preview:${dreamUuid}`);
-};
-
-export const hydrateDreamProgress = async (
-  socket: Socket,
-  dreamUuid: string,
-) => {
-  const cached = await redisClient.get(getJobProgressKey(dreamUuid));
-  if (cached) {
-    socket.emit("job:progress", JSON.parse(cached));
-    return;
+  if (!casDefined && typeof client.defineCommand === "function") {
+    client.defineCommand("casJobProgress", {
+      numberOfKeys: 1,
+      lua: COMPARE_AND_SET,
+    });
+    casDefined = true;
   }
 
-  const dream = await findOneDream({
+  const result =
+    typeof client.casJobProgress === "function"
+      ? await client.casJobProgress(key, expected, next, PROGRESS_TTL_SECONDS)
+      : await redisClient.eval(
+        COMPARE_AND_SET,
+        1,
+        key,
+        expected,
+        next,
+        PROGRESS_TTL_SECONDS,
+      );
+
+  return Number(result) === 1;
+}
+
+export const getJobProgressKey = (dreamUuid: string): string =>
+  `job:progress:${dreamUuid}`;
+
+export async function cacheDreamProgress(
+  incoming: DreamJobProgress,
+  authoritative = false,
+): Promise<DreamJobProgress | undefined> {
+  const key = getJobProgressKey(incoming.dream_uuid);
+
+  for (let attempt = 0; attempt < CACHE_WRITE_ATTEMPTS; attempt++) {
+    const raw = await redisClient.get(key);
+    const current = parseCachedProgress(raw);
+    const run = authoritative ? current : incoming;
+    const next = {
+      ...incoming,
+      run_id: run?.run_id ?? current?.run_id,
+      run_started_at: run?.run_started_at ?? current?.run_started_at,
+    };
+    if (!authoritative && !shouldAcceptProgress(current, next)) return;
+
+    if (await compareAndSet(key, raw ?? "", JSON.stringify(next))) return next;
+  }
+
+  APP_LOGGER.warn(
+    `Could not cache concurrent progress for ${incoming.dream_uuid}`,
+  );
+}
+
+async function publishProgress(
+  progress: DreamJobProgress,
+  userId?: number | string,
+  authoritative = false,
+): Promise<void> {
+  const saved = await cacheDreamProgress(progress, authoritative);
+  if (!saved) return;
+
+  if (isTerminalProgress(saved)) {
+    await redisClient.del(`job:preview:${saved.dream_uuid}`);
+  }
+
+  const rooms = [`DREAM:${saved.dream_uuid}`];
+  if (userId !== undefined) rooms.push(`USER:${userId}`);
+  getIo()?.of("/remote-control").to(rooms).emit("job:progress", saved);
+}
+
+export async function getDreamProgressSnapshots(
+  dreams: ReadonlyArray<{ uuid: string; status: string }>,
+): Promise<Map<string, DreamJobProgress>> {
+  const snapshots = new Map(
+    dreams.map(({ uuid, status }) => [
+      uuid,
+      progressFromDreamStatus(uuid, status),
+    ]),
+  );
+  const pending = dreams.filter(
+    ({ status }) => status === "queue" || status === "processing",
+  );
+
+  try {
+    for (
+      let offset = 0;
+      offset < pending.length;
+      offset += SNAPSHOT_BATCH_SIZE
+    ) {
+      const batch = pending.slice(offset, offset + SNAPSHOT_BATCH_SIZE);
+      const keys = batch.map(({ uuid }) => getJobProgressKey(uuid));
+      const cached = await redisClient.mget(...keys);
+
+      batch.forEach(({ uuid }, index) => {
+        const progress = parseCachedProgress(cached[index]);
+        if (progress && !isTerminalProgress(progress))
+          snapshots.set(uuid, progress);
+      });
+    }
+  } catch (error) {
+    APP_LOGGER.error("Could not read dream progress snapshots:", error);
+  }
+
+  return snapshots;
+}
+
+export async function attachDreamProgress(
+  dreams: ReadonlyArray<{ uuid: string; status: string } | null | undefined>,
+): Promise<void> {
+  const pending = dreams.filter(
+    (dream): dream is { uuid: string; status: string } =>
+      Boolean(dream?.uuid) &&
+      (dream?.status === "queue" || dream?.status === "processing"),
+  );
+  if (!pending.length) return;
+
+  const snapshots = await getDreamProgressSnapshots(pending);
+  for (const dream of pending) {
+    Object.assign(dream, { jobProgress: snapshots.get(dream.uuid) });
+  }
+}
+
+export async function hydrateDreamProgress(
+  socket: Socket,
+  dreamUuid: string,
+): Promise<void> {
+  const dream = await dreamRepository.findOne({
     where: { uuid: dreamUuid },
     select: { uuid: true, status: true },
   });
   if (!dream) return;
 
-  socket.emit("job:progress", {
-    dream_uuid: dreamUuid,
-    status: DREAM_STATUS_TO_SOCKET[dream.status] ?? dream.status,
-    updated_at: Date.now(),
-  });
-};
+  const snapshots = await getDreamProgressSnapshots([dream]);
+  socket.emit("job:progress", snapshots.get(dreamUuid));
+}
 
-export const emitDreamJobStatus = async (params: {
+export async function emitDreamJobStatus({
+  userId,
+  dreamUuid,
+  status,
+  progress,
+}: {
   userId: number | string;
   dreamUuid: string;
   status: string;
   progress?: number;
-}) => {
-  const { userId, dreamUuid, status, progress } = params;
-  if (!dreamUuid || userId === undefined || userId === null) return;
+}): Promise<void> {
+  if (!dreamUuid || userId == null) return;
 
   try {
-    const io = getIo();
-    if (!io) return;
-
-    const progressData = {
-      dream_uuid: dreamUuid,
-      status: DREAM_STATUS_TO_SOCKET[status] ?? status,
-      progress,
-      updated_at: Date.now(),
-    };
-
-    if (isTerminalStatus(status)) {
-      await clearDreamProgressCache(dreamUuid);
-    } else {
-      await redisClient.set(
-        getJobProgressKey(dreamUuid),
-        JSON.stringify(progressData),
-        "EX",
-        PROGRESS_TTL_SECONDS,
-      );
-    }
-
-    const nsp = io.of("/remote-control");
-    nsp.to(`USER:${userId}`).emit("job:progress", progressData);
-    nsp.to(`DREAM:${dreamUuid}`).emit("job:progress", progressData);
+    await publishProgress(
+      progressFromDreamStatus(dreamUuid, status, progress),
+      userId,
+      true,
+    );
   } catch (error) {
     APP_LOGGER.error(
       `Error emitting dream job status for ${dreamUuid}:`,
       error,
     );
   }
-};
+}
 
 export class JobProgressService {
-  private queueEvents: QueueEvents[] = [];
-  private queues: Map<string, Queue> = new Map();
-  private isInitialized = false;
+  private subscriptions: Array<{ queue: Queue; events: QueueEvents }> = [];
+  private jobData = new Map<string, Record<string, unknown>>();
 
-  public start() {
-    if (this.isInitialized) return;
-    this.isInitialized = true;
+  public start(): void {
+    if (this.subscriptions.length) return;
 
-    for (const queueName of QUEUES) {
-      this.queues.set(
-        queueName,
-        new Queue(queueName, { connection: redisClient }),
-      );
-
-      const events = new QueueEvents(queueName, {
+    for (const name of [...GENERATION_QUEUES, VIDEO_INGEST_QUEUE]) {
+      const queue = new Queue(name, { connection: redisClient });
+      const events = new QueueEvents(name, {
         connection: redisClient.duplicate(),
       });
 
-      events.on("error", (error) => {
-        APP_LOGGER.error(`QueueEvents error on ${queueName}:`, error);
-      });
-
-      events.on("progress", async ({ jobId, data }) => {
-        try {
-          const io = getIo();
-          if (!io) return;
-
-          const {
-            dream_uuid: dreamUuid,
-            user_id: userId,
-            status,
-            progress: rawProgress,
-            countdown_ms: countdownMs,
-            output,
-          } = data as JobProgressData;
-
-          let progress = toNumber(rawProgress);
-          let countdownMsFinal = countdownMs;
-
-          if (output && typeof output === "object") {
-            const out = output as Record<string, unknown>;
-
-            if (progress === undefined) progress = toNumber(out.progress);
-            if (countdownMsFinal === undefined) {
-              const cm = toNumber(out.countdown_ms);
-              countdownMsFinal = cm;
-            }
-          }
-
-          const renderFinished = status === "COMPLETED";
-          const relayedStatus = renderFinished ? undefined : status;
-          if (renderFinished && progress === undefined) progress = 100;
-
-          const isTerminal = relayedStatus === "FAILED";
-          if (dreamUuid && (progress !== undefined || relayedStatus)) {
-            const dreamRoomId = `DREAM:${dreamUuid}`;
-            const progressData = {
-              jobId,
-              dream_uuid: dreamUuid,
-              status: relayedStatus,
-              progress,
-              countdown_ms: countdownMsFinal,
-              updated_at: Date.now(),
-            };
-
-            if (isTerminal) {
-              await clearDreamProgressCache(dreamUuid);
-            } else {
-              await redisClient.set(
-                getJobProgressKey(dreamUuid),
-                JSON.stringify(progressData),
-                "EX",
-                PROGRESS_TTL_SECONDS,
-              );
-            }
-
-            const nsp = io.of("/remote-control");
-            nsp.to(dreamRoomId).emit("job:progress", progressData);
-            if (userId !== undefined && userId !== null) {
-              nsp.to(`USER:${userId}`).emit("job:progress", progressData);
-            }
-          }
-        } catch (error) {
-          APP_LOGGER.error(`Error relaying job progress for ${jobId}:`, error);
-        }
-      });
-
-      events.on("completed", async ({ jobId }) => {
-        try {
-          const job = await this.queues.get(queueName)!.getJob(jobId);
-          if (job?.data?.dream_uuid) {
-            await clearDreamProgressCache(job.data.dream_uuid);
-          }
-        } catch (error) {
-          // Ignore errors during cleanup
-        }
-      });
-
-      events.on("failed", async ({ jobId }) => {
-        try {
-          const job = await this.queues.get(queueName)!.getJob(jobId);
-          if (job?.data?.dream_uuid) {
-            await clearDreamProgressCache(job.data.dream_uuid);
-          }
-        } catch (error) {
-          // Ignore
-        }
-      });
-
-      this.queueEvents.push(events);
+      events.on("error", (error) =>
+        APP_LOGGER.error(`QueueEvents error on ${name}:`, error),
+      );
+      events.on("progress", ({ jobId, data }) =>
+        this.relayProgress(queue, jobId, data),
+      );
+      events.on("completed", ({ jobId }) => this.forgetJob(queue.name, jobId));
+      events.on("failed", ({ jobId }) => this.relayFailure(queue, jobId));
+      this.subscriptions.push({ queue, events });
     }
   }
 
-  public async stop() {
-    await Promise.all([
-      ...this.queueEvents.map((e) => e.close()),
-      ...Array.from(this.queues.values()).map((q) => q.close()),
-    ]);
+  private jobKey(queueName: string, jobId: string): string {
+    return `${queueName}:${jobId}`;
+  }
+
+  private forgetJob(queueName: string, jobId: string): void {
+    this.jobData.delete(this.jobKey(queueName, jobId));
+  }
+
+  private rememberJob(
+    queueName: string,
+    jobId: string,
+    data: Record<string, unknown>,
+  ): void {
+    const key = this.jobKey(queueName, jobId);
+    this.jobData.delete(key);
+    this.jobData.set(key, data);
+
+    if (this.jobData.size > JOB_DATA_CACHE_LIMIT) {
+      const oldest = this.jobData.keys().next().value;
+      if (oldest !== undefined) this.jobData.delete(oldest);
+    }
+  }
+
+  private async loadJobData(
+    queue: Queue,
+    jobId: string,
+  ): Promise<Record<string, unknown> | undefined> {
+    const cached = this.jobData.get(this.jobKey(queue.name, jobId));
+    if (cached) return cached;
+
+    const job = await queue.getJob(jobId);
+    if (!job) return;
+
+    const data = isRecord(job.data) ? job.data : {};
+    this.rememberJob(queue.name, jobId, data);
+    return data;
+  }
+
+  private async relayProgress(
+    queue: Queue,
+    jobId: string,
+    data: unknown,
+  ): Promise<void> {
+    try {
+      if (!isRecord(data)) return;
+      let payload = data;
+
+      if (queue.name === VIDEO_INGEST_QUEUE && !payload.job_type) {
+        const jobData = await this.loadJobData(queue, jobId);
+        if (!jobData) return;
+        payload = { ...jobData, ...data, job_type: jobData.type ?? "video" };
+      }
+
+      const progress = normalizeJobProgress(queue.name, jobId, payload);
+      if (!progress) return;
+
+      if (isTerminalProgress(progress)) this.forgetJob(queue.name, jobId);
+
+      const userId = payload.user_id;
+      await publishProgress(
+        progress,
+        typeof userId === "string" || typeof userId === "number"
+          ? userId
+          : undefined,
+      );
+    } catch (error) {
+      APP_LOGGER.error(`Error relaying job progress for ${jobId}:`, error);
+    }
+  }
+
+  private async relayFailure(queue: Queue, jobId: string): Promise<void> {
+    try {
+      const jobData = await this.loadJobData(queue, jobId);
+      this.forgetJob(queue.name, jobId);
+
+      const dreamUuid =
+        typeof jobData?.dream_uuid === "string"
+          ? jobData.dream_uuid
+          : undefined;
+      if (!dreamUuid) return;
+
+      const progress = normalizeJobProgress(queue.name, jobId, {
+        ...jobData,
+        status: "FAILED",
+      });
+      if (!progress) return;
+
+      const userId = jobData?.user_id;
+      await publishProgress(
+        progress,
+        typeof userId === "string" || typeof userId === "number"
+          ? userId
+          : undefined,
+      );
+    } catch (error) {
+      APP_LOGGER.error(`Error relaying job failure for ${jobId}:`, error);
+    }
+  }
+
+  public async stop(): Promise<void> {
+    await Promise.all(
+      this.subscriptions.flatMap(({ queue, events }) => [
+        queue.close(),
+        events.close(),
+      ]),
+    );
+    this.subscriptions = [];
+    this.jobData.clear();
   }
 }
 

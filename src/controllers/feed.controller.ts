@@ -1,3 +1,5 @@
+import { attachDreamProgress } from "services/job-progress.service";
+import { attachPlaylistProgress } from "utils/playlist-summary.util";
 import { PAGINATION } from "constants/pagination.constants";
 import { feedItemRepository } from "database/repositories";
 import { FeedItem } from "entities/FeedItem.entity";
@@ -81,6 +83,14 @@ export const handleGetRankedFeed = async (
     // Transform feed items to include signed URLs
     const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
 
+    await attachPlaylistProgress(
+      transformedFeed.map((item) => item.playlistItem),
+      { userId: user.id, isAdmin: isUserAdmin, nsfw },
+    );
+    await attachDreamProgress(
+      transformedFeed.flatMap((item) => item.dreamItem ?? []),
+    );
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
@@ -161,6 +171,14 @@ export const handleGetFeed = async (
     // Transform feed items to include signed URLs
     const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
 
+    await attachPlaylistProgress(
+      transformedFeed.map((item) => item.playlistItem),
+      { userId: user.id, isAdmin: isUserAdmin, nsfw },
+    );
+    await attachDreamProgress(
+      transformedFeed.flatMap((item) => item.dreamItem ?? []),
+    );
+
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
@@ -228,6 +246,14 @@ export const handleGetMyDreams = async (
 
     // Transform feed items to include signed URLs
     const transformedFeed = await transformFeedItemsWithSignedUrls(feed);
+
+    await attachPlaylistProgress(
+      transformedFeed.map((item) => item.playlistItem),
+      { userId: user.id, isAdmin: isUserAdmin, nsfw },
+    );
+    await attachDreamProgress(
+      transformedFeed.flatMap((item) => item.dreamItem ?? []),
+    );
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -327,6 +353,15 @@ export const handleGetGroupedFeed = async (
         (feedItem.dreamItem || feedItem.playlistItem) &&
         !(feedItem.dreamItem && dreamUUIDs.has(feedItem.dreamItem.uuid)),
     );
+
+    await attachPlaylistProgress(
+      filteredFeed.map((item) => item.playlistItem),
+      { userId: user.id, isAdmin: isUserAdmin, nsfw },
+    );
+    await attachDreamProgress([
+      ...filteredFeed.flatMap((item) => item.dreamItem ?? []),
+      ...virtualPlaylists.flatMap((playlist) => playlist.dreams ?? []),
+    ]);
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

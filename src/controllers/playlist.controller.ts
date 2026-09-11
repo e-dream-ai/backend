@@ -1,5 +1,7 @@
 import { addPlaylistItems } from "utils/playlist-items.util";
+import { attachDreamProgress } from "services/job-progress.service";
 import {
+  attachPlaylistProgress,
   computePlaylistTotals,
   populatePlaylistThumbnails,
 } from "utils/playlist-summary.util";
@@ -158,7 +160,7 @@ export const handleGetPlaylist = async (
     // Transform playlist to include signed URLs
     const transformedPlaylist = await transformPlaylistWithSignedUrls(playlist);
 
-    const { totalDurationSeconds, totalDreamCount } =
+    const { totalDurationSeconds, totalDreamCount, progress } =
       await computePlaylistTotals(playlist.id, {
         userId: user.id,
         isAdmin: isUserAdmin,
@@ -173,6 +175,7 @@ export const handleGetPlaylist = async (
             ...transformedPlaylist,
             totalDurationSeconds,
             totalDreamCount,
+            progress,
           },
         },
       }),
@@ -320,6 +323,19 @@ export const handleGetPlaylistItems = async (
     // Transform playlist items to include signed URLs
     const transformedItems = await transformPlaylistItemsWithSignedUrls(
       result.items,
+    );
+
+    const itemFilter = {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw: user?.nsfw,
+    };
+    await attachPlaylistProgress(
+      transformedItems.map((item) => item.playlistItem),
+      itemFilter,
+    );
+    await attachDreamProgress(
+      transformedItems.flatMap((item) => item.dreamItem ?? []),
     );
 
     return res.status(httpStatus.OK).json(
@@ -627,6 +643,12 @@ export const handleGetPlaylists = async (
     // Transform playlists to include signed URLs
     const transformedPlaylists =
       await transformPlaylistsWithSignedUrls(playlists);
+
+    await attachPlaylistProgress(transformedPlaylists, {
+      userId: currentUser!.id,
+      isAdmin: isUserAdmin,
+      nsfw: currentUser?.nsfw,
+    });
 
     return res.status(httpStatus.OK).json(
       jsonResponse({

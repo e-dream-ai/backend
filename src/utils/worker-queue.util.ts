@@ -1,50 +1,58 @@
+import { randomUUID } from "crypto";
 import { Queue } from "bullmq";
 import { redisClient } from "clients/redis.client";
 import { APP_LOGGER } from "shared/logger";
+import { VIDEO_INGEST_QUEUE } from "constants/job.constants";
 
-interface JobData {
+type JobData = {
   dream_uuid: string;
   auto_upload?: boolean;
   infinidream_algorithm: string;
   previous_dream_status?: string;
   [key: string]: unknown;
-}
+};
 
-interface VideoIngestJobData {
+type VideoIngestJobData = {
   type: "video" | "image" | "md5" | "filmstrip";
   dream_uuid: string;
   extension?: string;
-}
+  user_id?: number;
+};
 
-export const queueWorkerJob = async (
+type QueueResult = { success: boolean; jobId?: string; error?: string };
+
+const enqueueJob = async (
   queueName: string,
-  jobData: JobData,
-): Promise<{ success: boolean; jobId?: string; error?: string }> => {
+  jobData: { dream_uuid: string } & Record<string, unknown>,
+  progressExtras: Record<string, unknown> = {},
+  label = "job",
+): Promise<QueueResult> => {
   try {
     const queue = new Queue(queueName, {
       connection: redisClient,
     });
 
-    const job = await queue.add("message", jobData);
+    const run = { run_id: randomUUID(), run_started_at: Date.now() };
+    const job = await queue.add("message", { ...jobData, ...run });
 
     await job.updateProgress({
+      ...run,
       dream_uuid: jobData.dream_uuid,
+      user_id: jobData.user_id,
       status: "IN_QUEUE",
-      progress: 0,
+      progress: null,
+      ...progressExtras,
     });
 
     await queue.close();
 
     APP_LOGGER.info(
-      `Queued job ${job.id} to ${queueName} for dream ${jobData.dream_uuid}`,
+      `Queued ${label} ${job.id} to ${queueName} for dream ${jobData.dream_uuid}`,
     );
 
-    return {
-      success: true,
-      jobId: job.id,
-    };
+    return { success: true, jobId: job.id };
   } catch (error) {
-    APP_LOGGER.error(`Failed to queue job to ${queueName}:`, error);
+    APP_LOGGER.error(`Failed to queue ${label} to ${queueName}:`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -52,40 +60,17 @@ export const queueWorkerJob = async (
   }
 };
 
-export const queueVideoIngestJob = async (
+export const queueWorkerJob = (
+  queueName: string,
+  jobData: JobData,
+): Promise<QueueResult> => enqueueJob(queueName, jobData);
+
+export const queueVideoIngestJob = (
   jobData: VideoIngestJobData,
-): Promise<{ success: boolean; jobId?: string; error?: string }> => {
-  try {
-    const queue = new Queue("videoingest", {
-      connection: redisClient,
-    });
-
-    const job = await queue.add("message", jobData);
-
-    await job.updateProgress({
-      dream_uuid: jobData.dream_uuid,
-      status: "IN_QUEUE",
-      progress: 0,
-    });
-
-    await queue.close();
-
-    APP_LOGGER.info(
-      `Queued videoingest job ${job.id} (${jobData.type}) for dream ${jobData.dream_uuid}`,
-    );
-
-    return {
-      success: true,
-      jobId: job.id,
-    };
-  } catch (error) {
-    APP_LOGGER.error(
-      `Failed to queue videoingest job for dream ${jobData.dream_uuid}:`,
-      error,
-    );
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-};
+): Promise<QueueResult> =>
+  enqueueJob(
+    VIDEO_INGEST_QUEUE,
+    jobData,
+    { stage: "ingesting", job_type: jobData.type },
+    `videoingest job (${jobData.type})`,
+  );

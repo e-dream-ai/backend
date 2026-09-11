@@ -1057,6 +1057,7 @@ export const handleOrderPlaylist = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
+      // only need to query the user id
       select: { id: true, userId: true, user: { id: true } },
       relations: {
         user: true,
@@ -1244,6 +1245,7 @@ export const handleRemovePlaylistItem = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
+      // only need to query the user id
       select: { id: true, userId: true, user: { id: true } },
       relations: {
         user: true,
@@ -1307,6 +1309,7 @@ export const handleAddPlaylistKeyframe = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
+      // only need to query the user id
       select: { id: true, userId: true, user: { id: true } },
       relations: {
         user: true,
@@ -1410,6 +1413,7 @@ export const handleRemovePlaylistKeyframe = async (
   try {
     const playlist = await playlistRepository.findOne({
       where: { uuid },
+      // only need to query the user id
       select: { id: true, userId: true, user: { id: true } },
       relations: {
         user: true,

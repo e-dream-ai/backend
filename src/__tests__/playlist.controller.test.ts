@@ -108,4 +108,55 @@ describe("playlist.controller", () => {
       expect.objectContaining({ success: true }),
     );
   });
+
+  /**
+   * Regression: a partial `select` that names a real column but omits the
+   * primary key makes TypeORM emit its DISTINCT pagination wrapper over
+   * `distinctAlias.Playlist_id`, which was never selected. Postgres then
+   * fails the query ("column distinctAlias.Playlist_id does not exist") and
+   * the handler 500s on every request, including ones that should 404.
+   * Every owner-action handler must select `id` alongside `userId`.
+   */
+  describe.each([
+    ["handleDeletePlaylist", { uuid: "p1" }, {}],
+    ["handleOrderPlaylist", { uuid: "p1" }, { order: [] }],
+    ["handleRemovePlaylistItem", { uuid: "p1", itemId: 1 }, {}],
+    ["handleAddPlaylistKeyframe", { uuid: "p1" }, { uuid: "k1" }],
+    ["handleRemovePlaylistKeyframe", { uuid: "p1", playlistKeyframeId: 1 }, {}],
+  ])("%s owner lookup", (handlerName, params, body) => {
+    it("selects the playlist primary key alongside userId", async () => {
+      const { req, res } = createReqRes();
+      Object.assign(req.params, params);
+      req.body = body;
+
+      const findOne = jest.fn().mockResolvedValue(null);
+      jest.doMock("database/repositories", () => ({
+        __esModule: true,
+        playlistRepository: { findOne },
+      }));
+      const handleNotFound = jest.fn();
+      jest.doMock("utils/responses.util", () => ({
+        __esModule: true,
+        jsonResponse: (payload: unknown) => payload,
+        handleNotFound,
+        handleForbidden: jest.fn(),
+        handleInternalServerError: jest.fn(),
+      }));
+
+      const controller = await import("controllers/playlist.controller");
+      await (
+        controller as unknown as Record<
+          string,
+          (r: RequestType, s: ResponseType) => Promise<unknown>
+        >
+      )[handlerName](req, res);
+
+      expect(handleNotFound).toHaveBeenCalled();
+      const select = findOne.mock.calls[0][0].select;
+      expect(select).toEqual(expect.objectContaining({ id: true }));
+      if ("userId" in select) {
+        expect(select.userId).toBe(true);
+      }
+    });
+  });
 });

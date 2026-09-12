@@ -1,3 +1,5 @@
+import { getDreamProgressSnapshots } from "services/job-progress.service";
+import type { JobStage, PlaylistProgress } from "types/job-progress.types";
 import { Playlist, PlaylistItem } from "entities";
 import { playlistItemRepository } from "database/repositories";
 import { DreamMediaType, DreamStatusType } from "types/dream.types";
@@ -7,6 +9,26 @@ import {
   PlaylistThumbnailCandidate,
 } from "./playlist.util";
 import { framesToSeconds } from "./video.utils";
+
+type ProgressBucket =
+  | "queued"
+  | "rendering"
+  | "ingesting"
+  | "completed"
+  | "failed"
+  | "idle";
+
+const QUERY_BATCH_SIZE = 200;
+
+const STAGE_BUCKETS: Record<JobStage, ProgressBucket> = {
+  queued: "queued",
+  rendering: "rendering",
+  ingesting: "ingesting",
+  completed: "completed",
+  failed: "failed",
+  cancelled: "idle",
+  idle: "idle",
+};
 
 export const populatePlaylistThumbnails = async (
   playlists: Playlist[],
@@ -71,74 +93,182 @@ export const populatePlaylistThumbnails = async (
 export interface PlaylistTotals {
   totalDurationSeconds: number;
   totalDreamCount: number;
+  progress: PlaylistProgress;
 }
+
+const emptyTotals = (): PlaylistTotals => ({
+  totalDurationSeconds: 0,
+  totalDreamCount: 0,
+  progress: {
+    total: 0,
+    queued: 0,
+    rendering: 0,
+    ingesting: 0,
+    completed: 0,
+    failed: 0,
+    idle: 0,
+    remaining: 0,
+  },
+});
+
+const queryPlaylistItems = (
+  playlistIds: number[],
+  filter: GetPlaylistFilterOptions,
+): Promise<PlaylistItem[]> => {
+  const query = playlistItemRepository
+    .createQueryBuilder("item")
+    .select("item.id")
+    .leftJoin("item.playlist", "parent")
+    .addSelect("parent.id")
+    .leftJoin("item.dreamItem", "dream")
+    .addSelect([
+      "dream.id",
+      "dream.uuid",
+      "dream.processedVideoFrames",
+      "dream.activityLevel",
+      "dream.status",
+      "dream.mediaType",
+    ])
+    .leftJoin("item.playlistItem", "nested")
+    .addSelect("nested.id")
+    .where("item.playlistId IN (:...ids)", { ids: playlistIds });
+
+  if (filter.nsfw === false) {
+    query
+      .andWhere("(dream.nsfw = false OR dream.nsfw IS NULL)")
+      .andWhere("(nested.nsfw = false OR nested.nsfw IS NULL)");
+  }
+  if (!filter.isAdmin) {
+    query
+      .andWhere(
+        "(dream.hidden = false OR dream.hidden IS NULL OR dream.userId = :userId)",
+        { userId: filter.userId },
+      )
+      .andWhere(
+        "(nested.hidden = false OR nested.hidden IS NULL OR nested.userId = :userId)",
+      );
+  }
+
+  return query.getMany();
+};
+
+export const computePlaylistTotalsBatch = async (
+  playlistIds: readonly number[],
+  filter: GetPlaylistFilterOptions,
+): Promise<Map<number, PlaylistTotals>> => {
+  const totals = new Map<number, PlaylistTotals>();
+  const visited = new Map<number, Set<number>>();
+  const countedDreams = new Map<number, Set<number>>();
+  const dreamsById = new Map<number, { uuid: string; status: string }>();
+
+  for (const rootId of playlistIds) {
+    if (!rootId || totals.has(rootId)) continue;
+    totals.set(rootId, emptyTotals());
+    visited.set(rootId, new Set([rootId]));
+    countedDreams.set(rootId, new Set());
+  }
+
+  let frontier = new Map<number, Set<number>>(
+    [...totals.keys()].map((rootId) => [rootId, new Set([rootId])]),
+  );
+
+  while (frontier.size > 0) {
+    const ids = [...frontier.keys()];
+    const next = new Map<number, Set<number>>();
+
+    for (let offset = 0; offset < ids.length; offset += QUERY_BATCH_SIZE) {
+      const items = await queryPlaylistItems(
+        ids.slice(offset, offset + QUERY_BATCH_SIZE),
+        filter,
+      );
+
+      for (const item of items) {
+        const roots = item.playlist?.id
+          ? frontier.get(item.playlist.id)
+          : undefined;
+        if (!roots) continue;
+
+        const dream = item.dreamItem;
+        const nested = item.playlistItem;
+
+        for (const rootId of roots) {
+          const rootTotals = totals.get(rootId)!;
+
+          if (dream) {
+            if (dream.processedVideoFrames && dream.activityLevel) {
+              rootTotals.totalDurationSeconds += framesToSeconds(
+                dream.processedVideoFrames,
+                dream.activityLevel,
+              );
+            }
+            if (
+              dream.status === DreamStatusType.PROCESSED &&
+              dream.mediaType !== DreamMediaType.IMAGE
+            ) {
+              rootTotals.totalDreamCount++;
+            }
+
+            const counted = countedDreams.get(rootId)!;
+            if (!counted.has(dream.id)) {
+              counted.add(dream.id);
+              rootTotals.progress.total++;
+              dreamsById.set(dream.id, dream);
+            }
+          }
+
+          if (nested) {
+            const seen = visited.get(rootId)!;
+            if (seen.has(nested.id)) continue;
+            seen.add(nested.id);
+            const pendingRoots = next.get(nested.id) ?? new Set<number>();
+            pendingRoots.add(rootId);
+            next.set(nested.id, pendingRoots);
+          }
+        }
+      }
+    }
+
+    frontier = next;
+  }
+
+  const snapshots = await getDreamProgressSnapshots([...dreamsById.values()]);
+
+  for (const [rootId, { progress }] of totals) {
+    for (const dreamId of countedDreams.get(rootId) ?? []) {
+      const dream = dreamsById.get(dreamId);
+      const stage = dream && snapshots.get(dream.uuid)?.stage;
+      if (stage) progress[STAGE_BUCKETS[stage]]++;
+    }
+
+    progress.remaining =
+      progress.queued + progress.rendering + progress.ingesting;
+  }
+
+  return totals;
+};
 
 export const computePlaylistTotals = async (
   playlistId: number,
   filter: GetPlaylistFilterOptions,
 ): Promise<PlaylistTotals> => {
-  const totals: PlaylistTotals = {
-    totalDurationSeconds: 0,
-    totalDreamCount: 0,
-  };
-  const visited = new Set<number>();
-  let pending = playlistId ? [playlistId] : [];
-  while (pending.length > 0) {
-    const current = pending;
-    for (const id of current) visited.add(id);
-    const next = new Set<number>();
-    for (let offset = 0; offset < current.length; offset += 200) {
-      const query = playlistItemRepository
-        .createQueryBuilder("item")
-        .select("item.id")
-        .leftJoin("item.dreamItem", "dream")
-        .addSelect([
-          "dream.id",
-          "dream.processedVideoFrames",
-          "dream.activityLevel",
-          "dream.status",
-          "dream.mediaType",
-        ])
-        .leftJoin("item.playlistItem", "nested")
-        .addSelect("nested.id")
-        .where("item.playlistId IN (:...ids)", {
-          ids: current.slice(offset, offset + 200),
-        });
-      if (filter.nsfw === false) {
-        query
-          .andWhere("(dream.nsfw = false OR dream.nsfw IS NULL)")
-          .andWhere("(nested.nsfw = false OR nested.nsfw IS NULL)");
-      }
-      if (!filter.isAdmin) {
-        query
-          .andWhere(
-            "(dream.hidden = false OR dream.hidden IS NULL OR dream.userId = :userId)",
-            { userId: filter.userId },
-          )
-          .andWhere(
-            "(nested.hidden = false OR nested.hidden IS NULL OR nested.userId = :userId)",
-          );
-      }
-      const items: PlaylistItem[] = await query.getMany();
-      for (const item of items) {
-        const dream = item.dreamItem;
-        if (dream?.processedVideoFrames && dream.activityLevel) {
-          totals.totalDurationSeconds += framesToSeconds(
-            dream.processedVideoFrames,
-            dream.activityLevel,
-          );
-        }
-        if (
-          dream?.status === DreamStatusType.PROCESSED &&
-          dream.mediaType !== DreamMediaType.IMAGE
-        ) {
-          totals.totalDreamCount++;
-        }
-        const nestedId = item.playlistItem?.id;
-        if (nestedId && !visited.has(nestedId)) next.add(nestedId);
-      }
-    }
-    pending = [...next];
+  const totals = await computePlaylistTotalsBatch([playlistId], filter);
+  return totals.get(playlistId) ?? emptyTotals();
+};
+
+export const attachPlaylistProgress = async <T extends { id: number }>(
+  playlists: ReadonlyArray<T | null | undefined>,
+  filter: GetPlaylistFilterOptions,
+): Promise<void> => {
+  const present = playlists.filter((playlist): playlist is T =>
+    Boolean(playlist?.id),
+  );
+  if (!present.length) return;
+
+  const totals = await computePlaylistTotalsBatch(
+    present.map(({ id }) => id),
+    filter,
+  );
+  for (const playlist of present) {
+    Object.assign(playlist, { progress: totals.get(playlist.id)?.progress });
   }
-  return totals;
 };

@@ -72,14 +72,14 @@ async function compareAndSet(
   return Number(result) === 1;
 }
 
-export const getJobProgressKey = (dreamUuid: string): string =>
-  `job:progress:${dreamUuid}`;
+export const getDreamProgressKey = (dreamUuid: string): string =>
+  `dream:progress:${dreamUuid}`;
 
-const getJobProgressSeqKey = (dreamUuid: string): string =>
-  `job:progress:seq:${dreamUuid}`;
+const getDreamProgressSeqKey = (dreamUuid: string): string =>
+  `dream:progress:seq:${dreamUuid}`;
 
 async function nextSequence(dreamUuid: string): Promise<number | undefined> {
-  const key = getJobProgressSeqKey(dreamUuid);
+  const key = getDreamProgressSeqKey(dreamUuid);
   const results = await redisClient
     .multi()
     .incr(key)
@@ -94,7 +94,7 @@ export async function cacheDreamProgress(
   incoming: DreamJobProgress,
   authoritative = false,
 ): Promise<DreamJobProgress | undefined> {
-  const key = getJobProgressKey(incoming.dream_uuid);
+  const key = getDreamProgressKey(incoming.dream_uuid);
 
   for (let attempt = 0; attempt < CACHE_WRITE_ATTEMPTS; attempt++) {
     const raw = await redisClient.get(key);
@@ -153,7 +153,7 @@ export async function getDreamProgressSnapshots(
       offset += SNAPSHOT_BATCH_SIZE
     ) {
       const batch = pending.slice(offset, offset + SNAPSHOT_BATCH_SIZE);
-      const keys = batch.map(({ uuid }) => getJobProgressKey(uuid));
+      const keys = batch.map(({ uuid }) => getDreamProgressKey(uuid));
       const cached = await redisClient.mget(...keys);
 
       batch.forEach(({ uuid }, index) => {

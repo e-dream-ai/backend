@@ -9,6 +9,10 @@ import {
   socketWorkOSAuth,
 } from "middlewares/socket.middleware";
 import env from "shared/env";
+import {
+  EDITOR_PROJECT_API_PATH,
+  EDITOR_PROJECT_BODY_LIMIT,
+} from "constants/editor-project.constants";
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
 import passport from "passport";
@@ -65,6 +69,10 @@ export const registerMiddlewares = (app: express.Application) => {
   app.use(cookieParser());
 
   // parse json request body
+  app.use(
+    EDITOR_PROJECT_API_PATH,
+    bodyParser.json({ limit: EDITOR_PROJECT_BODY_LIMIT }),
+  );
   app.use(bodyParser.json());
 
   // cors middleware

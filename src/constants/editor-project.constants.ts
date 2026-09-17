@@ -4,8 +4,6 @@ export const EDITOR_PROJECT_BODY_LIMIT = "512kb";
 
 export const EDITOR_PROJECT_NAME_MAX_LENGTH = 120;
 
-export const EDITOR_PROJECT_THUMBNAIL_MAX_LENGTH = 2048;
-
 export const EDITOR_PROJECT_MESSAGES = {
   REVISION_CONFLICT:
     "This project was changed elsewhere. Reload it or save a copy.",

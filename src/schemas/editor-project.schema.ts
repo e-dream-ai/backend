@@ -1,8 +1,5 @@
 import Joi from "joi";
-import {
-  EDITOR_PROJECT_NAME_MAX_LENGTH,
-  EDITOR_PROJECT_THUMBNAIL_MAX_LENGTH,
-} from "constants/editor-project.constants";
+import { EDITOR_PROJECT_NAME_MAX_LENGTH } from "constants/editor-project.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import {
   CreateEditorProjectRequest,
@@ -21,9 +18,7 @@ const state = Joi.object().unknown(true);
 
 const schemaVersion = Joi.number().integer().min(1);
 
-const thumbnail = Joi.string()
-  .max(EDITOR_PROJECT_THUMBNAIL_MAX_LENGTH)
-  .allow(null, "");
+const thumbnailDreamUuid = Joi.string().uuid().allow(null);
 
 const playlistUuid = Joi.string().uuid().allow(null);
 
@@ -50,7 +45,7 @@ export const createEditorProjectSchema: RequestValidationSchema = {
     name: name.required(),
     state: state.required(),
     schemaVersion,
-    thumbnail,
+    thumbnailDreamUuid,
     playlistUuid,
   }),
 };
@@ -62,10 +57,10 @@ export const updateEditorProjectSchema: RequestValidationSchema = {
       name,
       state,
       schemaVersion,
-      thumbnail,
+      thumbnailDreamUuid,
       playlistUuid,
     })
-    .or("name", "state", "schemaVersion", "thumbnail", "playlistUuid"),
+    .or("name", "state", "schemaVersion", "thumbnailDreamUuid", "playlistUuid"),
   params: uuidParams,
 };
 

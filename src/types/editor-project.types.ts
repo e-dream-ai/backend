@@ -22,7 +22,7 @@ export type CreateEditorProjectRequest = {
   name: string;
   state: EditorProjectState;
   schemaVersion?: number;
-  thumbnail?: string | null;
+  thumbnailDreamUuid?: string | null;
   playlistUuid?: string | null;
 };
 
@@ -31,6 +31,6 @@ export type UpdateEditorProjectRequest = {
   name?: string;
   state?: EditorProjectState;
   schemaVersion?: number;
-  thumbnail?: string | null;
+  thumbnailDreamUuid?: string | null;
   playlistUuid?: string | null;
 };

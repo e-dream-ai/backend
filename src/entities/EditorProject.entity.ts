@@ -12,6 +12,7 @@ import {
 } from "typeorm";
 import { User } from "./User.entity";
 import { Playlist } from "./Playlist.entity";
+import { Dream } from "./Dream.entity";
 import { EditorId } from "types/editor-project.types";
 
 @Entity()
@@ -57,8 +58,13 @@ export class EditorProject {
   @Column({ type: "integer", default: 1 })
   schemaVersion: number;
 
-  @Column({ type: "varchar", length: 2048, nullable: true })
-  thumbnail?: string | null;
+  @ManyToOne(() => Dream, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn()
+  @Index()
+  thumbnailDream?: Dream | null;
+
+  @Column({ type: "integer", nullable: true })
+  thumbnailDreamId: number | null;
 
   @CreateDateColumn()
   created_at: Date;

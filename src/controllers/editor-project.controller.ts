@@ -13,6 +13,7 @@ import {
   UpdateEditorProjectRequest,
 } from "types/editor-project.types";
 import {
+  dreamRepository,
   editorProjectRepository,
   playlistRepository,
 } from "database/repositories";
@@ -20,6 +21,8 @@ import {
   getEditorProjectRelations,
   getEditorProjectSelectedColumns,
   getEditorProjectSummaryColumns,
+  toEditorProjectResponse,
+  toEditorProjectResponses,
 } from "utils/editor-project.util";
 import {
   handleConflict,
@@ -65,6 +68,20 @@ const resolvePlaylist = async (
     : { status: "resolved", playlistId };
 };
 
+const resolveThumbnailDreamId = async (
+  dreamUuid: string | null | undefined,
+): Promise<number | null | undefined> => {
+  if (dreamUuid === undefined) return undefined;
+  if (dreamUuid === null) return null;
+
+  const dream = await dreamRepository.findOne({
+    where: { uuid: dreamUuid },
+    select: { id: true },
+  });
+
+  return dream?.id ?? null;
+};
+
 export const handleGetEditorProjects = async (
   req: RequestType<unknown, GetEditorProjectsQuery>,
   res: ResponseType,
@@ -106,7 +123,7 @@ export const handleGetEditorProjects = async (
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { projects, count },
+        data: { projects: toEditorProjectResponses(projects), count },
       }),
     );
   } catch (error) {
@@ -135,7 +152,7 @@ export const handleGetEditorProject = async (
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { project },
+        data: { project: toEditorProjectResponse(project) },
       }),
     );
   } catch (error) {
@@ -165,16 +182,23 @@ export const handleCreateEditorProject = async (
       name: body.name,
       state: body.state,
       schemaVersion: body.schemaVersion ?? 1,
-      thumbnail: body.thumbnail || null,
+      thumbnailDreamId:
+        (await resolveThumbnailDreamId(body.thumbnailDreamUuid)) ?? null,
       playlistId: playlist.status === "resolved" ? playlist.playlistId : null,
     });
 
     const saved = await editorProjectRepository.save(project);
 
+    const created = await editorProjectRepository.findOne({
+      where: { id: saved.id },
+      select: getEditorProjectSelectedColumns(),
+      relations: getEditorProjectRelations(),
+    });
+
     return res.status(httpStatus.CREATED).json(
       jsonResponse({
         success: true,
-        data: { project: saved },
+        data: { project: created ? toEditorProjectResponse(created) : saved },
       }),
     );
   } catch (error) {
@@ -214,7 +238,7 @@ export const handleUpdateEditorProject = async (
     if (project.revision !== body.revision) {
       return handleConflict(req as RequestType, res, {
         message: EDITOR_PROJECT_MESSAGES.REVISION_CONFLICT,
-        data: { project },
+        data: { project: toEditorProjectResponse(project) },
       });
     }
 
@@ -236,8 +260,12 @@ export const handleUpdateEditorProject = async (
     }
     if (body.schemaVersion !== undefined)
       updates.schemaVersion = body.schemaVersion;
-    if (body.thumbnail !== undefined)
-      updates.thumbnail = body.thumbnail || null;
+    const thumbnailDreamId = await resolveThumbnailDreamId(
+      body.thumbnailDreamUuid,
+    );
+    if (thumbnailDreamId !== undefined) {
+      updates.thumbnailDreamId = thumbnailDreamId;
+    }
     if (playlist.status === "resolved") {
       updates.playlistId = playlist.playlistId;
     }
@@ -251,11 +279,14 @@ export const handleUpdateEditorProject = async (
       const current = await editorProjectRepository.findOne({
         where: { uuid, userId: user.id },
         select: getEditorProjectSelectedColumns(),
+        relations: getEditorProjectRelations(),
       });
 
       return handleConflict(req as RequestType, res, {
         message: EDITOR_PROJECT_MESSAGES.REVISION_CONFLICT,
-        ...(current ? { data: { project: current } } : {}),
+        ...(current
+          ? { data: { project: toEditorProjectResponse(current) } }
+          : {}),
       });
     }
 
@@ -268,7 +299,7 @@ export const handleUpdateEditorProject = async (
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { project: updated },
+        data: { project: updated ? toEditorProjectResponse(updated) : null },
       }),
     );
   } catch (error) {

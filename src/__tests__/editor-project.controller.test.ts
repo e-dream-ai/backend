@@ -52,6 +52,7 @@ describe("editor-project.controller", () => {
       __esModule: true,
       editorProjectRepository,
       playlistRepository: { findOne: jest.fn() },
+      dreamRepository: { findOne: jest.fn() },
     }));
     const { handleNotFound } = mockResponses();
 
@@ -82,6 +83,7 @@ describe("editor-project.controller", () => {
       __esModule: true,
       editorProjectRepository,
       playlistRepository: { findOne: jest.fn() },
+      dreamRepository: { findOne: jest.fn() },
     }));
     const { handleConflict } = mockResponses();
 
@@ -94,7 +96,9 @@ describe("editor-project.controller", () => {
     expect(handleConflict).toHaveBeenCalledWith(
       req,
       res,
-      expect.objectContaining({ data: { project: current } }),
+      expect.objectContaining({
+        data: { project: { ...current, thumbnail: null, playlist: null } },
+      }),
     );
   });
 
@@ -113,6 +117,7 @@ describe("editor-project.controller", () => {
       __esModule: true,
       editorProjectRepository,
       playlistRepository: { findOne: jest.fn() },
+      dreamRepository: { findOne: jest.fn() },
     }));
     const { handleConflict } = mockResponses();
 
@@ -138,6 +143,7 @@ describe("editor-project.controller", () => {
       __esModule: true,
       editorProjectRepository,
       playlistRepository: { findOne: jest.fn() },
+      dreamRepository: { findOne: jest.fn() },
     }));
     mockResponses();
 

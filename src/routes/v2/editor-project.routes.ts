@@ -38,6 +38,10 @@ const allowedRoles = checkRoleMiddleware([
  *        name: playlistUuid
  *        in: query
  *      - schema:
+ *          type: string
+ *        name: search
+ *        in: query
+ *      - schema:
  *          type: number
  *        name: take
  *        in: query
@@ -136,7 +140,7 @@ editorProjectRouter.get(
  *                type: object
  *              schemaVersion:
  *                type: number
- *              thumbnail:
+ *              thumbnailDreamUuid:
  *                type: string
  *              playlistUuid:
  *                type: string
@@ -196,7 +200,7 @@ editorProjectRouter.post(
  *                type: object
  *              schemaVersion:
  *                type: number
- *              thumbnail:
+ *              thumbnailDreamUuid:
  *                type: string
  *              playlistUuid:
  *                type: string

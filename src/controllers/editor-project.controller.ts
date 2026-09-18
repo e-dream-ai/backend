@@ -1,5 +1,5 @@
 import httpStatus from "http-status";
-import { QueryFailedError } from "typeorm";
+import { ILike, QueryFailedError } from "typeorm";
 import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import { EditorProject } from "entities";
 import { PAGINATION } from "constants/pagination.constants";
@@ -32,6 +32,9 @@ import {
 } from "utils/responses.util";
 
 const POSTGRES_UNIQUE_VIOLATION = "23505";
+
+const escapeLikePattern = (value: string): string =>
+  value.replace(/[\\%_]/g, (match) => `\\${match}`);
 
 const isUniqueViolation = (error: unknown): boolean =>
   error instanceof QueryFailedError &&
@@ -87,7 +90,7 @@ export const handleGetEditorProjects = async (
   res: ResponseType,
 ) => {
   const user = res.locals.user!;
-  const { editorId, playlistUuid } = req.query;
+  const { editorId, playlistUuid, search } = req.query;
   const take = Number(req.query.take ?? PAGINATION.TAKE);
   const skip = Number(req.query.skip ?? PAGINATION.SKIP);
 
@@ -112,6 +115,7 @@ export const handleGetEditorProjects = async (
         userId: user.id,
         ...(editorId ? { editorId } : {}),
         ...(playlistId !== undefined ? { playlistId } : {}),
+        ...(search ? { name: ILike(`%${escapeLikePattern(search)}%`) } : {}),
       },
       select: getEditorProjectSummaryColumns(),
       relations: getEditorProjectRelations(),

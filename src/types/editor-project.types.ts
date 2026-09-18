@@ -13,6 +13,7 @@ export type EditorProjectParamsRequest = {
 export type GetEditorProjectsQuery = {
   editorId?: EditorId;
   playlistUuid?: string;
+  search?: string;
   take?: number;
   skip?: number;
 };

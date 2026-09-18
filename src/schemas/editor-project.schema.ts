@@ -1,8 +1,13 @@
 import Joi from "joi";
-import { EDITOR_PROJECT_NAME_MAX_LENGTH } from "constants/editor-project.constants";
+import {
+  EDITOR_PROJECT_NAME_MAX_LENGTH,
+  EDITOR_PROJECT_SESSION_ID_MAX_LENGTH,
+} from "constants/editor-project.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import {
   CreateEditorProjectRequest,
+  EditorProjectLockQuery,
+  EditorProjectLockRequest,
   EditorId,
   EditorProjectParamsRequest,
   GetEditorProjectsQuery,
@@ -51,6 +56,8 @@ export const createEditorProjectSchema: RequestValidationSchema = {
   }),
 };
 
+const sessionId = Joi.string().trim().max(EDITOR_PROJECT_SESSION_ID_MAX_LENGTH);
+
 export const updateEditorProjectSchema: RequestValidationSchema = {
   body: Joi.object<UpdateEditorProjectRequest>()
     .keys({
@@ -60,11 +67,27 @@ export const updateEditorProjectSchema: RequestValidationSchema = {
       schemaVersion,
       thumbnailDreamUuid,
       playlistUuid,
+      sessionId,
     })
     .or("name", "state", "schemaVersion", "thumbnailDreamUuid", "playlistUuid"),
   params: uuidParams,
 };
 
 export const deleteEditorProjectSchema: RequestValidationSchema = {
+  params: uuidParams,
+};
+
+export const lockEditorProjectSchema: RequestValidationSchema = {
+  body: Joi.object<EditorProjectLockRequest>().keys({
+    sessionId: sessionId.required(),
+    force: Joi.boolean(),
+  }),
+  params: uuidParams,
+};
+
+export const unlockEditorProjectSchema: RequestValidationSchema = {
+  query: Joi.object<EditorProjectLockQuery>().keys({
+    sessionId: sessionId.required(),
+  }),
   params: uuidParams,
 };

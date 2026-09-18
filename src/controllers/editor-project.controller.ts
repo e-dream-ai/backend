@@ -1,12 +1,23 @@
 import httpStatus from "http-status";
-import { ILike, QueryFailedError } from "typeorm";
+import { ILike, IsNull, LessThan, QueryFailedError } from "typeorm";
 import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import { EditorProject } from "entities";
 import { PAGINATION } from "constants/pagination.constants";
-import { EDITOR_PROJECT_MESSAGES } from "constants/editor-project.constants";
+import {
+  EDITOR_PROJECT_LOCK_TTL_MS,
+  EDITOR_PROJECT_MESSAGES,
+} from "constants/editor-project.constants";
+import {
+  broadcastEditorProjectLock,
+  cancelEditorProjectLockRelease,
+  claimEditorProjectLock,
+  releaseEditorProjectLock,
+} from "services/editor-project-lock.service";
 import { RequestType, ResponseType } from "types/express.types";
 import {
   CreateEditorProjectRequest,
+  EditorProjectLockQuery,
+  EditorProjectLockRequest,
   EditorProjectParamsRequest,
   EditorProjectState,
   GetEditorProjectsQuery,
@@ -32,6 +43,25 @@ import {
 } from "utils/responses.util";
 
 const POSTGRES_UNIQUE_VIOLATION = "23505";
+
+const isLockHeldByAnotherSession = (
+  project: Pick<EditorProject, "lockedBy" | "lockedAt">,
+  sessionId?: string,
+) => {
+  if (!project.lockedBy || project.lockedBy === sessionId) return false;
+  if (!project.lockedAt) return false;
+
+  return project.lockedAt.getTime() > Date.now() - EDITOR_PROJECT_LOCK_TTL_MS;
+};
+
+const handleLocked = (res: ResponseType, lockedAt: Date | null) =>
+  res.status(httpStatus.LOCKED).json(
+    jsonResponse({
+      success: false,
+      message: EDITOR_PROJECT_MESSAGES.LOCK_HELD,
+      data: { lock: { lockedAt } },
+    }),
+  );
 
 const escapeLikePattern = (value: string): string =>
   value.replace(/[\\%_]/g, (match) => `\\${match}`);
@@ -274,12 +304,26 @@ export const handleUpdateEditorProject = async (
       updates.playlistId = playlist.playlistId;
     }
 
-    const result = await editorProjectRepository.update(
-      { id: project.id, revision: body.revision },
-      updates,
-    );
+    const staleBefore = new Date(Date.now() - EDITOR_PROJECT_LOCK_TTL_MS);
+    const base = { id: project.id, revision: body.revision };
+    const writable = [
+      { ...base, lockedBy: IsNull() },
+      ...(body.sessionId ? [{ ...base, lockedBy: body.sessionId }] : []),
+      { ...base, lockedAt: LessThan(staleBefore) },
+    ];
+
+    const result = await editorProjectRepository.update(writable, updates);
 
     if (!result.affected) {
+      const lock = await editorProjectRepository.findOne({
+        where: { id: project.id },
+        select: { lockedBy: true, lockedAt: true },
+      });
+
+      if (lock && isLockHeldByAnotherSession(lock, body.sessionId)) {
+        return handleLocked(res, lock.lockedAt);
+      }
+
       const current = await editorProjectRepository.findOne({
         where: { uuid, userId: user.id },
         select: getEditorProjectSelectedColumns(),
@@ -342,6 +386,94 @@ export const handleDeleteEditorProject = async (
         data: { uuid },
       }),
     );
+  } catch (error) {
+    return handleInternalServerError(error as Error, req as RequestType, res);
+  }
+};
+
+export const handleLockEditorProject = async (
+  req: RequestType<
+    EditorProjectLockRequest,
+    unknown,
+    EditorProjectParamsRequest
+  >,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+  const { sessionId, force } = req.body as EditorProjectLockRequest;
+
+  try {
+    const project = await editorProjectRepository.findOne({
+      where: { uuid, userId: user.id },
+      select: { id: true },
+    });
+
+    if (!project) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const { claimed, lockedAt } = await claimEditorProjectLock({
+      projectId: project.id,
+      sessionId,
+      force,
+    });
+
+    if (!claimed) {
+      const current = await editorProjectRepository.findOne({
+        where: { id: project.id },
+        select: { lockedAt: true },
+      });
+
+      return handleLocked(res, current?.lockedAt ?? null);
+    }
+
+    cancelEditorProjectLockRelease(project.id, sessionId);
+    broadcastEditorProjectLock({ uuid, lockedBy: sessionId, lockedAt });
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: {
+          lock: { lockedAt, expiresInMs: EDITOR_PROJECT_LOCK_TTL_MS },
+        },
+      }),
+    );
+  } catch (error) {
+    return handleInternalServerError(error as Error, req as RequestType, res);
+  }
+};
+
+export const handleUnlockEditorProject = async (
+  req: RequestType<unknown, EditorProjectLockQuery, EditorProjectParamsRequest>,
+  res: ResponseType,
+) => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+  const sessionId: string = req.query.sessionId!;
+
+  try {
+    const project = await editorProjectRepository.findOne({
+      where: { uuid, userId: user.id },
+      select: { id: true },
+    });
+
+    if (!project) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    cancelEditorProjectLockRelease(project.id, sessionId);
+
+    const released = await releaseEditorProjectLock({
+      projectId: project.id,
+      sessionId,
+    });
+
+    if (released) {
+      broadcastEditorProjectLock({ uuid, lockedBy: null, lockedAt: null });
+    }
+
+    return res.status(httpStatus.NO_CONTENT).send();
   } catch (error) {
     return handleInternalServerError(error as Error, req as RequestType, res);
   }

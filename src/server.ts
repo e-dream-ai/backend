@@ -12,6 +12,7 @@ import {
 } from "middlewares/middleware";
 import { registerRoutes } from "routes/v1/router";
 import { remoteControlConnectionListener } from "socket/remote-control";
+import { editorProjectLockConnectionListener } from "socket/editor-project-lock";
 import Bugsnag from "@bugsnag/js";
 import { ALLOWED_HEADERS, ALLOWED_METHODS } from "constants/socket.constants";
 import { handleCustomOrigin } from "utils/api.util";
@@ -113,6 +114,7 @@ function configureApp(app: express.Application, io: Server) {
 
   socketRegisterMiddlewares(remoteControlNamespace);
   remoteControlNamespace.on("connection", remoteControlConnectionListener);
+  remoteControlNamespace.on("connection", editorProjectLockConnectionListener);
 
   if (env.NODE_ENV !== "development") {
     // Error handler - must be last

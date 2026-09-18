@@ -7,6 +7,8 @@ import validatorMiddleware from "middlewares/validator.middleware";
 import {
   createEditorProjectSchema,
   deleteEditorProjectSchema,
+  lockEditorProjectSchema,
+  unlockEditorProjectSchema,
   getEditorProjectSchema,
   getEditorProjectsSchema,
   updateEditorProjectSchema,
@@ -204,6 +206,9 @@ editorProjectRouter.post(
  *                type: string
  *              playlistUuid:
  *                type: string
+ *              sessionId:
+ *                type: string
+ *                description: Editing session holding the lock
  *    responses:
  *      '200':
  *        description: Updated
@@ -213,6 +218,8 @@ editorProjectRouter.post(
  *              $ref: '#/components/schemas/ApiResponse'
  *      '409':
  *        description: Stale revision, response carries the current project
+ *      '423':
+ *        description: Another session holds the edit lock
  *        content:
  *          application/json:
  *            schema:
@@ -266,6 +273,85 @@ editorProjectRouter.delete(
   allowedRoles,
   validatorMiddleware(deleteEditorProjectSchema),
   editorProjectController.handleDeleteEditorProject,
+);
+
+/**
+ * @openapi
+ * /api/v2/editor-projects/{uuid}/lock:
+ *  put:
+ *    tags:
+ *      - Editor Projects
+ *    summary: Claim or refresh the edit lock on a project
+ *    parameters:
+ *      - schema:
+ *          type: string
+ *        name: uuid
+ *        in: path
+ *        required: true
+ *    requestBody:
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            required:
+ *              - sessionId
+ *            properties:
+ *              sessionId:
+ *                type: string
+ *              force:
+ *                type: boolean
+ *    responses:
+ *      '200':
+ *        description: Lock held by this session
+ *      '404':
+ *        description: Not Found
+ *      '423':
+ *        description: Held by another session
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+editorProjectRouter.put(
+  "/:uuid/lock",
+  requireAuth,
+  allowedRoles,
+  validatorMiddleware(lockEditorProjectSchema),
+  editorProjectController.handleLockEditorProject,
+);
+
+/**
+ * @openapi
+ * /api/v2/editor-projects/{uuid}/lock:
+ *  delete:
+ *    tags:
+ *      - Editor Projects
+ *    summary: Release the edit lock held by a session
+ *    parameters:
+ *      - schema:
+ *          type: string
+ *        name: uuid
+ *        in: path
+ *        required: true
+ *      - schema:
+ *          type: string
+ *        name: sessionId
+ *        in: query
+ *        required: true
+ *    responses:
+ *      '204':
+ *        description: Released
+ *      '404':
+ *        description: Not Found
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+editorProjectRouter.delete(
+  "/:uuid/lock",
+  requireAuth,
+  allowedRoles,
+  validatorMiddleware(unlockEditorProjectSchema),
+  editorProjectController.handleUnlockEditorProject,
 );
 
 export default editorProjectRouter;

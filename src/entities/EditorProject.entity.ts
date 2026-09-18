@@ -66,6 +66,12 @@ export class EditorProject {
   @Column({ type: "integer", nullable: true })
   thumbnailDreamId: number | null;
 
+  @Column({ type: "varchar", length: 64, nullable: true })
+  lockedBy: string | null;
+
+  @Column({ type: "timestamp", nullable: true })
+  lockedAt: Date | null;
+
   @CreateDateColumn()
   created_at: Date;
 

@@ -34,4 +34,14 @@ export type UpdateEditorProjectRequest = {
   schemaVersion?: number;
   thumbnailDreamUuid?: string | null;
   playlistUuid?: string | null;
+  sessionId?: string;
+};
+
+export type EditorProjectLockRequest = {
+  sessionId: string;
+  force?: boolean;
+};
+
+export type EditorProjectLockQuery = {
+  sessionId: string;
 };

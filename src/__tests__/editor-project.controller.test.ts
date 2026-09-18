@@ -126,11 +126,80 @@ describe("editor-project.controller", () => {
     );
     await handleUpdateEditorProject(req, res);
 
-    expect(editorProjectRepository.update).toHaveBeenCalledWith(
-      { id: 3, revision: 2 },
-      expect.objectContaining({ revision: 3 }),
+    const [where, values] = editorProjectRepository.update.mock.calls[0];
+
+    expect(Array.isArray(where)).toBe(true);
+    expect(where.length).toBeGreaterThan(0);
+    where.forEach((clause: Record<string, unknown>) =>
+      expect(clause).toMatchObject({ id: 3, revision: 2 }),
     );
+    expect(values).toEqual(expect.objectContaining({ revision: 3 }));
     expect(handleConflict).toHaveBeenCalled();
+  });
+
+  it("rejects a write from a session that does not hold the lock", async () => {
+    const { req, res, status } = createReqRes();
+    req.params.uuid = "p1";
+    req.body = { revision: 2, state: { a: 1 }, sessionId: "mine" };
+
+    const editorProjectRepository = {
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ id: 3, uuid: "p1", revision: 2, state: {} })
+        .mockResolvedValueOnce({
+          lockedBy: "someone-else",
+          lockedAt: new Date(),
+        }),
+      update: jest.fn().mockResolvedValue({ affected: 0 }),
+    };
+    jest.mock("database/repositories", () => ({
+      __esModule: true,
+      editorProjectRepository,
+      playlistRepository: { findOne: jest.fn() },
+      dreamRepository: { findOne: jest.fn() },
+    }));
+    const { handleConflict } = mockResponses();
+
+    const { handleUpdateEditorProject } = await import(
+      "controllers/editor-project.controller"
+    );
+    await handleUpdateEditorProject(req, res);
+
+    expect(status).toHaveBeenCalledWith(423);
+    expect(handleConflict).not.toHaveBeenCalled();
+  });
+
+  it("lets the lock holder write while another session is recorded as stale", async () => {
+    const { req, res } = createReqRes();
+    req.params.uuid = "p1";
+    req.body = { revision: 2, state: { a: 1 }, sessionId: "mine" };
+
+    const editorProjectRepository = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: 3, uuid: "p1", revision: 2, state: {} }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    jest.mock("database/repositories", () => ({
+      __esModule: true,
+      editorProjectRepository,
+      playlistRepository: { findOne: jest.fn() },
+      dreamRepository: { findOne: jest.fn() },
+    }));
+    mockResponses();
+
+    const { handleUpdateEditorProject } = await import(
+      "controllers/editor-project.controller"
+    );
+    await handleUpdateEditorProject(req, res);
+
+    const [where] = editorProjectRepository.update.mock.calls[0];
+
+    expect(where).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 3, revision: 2, lockedBy: "mine" }),
+      ]),
+    );
   });
 
   it("never returns state bodies from the list endpoint", async () => {

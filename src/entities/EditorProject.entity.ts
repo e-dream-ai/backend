@@ -17,7 +17,6 @@ import { EditorId } from "types/editor-project.types";
 
 @Entity()
 @Index(["userId", "editorId"])
-@Index("IDX_EDITOR_PROJECT_USER_EDITOR_NAME", { synchronize: false })
 export class EditorProject {
   @PrimaryGeneratedColumn()
   id: number;

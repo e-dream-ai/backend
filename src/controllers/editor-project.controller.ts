@@ -1,5 +1,5 @@
 import httpStatus from "http-status";
-import { ILike, IsNull, LessThan, QueryFailedError } from "typeorm";
+import { ILike, IsNull, LessThan } from "typeorm";
 import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import { EditorProject } from "entities";
 import { PAGINATION } from "constants/pagination.constants";
@@ -42,8 +42,6 @@ import {
   jsonResponse,
 } from "utils/responses.util";
 
-const POSTGRES_UNIQUE_VIOLATION = "23505";
-
 const isLockHeldByAnotherSession = (
   project: Pick<EditorProject, "lockedBy" | "lockedAt">,
   sessionId?: string,
@@ -65,10 +63,6 @@ const handleLocked = (res: ResponseType, lockedAt: Date | null) =>
 
 const escapeLikePattern = (value: string): string =>
   value.replace(/[\\%_]/g, (match) => `\\${match}`);
-
-const isUniqueViolation = (error: unknown): boolean =>
-  error instanceof QueryFailedError &&
-  (error.driverError as { code?: string })?.code === POSTGRES_UNIQUE_VIOLATION;
 
 type PlaylistResolution =
   | { status: "unchanged" }
@@ -236,12 +230,6 @@ export const handleCreateEditorProject = async (
       }),
     );
   } catch (error) {
-    if (isUniqueViolation(error)) {
-      return handleConflict(req as RequestType, res, {
-        message: EDITOR_PROJECT_MESSAGES.NAME_TAKEN,
-      });
-    }
-
     return handleInternalServerError(error as Error, req as RequestType, res);
   }
 };
@@ -351,12 +339,6 @@ export const handleUpdateEditorProject = async (
       }),
     );
   } catch (error) {
-    if (isUniqueViolation(error)) {
-      return handleConflict(req as RequestType, res, {
-        message: EDITOR_PROJECT_MESSAGES.NAME_TAKEN,
-      });
-    }
-
     return handleInternalServerError(error as Error, req as RequestType, res);
   }
 };

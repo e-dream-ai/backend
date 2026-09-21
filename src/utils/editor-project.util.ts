@@ -16,8 +16,8 @@ export const getEditorProjectSummaryColumns =
     name: true,
     revision: true,
     schemaVersion: true,
-    playlist: { uuid: true, name: true, thumbnail: true },
-    thumbnailDream: { uuid: true, thumbnail: true },
+    playlist: { uuid: true, name: true, thumbnail: true, nsfw: true },
+    thumbnailDream: { uuid: true, thumbnail: true, nsfw: true },
     created_at: true,
     updated_at: true,
   });
@@ -40,9 +40,14 @@ export type EditorProjectResponse = Omit<
 
 export const toEditorProjectResponse = (
   project: EditorProject,
+  showNsfw: boolean,
 ): EditorProjectResponse => {
   const { thumbnailDream, playlist, ...rest } = project;
-  const key = thumbnailDream?.thumbnail ?? playlist?.thumbnail ?? null;
+  const hideThumbnail =
+    !showNsfw && Boolean(thumbnailDream?.nsfw || playlist?.nsfw);
+  const key = hideThumbnail
+    ? null
+    : thumbnailDream?.thumbnail ?? playlist?.thumbnail ?? null;
 
   return {
     ...rest,
@@ -55,4 +60,6 @@ export const toEditorProjectResponse = (
 
 export const toEditorProjectResponses = (
   projects: EditorProject[],
-): EditorProjectResponse[] => projects.map(toEditorProjectResponse);
+  showNsfw: boolean,
+): EditorProjectResponse[] =>
+  projects.map((project) => toEditorProjectResponse(project, showNsfw));

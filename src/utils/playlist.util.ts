@@ -4,6 +4,7 @@ import {
   FindOptionsRelations,
   FindOptionsWhere,
   In,
+  ILike,
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
 import appDataSource from "database/app-data-source";
@@ -389,11 +390,15 @@ export const getPaginatedPlaylistItems = async ({
   filter,
   take = 30,
   skip = 0,
+  search,
+  order = "asc",
 }: {
   playlistId: number;
   filter: GetPlaylistFilterOptions;
   take?: number;
   skip?: number;
+  search?: string;
+  order?: "asc" | "desc";
 }) => {
   const isAdmin = filter.isAdmin;
   const userId = filter.userId;
@@ -446,8 +451,17 @@ export const getPaginatedPlaylistItems = async ({
       );
   }
 
-  // Order by item order
-  queryBuilder = queryBuilder.orderBy("item.order", "ASC");
+  if (search) {
+    queryBuilder.andWhere(
+      "(dreamItem.name ILIKE :search OR playlistItem.name ILIKE :search)",
+      { search: `%${search.replace(/[\\%_]/g, "\\$&")}%` },
+    );
+  }
+
+  const direction = order === "desc" ? "DESC" : "ASC";
+  queryBuilder = queryBuilder
+    .orderBy("item.order", direction)
+    .addOrderBy("item.id", direction);
 
   // Apply pagination
   queryBuilder = queryBuilder.skip(skip).take(take);
@@ -469,15 +483,26 @@ export const getPaginatedPlaylistKeyframes = async ({
   playlistId,
   take = 30,
   skip = 0,
+  search,
+  order = "asc",
 }: {
   playlistId: number;
   take?: number;
   skip?: number;
+  search?: string;
+  order?: "asc" | "desc";
 }) => {
   const [keyframes, totalCount] = await playlistKeyframeRepository.findAndCount(
     {
       where: {
         playlist: { id: playlistId },
+        ...(search
+          ? {
+            keyframe: {
+              name: ILike(`%${search.replace(/[\\%_]/g, "\\$&")}%`),
+            },
+          }
+          : {}),
       },
       select: {
         id: true,
@@ -509,7 +534,8 @@ export const getPaginatedPlaylistKeyframes = async ({
         },
       },
       order: {
-        order: "ASC",
+        order: order === "desc" ? "DESC" : "ASC",
+        id: order === "desc" ? "DESC" : "ASC",
       },
       take,
       skip,

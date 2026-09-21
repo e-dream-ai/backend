@@ -114,6 +114,7 @@ export const handleGetEditorProjects = async (
   res: ResponseType,
 ) => {
   const user = res.locals.user!;
+  const showNsfw = Boolean(user.nsfw);
   const { editorId, playlistUuid, search } = req.query;
   const take = Number(req.query.take ?? PAGINATION.TAKE);
   const skip = Number(req.query.skip ?? PAGINATION.SKIP);
@@ -151,7 +152,10 @@ export const handleGetEditorProjects = async (
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { projects: toEditorProjectResponses(projects), count },
+        data: {
+          projects: toEditorProjectResponses(projects, showNsfw),
+          count,
+        },
       }),
     );
   } catch (error) {
@@ -165,6 +169,7 @@ export const handleGetEditorProject = async (
 ) => {
   const uuid: string = req.params.uuid!;
   const user = res.locals.user!;
+  const showNsfw = Boolean(user.nsfw);
 
   try {
     const project = await editorProjectRepository.findOne({
@@ -180,7 +185,7 @@ export const handleGetEditorProject = async (
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { project: toEditorProjectResponse(project) },
+        data: { project: toEditorProjectResponse(project, showNsfw) },
       }),
     );
   } catch (error) {
@@ -193,6 +198,7 @@ export const handleCreateEditorProject = async (
   res: ResponseType,
 ) => {
   const user = res.locals.user!;
+  const showNsfw = Boolean(user.nsfw);
   const body = req.body as CreateEditorProjectRequest;
 
   try {
@@ -226,7 +232,9 @@ export const handleCreateEditorProject = async (
     return res.status(httpStatus.CREATED).json(
       jsonResponse({
         success: true,
-        data: { project: created ? toEditorProjectResponse(created) : saved },
+        data: {
+          project: created ? toEditorProjectResponse(created, showNsfw) : saved,
+        },
       }),
     );
   } catch (error) {
@@ -244,6 +252,7 @@ export const handleUpdateEditorProject = async (
 ) => {
   const uuid: string = req.params.uuid!;
   const user = res.locals.user!;
+  const showNsfw = Boolean(user.nsfw);
   const body = req.body as UpdateEditorProjectRequest;
 
   try {
@@ -260,7 +269,7 @@ export const handleUpdateEditorProject = async (
     if (project.revision !== body.revision) {
       return handleConflict(req as RequestType, res, {
         message: EDITOR_PROJECT_MESSAGES.REVISION_CONFLICT,
-        data: { project: toEditorProjectResponse(project) },
+        data: { project: toEditorProjectResponse(project, showNsfw) },
       });
     }
 
@@ -321,7 +330,7 @@ export const handleUpdateEditorProject = async (
       return handleConflict(req as RequestType, res, {
         message: EDITOR_PROJECT_MESSAGES.REVISION_CONFLICT,
         ...(current
-          ? { data: { project: toEditorProjectResponse(current) } }
+          ? { data: { project: toEditorProjectResponse(current, showNsfw) } }
           : {}),
       });
     }
@@ -335,7 +344,9 @@ export const handleUpdateEditorProject = async (
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { project: updated ? toEditorProjectResponse(updated) : null },
+        data: {
+          project: updated ? toEditorProjectResponse(updated, showNsfw) : null,
+        },
       }),
     );
   } catch (error) {

@@ -136,6 +136,8 @@ export const getPlaylistItemsSchema: RequestValidationSchema = {
   query: Joi.object<GetPlaylistItemsQuery>().keys({
     take: Joi.number().integer().min(1).max(5000),
     skip: Joi.number().integer().min(0),
+    search: Joi.string().trim().max(200).allow(""),
+    order: Joi.string().valid("asc", "desc"),
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -146,6 +148,8 @@ export const getPlaylistKeyframesSchema: RequestValidationSchema = {
   query: Joi.object<GetPlaylistKeyframesQuery>().keys({
     take: Joi.number().integer().min(1).max(5000),
     skip: Joi.number().integer().min(0),
+    search: Joi.string().trim().max(200).allow(""),
+    order: Joi.string().valid("asc", "desc"),
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

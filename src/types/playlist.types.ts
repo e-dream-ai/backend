@@ -67,11 +67,15 @@ export type RemovePlaylistKeyframeRequest = {
 export type GetPlaylistItemsQuery = {
   take?: number;
   skip?: number;
+  search?: string;
+  order?: "asc" | "desc";
 };
 
 export type GetPlaylistKeyframesQuery = {
   take?: number;
   skip?: number;
+  search?: string;
+  order?: "asc" | "desc";
 };
 
 export interface AddPlaylistItemsRequest {

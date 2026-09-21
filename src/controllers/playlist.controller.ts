@@ -304,6 +304,8 @@ export const handleGetPlaylistItems = async (
       },
       take,
       skip,
+      search: req.query.search?.trim(),
+      order: req.query.order,
     });
 
     for (const item of result.items) {
@@ -459,6 +461,8 @@ export const handleGetPlaylistKeyframes = async (
       playlistId: playlist.id,
       take,
       skip,
+      search: req.query.search?.trim(),
+      order: req.query.order,
     });
 
     const transformedKeyframes =

@@ -1920,16 +1920,7 @@ export const handleCancelDreamJob = async (
       );
     }
 
-    try {
-      await refundReservedDreamCost(dreamUUID, getOwnerId(dream));
-    } catch (refundError: unknown) {
-      APP_LOGGER.error(
-        `Failed to refund provider credits for cancelled dream ${dreamUUID}:`,
-        refundError instanceof Error
-          ? refundError.message
-          : String(refundError),
-      );
-    }
+    await refundReservedDreamCost(dreamUUID, getOwnerId(dream));
 
     const restoredStatus =
       result.previousStatus &&

@@ -1,6 +1,7 @@
 import appDataSource from "database/app-data-source";
 import { User, UserProviderKey } from "entities";
 import { ModelProvider } from "types/model.types";
+import type { EntityManager } from "typeorm";
 
 const userRepository = appDataSource.getRepository(User);
 const userProviderKeyRepository = appDataSource.getRepository(UserProviderKey);
@@ -43,9 +44,10 @@ const chargeProviderCredits = async (
 export const refundProviderCredits = async (
   userId: number,
   costUsd: number,
+  manager: EntityManager = appDataSource.manager,
 ): Promise<void> => {
   if (!Number.isFinite(costUsd) || costUsd <= 0) return;
-  await userRepository.query(
+  await manager.query(
     `UPDATE "user"
      SET "providerCreditsUsd" = LEAST("providerCreditsUsd" + $1, "dailyQuotaUsd")
      WHERE "id" = $2 AND "dailyQuotaUsd" IS NOT NULL`,

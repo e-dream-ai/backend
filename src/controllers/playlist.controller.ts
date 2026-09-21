@@ -1,4 +1,8 @@
 import { addPlaylistItems } from "utils/playlist-items.util";
+import {
+  removeEditorProjectsForPlaylist,
+  renameEditorProjectsForPlaylist,
+} from "services/editor-project-playlist.service";
 import { attachDreamProgress } from "services/job-progress.service";
 import {
   attachPlaylistProgress,
@@ -838,6 +842,11 @@ export const handleUpdatePlaylist = async (
       ...updateData,
     });
 
+    const nextName = updateData.name;
+    if (nextName && nextName !== playlist.name) {
+      await renameEditorProjectsForPlaylist(playlist.id, nextName);
+    }
+
     const updatedPlaylist = await findOnePlaylist({
       where: { uuid },
       select: getPlaylistSelectedColumns({ featureRank: true }),
@@ -1025,6 +1034,8 @@ export const handleDeletePlaylist = async (
     if (!affected) {
       return handleNotFound(req as RequestType, res);
     }
+
+    await removeEditorProjectsForPlaylist(playlist.id);
 
     return res.status(httpStatus.OK).json(jsonResponse({ success: true }));
   } catch (err) {

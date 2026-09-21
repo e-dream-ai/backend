@@ -88,6 +88,11 @@ describe("playlist.controller", () => {
         .fn()
         .mockResolvedValue(updatedPlaylist),
     }));
+    jest.doMock("services/editor-project-playlist.service", () => ({
+      __esModule: true,
+      removeEditorProjectsForPlaylist: jest.fn().mockResolvedValue(0),
+      renameEditorProjectsForPlaylist: jest.fn().mockResolvedValue(0),
+    }));
 
     const { handleUpdatePlaylist } = await import(
       "controllers/playlist.controller"
@@ -157,6 +162,131 @@ describe("playlist.controller", () => {
       if ("userId" in select) {
         expect(select.userId).toBe(true);
       }
+    });
+  });
+  describe("studio projects follow their playlist", () => {
+    const mockPlaylistDeps = (
+      playlist: Record<string, unknown>,
+      updated: Record<string, unknown>,
+    ) => {
+      const playlistRepository = {
+        update: jest.fn().mockResolvedValue({}),
+        softRemove: jest.fn().mockResolvedValue(playlist),
+        findOne: jest.fn().mockResolvedValue(playlist),
+      };
+      jest.doMock("database/repositories", () => ({
+        __esModule: true,
+        playlistRepository,
+        feedItemRepository: { update: jest.fn().mockResolvedValue({}) },
+        userRepository: { findOneBy: jest.fn() },
+      }));
+      jest.doMock("utils/playlist.util", () => ({
+        __esModule: true,
+        getPlaylistSelectedColumns: () => ({}),
+        findOnePlaylist: jest
+          .fn()
+          .mockResolvedValueOnce(playlist)
+          .mockResolvedValueOnce(updated),
+        computePlaylistThumbnailRecursive: jest.fn(),
+      }));
+      jest.doMock("utils/responses.util", () => ({
+        __esModule: true,
+        jsonResponse: (payload: unknown) => payload,
+        handleNotFound: jest.fn(),
+        handleForbidden: jest.fn(),
+        handleInternalServerError: jest.fn(),
+      }));
+      jest.doMock("utils/permissions.util", () => ({
+        __esModule: true,
+        canExecuteAction: () => true,
+      }));
+      jest.doMock("utils/user.util", () => ({
+        __esModule: true,
+        isAdmin: () => false,
+      }));
+      jest.doMock("utils/transform.util", () => ({
+        __esModule: true,
+        transformCurrentPlaylistWithSignedUrls: jest
+          .fn()
+          .mockResolvedValue(updated),
+      }));
+      return playlistRepository;
+    };
+
+    const mockEditorProjectService = () => {
+      const removeEditorProjectsForPlaylist = jest.fn().mockResolvedValue(1);
+      const renameEditorProjectsForPlaylist = jest.fn().mockResolvedValue(1);
+      jest.doMock("services/editor-project-playlist.service", () => ({
+        __esModule: true,
+        removeEditorProjectsForPlaylist,
+        renameEditorProjectsForPlaylist,
+      }));
+      return {
+        removeEditorProjectsForPlaylist,
+        renameEditorProjectsForPlaylist,
+      };
+    };
+
+    it("removes the studio project when its playlist is deleted", async () => {
+      const { req, res } = createReqRes();
+      req.params.uuid = "p1";
+      const playlist = { id: 10, uuid: "p1", user: { id: 1 } };
+      mockPlaylistDeps(playlist, playlist);
+      const service = mockEditorProjectService();
+
+      const { handleDeletePlaylist } = await import(
+        "controllers/playlist.controller"
+      );
+      await handleDeletePlaylist(req, res);
+
+      expect(service.removeEditorProjectsForPlaylist).toHaveBeenCalledWith(10);
+    });
+
+    it("renames the studio project when its playlist is renamed", async () => {
+      const { req, res } = createReqRes();
+      req.params.uuid = "p1";
+      req.body = { name: "Renamed" };
+      const playlist = {
+        id: 10,
+        uuid: "p1",
+        user: { id: 1 },
+        name: "Before",
+        thumbnail: "t.jpg",
+      };
+      mockPlaylistDeps(playlist, { ...playlist, name: "Renamed" });
+      const service = mockEditorProjectService();
+
+      const { handleUpdatePlaylist } = await import(
+        "controllers/playlist.controller"
+      );
+      await handleUpdatePlaylist(req, res);
+
+      expect(service.renameEditorProjectsForPlaylist).toHaveBeenCalledWith(
+        10,
+        "Renamed",
+      );
+    });
+
+    it("leaves the studio project alone when the name did not change", async () => {
+      const { req, res } = createReqRes();
+      req.params.uuid = "p1";
+      req.body = { name: "Same", description: "new words" };
+      const playlist = {
+        id: 10,
+        uuid: "p1",
+        user: { id: 1 },
+        name: "Same",
+        thumbnail: "t.jpg",
+      };
+      mockPlaylistDeps(playlist, playlist);
+      const service = mockEditorProjectService();
+
+      const { handleUpdatePlaylist } = await import(
+        "controllers/playlist.controller"
+      );
+      await handleUpdatePlaylist(req, res);
+
+      expect(service.renameEditorProjectsForPlaylist).not.toHaveBeenCalled();
     });
   });
 });

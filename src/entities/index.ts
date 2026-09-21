@@ -14,3 +14,4 @@ export * from "./ReportType.entity";
 export * from "./Report.entity";
 export * from "./DefaultPlaylist.entity";
 export * from "./Role.entity";
+export * from "./EditorProject.entity";

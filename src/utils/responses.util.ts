@@ -79,6 +79,21 @@ export const handleForbidden = (req: RequestType, res: ResponseType) => {
   );
 };
 
+// Conflict Handler
+export const handleConflict = (
+  req: RequestType,
+  res: ResponseType,
+  options: ResponseOptions & { data?: Record<string, unknown> } = {},
+) => {
+  res.status(httpStatus.CONFLICT).json(
+    jsonResponse({
+      success: false,
+      message: options?.message ?? GENERAL_MESSAGES.DUPLICATED,
+      ...(options.data ? { data: options.data } : {}),
+    }),
+  );
+};
+
 const mapRawCodeToAuthErrorCode = (
   rawCode: unknown,
   fallbackMessage?: string,

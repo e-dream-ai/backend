@@ -31,7 +31,7 @@ export const requestPlaylistSchema: RequestValidationSchema = {
 export const createPlaylistSchema: RequestValidationSchema = {
   body: Joi.object<CreatePlaylistRequest>().keys({
     name: Joi.string().required(),
-    description: Joi.string().max(500).allow(""),
+    description: Joi.string().max(4000).allow(""),
     nsfw: Joi.boolean(),
     hidden: Joi.boolean().when("$isUserAdmin", {
       is: true,
@@ -49,7 +49,7 @@ export const createPlaylistSchema: RequestValidationSchema = {
 export const updatePlaylistSchema: RequestValidationSchema = {
   body: Joi.object<UpdatePlaylistRequest>().keys({
     name: Joi.string().required().max(100),
-    description: Joi.string().max(500).allow(""),
+    description: Joi.string().max(4000).allow(""),
     featureRank: Joi.number().integer(),
     displayedOwner: Joi.number().greater(0).integer(),
     hidden: Joi.boolean().when("$isUserAdmin", {
@@ -136,6 +136,8 @@ export const getPlaylistItemsSchema: RequestValidationSchema = {
   query: Joi.object<GetPlaylistItemsQuery>().keys({
     take: Joi.number().integer().min(1).max(5000),
     skip: Joi.number().integer().min(0),
+    search: Joi.string().trim().max(200).allow(""),
+    order: Joi.string().valid("asc", "desc"),
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
@@ -146,6 +148,8 @@ export const getPlaylistKeyframesSchema: RequestValidationSchema = {
   query: Joi.object<GetPlaylistKeyframesQuery>().keys({
     take: Joi.number().integer().min(1).max(5000),
     skip: Joi.number().integer().min(0),
+    search: Joi.string().trim().max(200).allow(""),
+    order: Joi.string().valid("asc", "desc"),
   }),
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),

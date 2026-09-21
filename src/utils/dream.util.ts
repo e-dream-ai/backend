@@ -51,17 +51,24 @@ export const refundReservedDreamCost = async (
   dreamUuid: string,
   userId: number,
 ): Promise<void> => {
-  const rows: Array<{ reservedCostUsd: string | null }> =
-    await dreamRepository.query(
-      `UPDATE "dream" SET "reservedCostUsd" = NULL
-       WHERE "uuid" = $1 AND "reservedCostUsd" IS NOT NULL
-       RETURNING "reservedCostUsd"`,
-      [dreamUuid],
-    );
+  const refundedUsd = await appDataSource.transaction(async (manager) => {
+    const dream = await manager.findOne(Dream, {
+      where: { uuid: dreamUuid },
+      select: { id: true, reservedCostUsd: true },
+      lock: { mode: "pessimistic_write" },
+    });
+    if (!dream || dream.reservedCostUsd == null) return null;
+    const reserved = dream.reservedCostUsd;
 
-  const reserved = rows[0]?.reservedCostUsd;
-  if (reserved != null && Number(reserved) > 0) {
-    await refundProviderCredits(userId, Number(reserved));
+    await refundProviderCredits(userId, reserved, manager);
+    await manager.update(Dream, { id: dream.id }, { reservedCostUsd: null });
+    return reserved;
+  });
+
+  if (refundedUsd != null && refundedUsd > 0) {
+    APP_LOGGER.info(
+      `Refunded reserved cost of $${refundedUsd} for dream ${dreamUuid}`,
+    );
   }
 };
 

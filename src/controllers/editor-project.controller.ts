@@ -35,6 +35,8 @@ import {
   toEditorProjectResponse,
   toEditorProjectResponses,
 } from "utils/editor-project.util";
+import { fillEditorProjectPlaylistThumbnails } from "services/editor-project-playlist.service";
+import { isAdmin } from "utils/user.util";
 import {
   handleConflict,
   handleInternalServerError,
@@ -147,6 +149,12 @@ export const handleGetEditorProjects = async (
       order: { updated_at: "DESC" },
       take,
       skip,
+    });
+
+    await fillEditorProjectPlaylistThumbnails(projects, {
+      userId: user.id,
+      isAdmin: isAdmin(user),
+      nsfw: user.nsfw,
     });
 
     return res.status(httpStatus.OK).json(

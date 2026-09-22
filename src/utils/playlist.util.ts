@@ -316,6 +316,64 @@ export const computePlaylistThumbnailRecursive = async (
   return null;
 };
 
+export const computePlaylistThumbnailsBatch = async (
+  playlists: ReadonlyArray<Pick<Playlist, "id" | "nsfw">>,
+  filter: GetPlaylistFilterOptions,
+): Promise<Map<number, string>> => {
+  const resolved = new Map<number, string>();
+  if (playlists.length === 0) return resolved;
+
+  const byNsfwRule = new Map<boolean, number[]>();
+  for (const playlist of playlists) {
+    const nsfw = playlist.nsfw && filter.nsfw === true;
+    const ids = byNsfwRule.get(nsfw);
+    if (ids) ids.push(playlist.id);
+    else byNsfwRule.set(nsfw, [playlist.id]);
+  }
+
+  const itemsByPlaylist = new Map<number, PlaylistThumbnailCandidate[]>();
+  for (const [nsfw, ids] of byNsfwRule) {
+    const items = await getVisiblePlaylistItemsForThumbnail(ids, {
+      ...filter,
+      nsfw,
+    });
+
+    for (const item of items) {
+      const bucket = itemsByPlaylist.get(item.playlist.id);
+      if (bucket) bucket.push(item);
+      else itemsByPlaylist.set(item.playlist.id, [item]);
+    }
+  }
+
+  for (const playlist of playlists) {
+    for (const item of itemsByPlaylist.get(playlist.id) ?? []) {
+      if (item.dreamItem?.thumbnail) {
+        resolved.set(playlist.id, item.dreamItem.thumbnail);
+        break;
+      }
+
+      if (!item.playlistItem) continue;
+
+      if (item.playlistItem.thumbnail) {
+        resolved.set(playlist.id, item.playlistItem.thumbnail);
+        break;
+      }
+
+      const nested = await computePlaylistThumbnailRecursive(
+        item.playlistItem.id,
+        { ...filter, rootPlaylistNsfw: playlist.nsfw },
+      );
+
+      if (nested) {
+        resolved.set(playlist.id, nested);
+        break;
+      }
+    }
+  }
+
+  return resolved;
+};
+
 /**
  * Gets ordered playlist items that can provide a thumbnail under the same
  * visibility rules as playlist contents.

@@ -16,7 +16,7 @@ export const getEditorProjectSummaryColumns =
     name: true,
     revision: true,
     schemaVersion: true,
-    playlist: { uuid: true, name: true, thumbnail: true, nsfw: true },
+    playlist: { id: true, uuid: true, name: true, thumbnail: true, nsfw: true },
     thumbnailDream: { uuid: true, thumbnail: true, nsfw: true },
     created_at: true,
     updated_at: true,

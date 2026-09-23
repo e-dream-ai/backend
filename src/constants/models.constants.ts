@@ -37,7 +37,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
       durationsSec: [5, 10, 15, 20],
       supportsSteps: true,
       supportsNegativePrompt: true,
-      guidance: { min: 1, max: 5, step: 0.5, default: 1 },
+      guidance: { min: 1, max: 5, step: 0.5, default: 3 },
     },
   },
   {

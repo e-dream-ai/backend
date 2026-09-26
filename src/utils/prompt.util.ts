@@ -35,6 +35,8 @@ const SUPPORTED_ALGORITHMS = [
   "nvidia-uprez",
   "discodiffusion",
   "flux-kontext-i2i",
+  "krea-2-turbo",
+  "krea-2-turbo-style",
 ] as const;
 export type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
 
@@ -61,6 +63,8 @@ const ALGORITHM_REGISTRY: Record<SupportedAlgorithm, AlgorithmSpec> = {
   "nvidia-uprez": { queue: "nvidiavsr", media: "video" },
   discodiffusion: { queue: "discodiffusion", media: "video" },
   "flux-kontext-i2i": { queue: "falimage", media: "image" },
+  "krea-2-turbo": { queue: "falimage", media: "image" },
+  "krea-2-turbo-style": { queue: "falimage", media: "image" },
 };
 
 export const GENERATION_QUEUES: string[] = [

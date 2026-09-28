@@ -89,6 +89,30 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     constraints: { supportsNegativePrompt: false },
     pricing: { kind: "perImage", usdPerImage: 0.04 },
   },
+  {
+    id: "krea-2-turbo",
+    label: "Krea 2 Turbo",
+    provider: PROVIDERS.FAL,
+    mediaType: DreamMediaType.IMAGE,
+    constraints: {
+      imageSizes: ["1024*768", "1024*1024", "768*1024", "1280*720", "720*1280"],
+      supportsSteps: false,
+      supportsNegativePrompt: false,
+    },
+    pricing: { kind: "perMegapixel", usdPerMegapixel: 0.008 },
+  },
+  {
+    id: "krea-2-turbo-style",
+    label: "Krea 2 Turbo Style",
+    provider: PROVIDERS.FAL,
+    mediaType: DreamMediaType.IMAGE,
+    constraints: {
+      imageSizes: ["1024*768", "1024*1024", "768*1024", "1280*720", "720*1280"],
+      supportsSteps: false,
+      supportsNegativePrompt: false,
+    },
+    pricing: { kind: "perMegapixel", usdPerMegapixel: 0.01 },
+  },
 ];
 
 export const getModelCatalog = (

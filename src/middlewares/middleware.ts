@@ -13,6 +13,7 @@ import {
   EDITOR_PROJECT_API_PATH,
   EDITOR_PROJECT_BODY_LIMIT,
 } from "constants/editor-project.constants";
+import { WEBHOOKS_API_PATH } from "constants/webhook.constants";
 import swaggerUi from "swagger-ui-express";
 import swaggerJSDoc from "swagger-jsdoc";
 import passport from "passport";
@@ -67,6 +68,8 @@ export const registerMiddlewares = (app: express.Application) => {
 
   // parse cookies
   app.use(cookieParser());
+
+  app.use(WEBHOOKS_API_PATH, bodyParser.raw({ type: "application/json" }));
 
   // parse json request body
   app.use(

@@ -47,6 +47,7 @@ import {
   OrderPlaylistRequest,
   PlaylistItemType,
   PlaylistParamsRequest,
+  PreviewRunPlaylistRequest,
   RemovePlaylistItemRequest,
   RemovePlaylistKeyframeRequest,
   UpdatePlaylistRequest,
@@ -56,6 +57,7 @@ import { canExecuteAction } from "utils/permissions.util";
 import { parsePromptJson, serializePrompt } from "utils/prompt.util";
 import { isUprezPlaylistPrompt } from "utils/playlist-prompt.util";
 import {
+  previewUprezPlaylist,
   runUprezPlaylist,
   UprezSourceAccessError,
   cancelUprezPlaylist,
@@ -1531,6 +1533,52 @@ export const handleRunPlaylist = async (
     const result = await runUprezPlaylist({
       playlist,
       prompt,
+      user: res.locals.user!,
+    });
+
+    return res
+      .status(httpStatus.OK)
+      .json(jsonResponse({ success: true, data: { result } }));
+  } catch (err) {
+    if (err instanceof UprezSourceAccessError)
+      return handleNotFound(req as RequestType, res);
+    const error = err as Error;
+    return handleInternalServerError(error, req as RequestType, res);
+  }
+};
+
+/**
+ * What a run would do, optionally with unsaved settings from the body.
+ * Writes nothing.
+ */
+export const handlePreviewRunPlaylist = async (
+  req: RequestType<PreviewRunPlaylistRequest, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+) => {
+  try {
+    const playlist = await loadPlaylistForOwnerAction(req, res);
+    if (!playlist) return;
+
+    const prompt = parsePromptJson(playlist);
+
+    if (!isUprezPlaylistPrompt(prompt)) {
+      return res.status(httpStatus.BAD_REQUEST).json(
+        jsonResponse({
+          success: false,
+          message: "Playlist is not a runnable uprez playlist",
+        }),
+      );
+    }
+
+    const { source_playlist_uuid, params } = req.body ?? {};
+    const result = await previewUprezPlaylist({
+      playlist,
+      prompt: {
+        ...prompt,
+        source_playlist_uuid:
+          source_playlist_uuid ?? prompt.source_playlist_uuid,
+        params: params ?? prompt.params,
+      },
       user: res.locals.user!,
     });
 

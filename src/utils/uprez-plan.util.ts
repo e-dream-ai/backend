@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import type { Dream, PlaylistItem } from "entities";
 import { DreamStatusType } from "types/dream.types";
 import { parsePromptJson, PromptJson } from "./prompt.util";
@@ -6,7 +7,7 @@ import { parsePromptJson, PromptJson } from "./prompt.util";
  * Counts for one uprez run. The same shape is returned by the dry-run
  * preview and by the real run, so the UI can say what a run *would* do.
  */
-export interface RunUprezPlaylistResult {
+export interface UprezRunSummary {
   /** New uprez dreams queued. */
   created: number;
   /** Failed uprez dreams at the current settings, queued again. */
@@ -23,20 +24,16 @@ export interface RunUprezPlaylistResult {
   removed: number;
   /** Source dreams not yet processed, so there's nothing to uprez. */
   skipped: number;
+  hasWork: boolean;
+}
+
+export interface RunUprezPlaylistResult extends UprezRunSummary {
   linked: number;
 }
 
-/** Whether a run with this result would change anything. */
-export const uprezRunHasWork = (result: RunUprezPlaylistResult): boolean =>
-  result.created +
-    result.requeued +
-    result.reused +
-    result.replaced +
-    result.removed >
-  0;
-
 export interface UprezPlan {
-  result: RunUprezPlaylistResult;
+  result: UprezRunSummary;
+  sourceOrder: Map<string, number>;
   /** Playlist item ids to take out: obsolete sources and replaced dreams. */
   itemIdsToRemove: number[];
   /** Replaced dreams still queued or processing. */
@@ -49,11 +46,11 @@ export interface UprezPlan {
   sourcesToCreate: { source: Dream; order: number }[];
 }
 
-const IN_FLIGHT = new Set<string>([
+export const IN_FLIGHT_STATUSES: DreamStatusType[] = [
   DreamStatusType.NONE,
   DreamStatusType.QUEUE,
   DreamStatusType.PROCESSING,
-]);
+];
 
 export const getSourceDreamUuid = (
   dream: Dream | null | undefined,
@@ -75,9 +72,8 @@ export const matchesUprezSettings = (
 ): boolean =>
   !!prompt &&
   prompt.infinidream_algorithm === dreamAlgorithm &&
-  Object.entries(params).every(
-    ([key, value]) =>
-      JSON.stringify(prompt[key as keyof PromptJson]) === JSON.stringify(value),
+  Object.entries(params).every(([key, value]) =>
+    isDeepStrictEqual(prompt[key], value),
   );
 
 /**
@@ -101,8 +97,9 @@ export const planUprezRun = ({
   dreamAlgorithm: string;
   params: Record<string, unknown>;
 }): UprezPlan => {
-  const sourceOrder = new Map<string, number>();
-  sourceDreams.forEach((dream, index) => sourceOrder.set(dream.uuid, index));
+  const sourceOrder = new Map(
+    sourceDreams.map((dream, index) => [dream.uuid, index]),
+  );
 
   const plan: UprezPlan = {
     result: {
@@ -114,8 +111,9 @@ export const planUprezRun = ({
       cancelled: 0,
       removed: 0,
       skipped: 0,
-      linked: 0,
+      hasWork: false,
     },
+    sourceOrder,
     itemIdsToRemove: [],
     dreamsToCancel: [],
     dreamsToRequeue: [],
@@ -124,17 +122,18 @@ export const planUprezRun = ({
   };
   const { result } = plan;
 
-  const existingBySource = new Map<string, PlaylistItem>();
+  const existingBySource = new Map<string, { itemId: number; dream: Dream }>();
   const inPlaylist = new Set<string>();
   for (const item of derivedItems) {
-    const srcUuid = getSourceDreamUuid(item.dreamItem);
-    if (!srcUuid) continue;
-    inPlaylist.add(item.dreamItem!.uuid);
+    const dream = item.dreamItem;
+    const srcUuid = getSourceDreamUuid(dream);
+    if (!dream || !srcUuid) continue;
+    inPlaylist.add(dream.uuid);
     if (!sourceOrder.has(srcUuid)) {
       plan.itemIdsToRemove.push(item.id);
       result.removed += 1;
     } else {
-      existingBySource.set(srcUuid, item);
+      existingBySource.set(srcUuid, { itemId: item.id, dream });
     }
   }
 
@@ -150,21 +149,21 @@ export const planUprezRun = ({
     reusableBySource.set(srcUuid, dream);
   }
 
-  for (const source of sourceDreams) {
+  for (const [order, source] of sourceDreams.entries()) {
     if (source.status !== DreamStatusType.PROCESSED) {
       result.skipped += 1;
       continue;
     }
 
-    const order = sourceOrder.get(source.uuid) ?? 0;
-    const existing = existingBySource.get(source.uuid)?.dreamItem;
+    const existing = existingBySource.get(source.uuid);
 
     if (existing) {
+      const { itemId, dream } = existing;
       if (
-        matchesUprezSettings(parsePromptJson(existing), dreamAlgorithm, params)
+        matchesUprezSettings(parsePromptJson(dream), dreamAlgorithm, params)
       ) {
-        if (existing.status === DreamStatusType.FAILED) {
-          plan.dreamsToRequeue.push(existing);
+        if (dream.status === DreamStatusType.FAILED) {
+          plan.dreamsToRequeue.push(dream);
           result.requeued += 1;
         } else {
           result.kept += 1;
@@ -172,10 +171,10 @@ export const planUprezRun = ({
         continue;
       }
 
-      plan.itemIdsToRemove.push(existingBySource.get(source.uuid)!.id);
+      plan.itemIdsToRemove.push(itemId);
       result.replaced += 1;
-      if (IN_FLIGHT.has(existing.status)) {
-        plan.dreamsToCancel.push(existing);
+      if (IN_FLIGHT_STATUSES.includes(dream.status)) {
+        plan.dreamsToCancel.push(dream);
         result.cancelled += 1;
       }
     }
@@ -189,6 +188,14 @@ export const planUprezRun = ({
       result.created += 1;
     }
   }
+
+  result.hasWork =
+    result.created +
+      result.requeued +
+      result.reused +
+      result.replaced +
+      result.removed >
+    0;
 
   return plan;
 };

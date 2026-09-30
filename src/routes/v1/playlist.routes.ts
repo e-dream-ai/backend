@@ -1018,6 +1018,13 @@ playlistRouter.post(
  *            schema:
  *              allOf:
  *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        result:
+ *                          $ref: '#/components/schemas/UprezRunResult'
  *      '400':
  *        description: Bad request
  *        content:
@@ -1071,6 +1078,13 @@ playlistRouter.post(
  *            schema:
  *              allOf:
  *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        result:
+ *                          $ref: '#/components/schemas/UprezRunSummary'
  *      '400':
  *        description: Bad request
  *        content:

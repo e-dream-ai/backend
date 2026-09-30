@@ -55,7 +55,10 @@ import {
 import { computeDefaultPlaylistFromUserId } from "utils/default-playlist.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { parsePromptJson, serializePrompt } from "utils/prompt.util";
-import { isUprezPlaylistPrompt } from "utils/playlist-prompt.util";
+import {
+  isUprezPlaylistPrompt,
+  UprezPlaylistPromptJson,
+} from "utils/playlist-prompt.util";
 import {
   previewUprezPlaylist,
   runUprezPlaylist,
@@ -1511,28 +1514,47 @@ const loadPlaylistForOwnerAction = async (
   return playlist;
 };
 
+const loadUprezPlaylistForRun = async (
+  req: RequestType<unknown, unknown, PlaylistParamsRequest>,
+  res: ResponseType,
+): Promise<{ playlist: Playlist; prompt: UprezPlaylistPromptJson } | null> => {
+  const playlist = await loadPlaylistForOwnerAction(req, res);
+  if (!playlist) return null;
+
+  const prompt = parsePromptJson(playlist);
+
+  if (!isUprezPlaylistPrompt(prompt)) {
+    res.status(httpStatus.BAD_REQUEST).json(
+      jsonResponse({
+        success: false,
+        message: "Playlist is not a runnable uprez playlist",
+      }),
+    );
+    return null;
+  }
+
+  return { playlist, prompt };
+};
+
+const handleUprezRunError = (
+  err: unknown,
+  req: RequestType,
+  res: ResponseType,
+) =>
+  err instanceof UprezSourceAccessError
+    ? handleNotFound(req, res)
+    : handleInternalServerError(err as Error, req, res);
+
 export const handleRunPlaylist = async (
   req: RequestType<unknown, unknown, PlaylistParamsRequest>,
   res: ResponseType,
 ) => {
   try {
-    const playlist = await loadPlaylistForOwnerAction(req, res);
-    if (!playlist) return;
-
-    const prompt = parsePromptJson(playlist);
-
-    if (!isUprezPlaylistPrompt(prompt)) {
-      return res.status(httpStatus.BAD_REQUEST).json(
-        jsonResponse({
-          success: false,
-          message: "Playlist is not a runnable uprez playlist",
-        }),
-      );
-    }
+    const loaded = await loadUprezPlaylistForRun(req, res);
+    if (!loaded) return;
 
     const result = await runUprezPlaylist({
-      playlist,
-      prompt,
+      ...loaded,
       user: res.locals.user!,
     });
 
@@ -1540,10 +1562,7 @@ export const handleRunPlaylist = async (
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { result } }));
   } catch (err) {
-    if (err instanceof UprezSourceAccessError)
-      return handleNotFound(req as RequestType, res);
-    const error = err as Error;
-    return handleInternalServerError(error, req as RequestType, res);
+    return handleUprezRunError(err, req as RequestType, res);
   }
 };
 
@@ -1556,20 +1575,10 @@ export const handlePreviewRunPlaylist = async (
   res: ResponseType,
 ) => {
   try {
-    const playlist = await loadPlaylistForOwnerAction(req, res);
-    if (!playlist) return;
+    const loaded = await loadUprezPlaylistForRun(req, res);
+    if (!loaded) return;
 
-    const prompt = parsePromptJson(playlist);
-
-    if (!isUprezPlaylistPrompt(prompt)) {
-      return res.status(httpStatus.BAD_REQUEST).json(
-        jsonResponse({
-          success: false,
-          message: "Playlist is not a runnable uprez playlist",
-        }),
-      );
-    }
-
+    const { playlist, prompt } = loaded;
     const { source_playlist_uuid, params } = req.body ?? {};
     const result = await previewUprezPlaylist({
       playlist,
@@ -1586,10 +1595,7 @@ export const handlePreviewRunPlaylist = async (
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { result } }));
   } catch (err) {
-    if (err instanceof UprezSourceAccessError)
-      return handleNotFound(req as RequestType, res);
-    const error = err as Error;
-    return handleInternalServerError(error, req as RequestType, res);
+    return handleUprezRunError(err, req as RequestType, res);
   }
 };
 

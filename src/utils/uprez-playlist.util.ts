@@ -7,20 +7,20 @@ import {
   PlaylistKeyframe,
   User,
 } from "entities";
+import { EntityManager, In } from "typeorm";
 import appDataSource from "database/app-data-source";
-import {
-  dreamRepository,
-  playlistItemRepository,
-  playlistRepository,
-} from "database/repositories";
+import { dreamRepository, playlistItemRepository } from "database/repositories";
 import { DreamStatusType } from "types/dream.types";
 import { PlaylistItemType } from "types/playlist.types";
 import { APP_LOGGER } from "shared/logger";
 import { UprezPlaylistPromptJson } from "./playlist-prompt.util";
+import { mapAlgorithmToQueue, parsePromptJson } from "./prompt.util";
 import {
   getSourceDreamUuid,
+  IN_FLIGHT_STATUSES,
   planUprezRun,
   RunUprezPlaylistResult,
+  UprezRunSummary,
 } from "./uprez-plan.util";
 import {
   failDreamWithError,
@@ -31,9 +31,15 @@ import {
   bulkDeletePlaylistItemsAndResetOrder,
   refreshPlaylistUpdatedAtTimestamp,
 } from "./playlist.util";
-import { cancelJobAcrossQueues } from "./job-cancel.util";
+import {
+  cancelJobAcrossQueues,
+  cancelJobsByDreamUuids,
+} from "./job-cancel.util";
 
-export type { RunUprezPlaylistResult } from "./uprez-plan.util";
+export type {
+  RunUprezPlaylistResult,
+  UprezRunSummary,
+} from "./uprez-plan.util";
 
 const UPREZ_SETTINGS_CHANGED = "Cancelled: uprez settings changed";
 
@@ -52,8 +58,11 @@ const canReadSource = (
   isAdmin(user) ||
   (!content.hidden && (!content.nsfw || user.nsfw));
 
-const getOrderedDreamItems = (playlistId: number): Promise<PlaylistItem[]> =>
-  playlistItemRepository.find({
+const getOrderedDreamItems = (
+  manager: EntityManager,
+  playlistId: number,
+): Promise<PlaylistItem[]> =>
+  manager.find(PlaylistItem, {
     where: { playlist: { id: playlistId }, type: PlaylistItemType.DREAM },
     relations: { dreamItem: { startKeyframe: true, endKeyframe: true } },
     order: { order: "ASC" },
@@ -69,82 +78,84 @@ const detectSourceLoop = (dreams: Dream[]): boolean => {
   );
 };
 
-const linkUprezPlaylistKeyframes = async ({
-  playlistId,
-  userId,
-  loop,
-}: {
-  playlistId: number;
-  userId: number;
-  loop: boolean;
-}): Promise<number> =>
-  appDataSource.transaction(async (manager) => {
-    const items = await manager.find(PlaylistItem, {
-      where: { playlist: { id: playlistId }, type: PlaylistItemType.DREAM },
-      relations: { dreamItem: true },
-      order: { order: "ASC" },
-    });
-    const dreams = items
-      .map((item) => item.dreamItem)
-      .filter((dream): dream is Dream => Boolean(dream));
+const linkUprezPlaylistKeyframes = async (
+  manager: EntityManager,
+  {
+    playlistId,
+    userId,
+    loop,
+  }: {
+    playlistId: number;
+    userId: number;
+    loop: boolean;
+  },
+): Promise<number> => {
+  const items = await manager.find(PlaylistItem, {
+    where: { playlist: { id: playlistId }, type: PlaylistItemType.DREAM },
+    relations: { dreamItem: true },
+    order: { order: "ASC" },
+  });
+  const dreams = items
+    .map((item) => item.dreamItem)
+    .filter((dream): dream is Dream => Boolean(dream));
 
-    if (dreams.length === 0) return 0;
+  if (dreams.length === 0) return 0;
 
-    const existing = await manager.find(PlaylistKeyframe, {
-      where: { playlist: { id: playlistId } },
-    });
-    if (existing.length > 0) await manager.softRemove(existing);
+  const existing = await manager.find(PlaylistKeyframe, {
+    where: { playlist: { id: playlistId } },
+  });
+  if (existing.length > 0) await manager.softRemove(existing);
 
-    const userRef = { id: userId } as User;
-    const playlistRef = { id: playlistId } as Playlist;
-    const keyframeNames = dreams.map(
-      (dream, index) => `kf_${dream.name ?? index}`,
-    );
-    if (!loop) {
-      const lastDream = dreams[dreams.length - 1];
-      keyframeNames.push(`kf_end_${lastDream.name ?? dreams.length - 1}`);
-    }
+  const userRef = { id: userId } as User;
+  const playlistRef = { id: playlistId } as Playlist;
+  const keyframeNames = dreams.map(
+    (dream, index) => `kf_${dream.name ?? index}`,
+  );
+  if (!loop) {
+    const lastDream = dreams[dreams.length - 1];
+    keyframeNames.push(`kf_end_${lastDream.name ?? dreams.length - 1}`);
+  }
 
-    const keyframes = await manager.save(
-      keyframeNames.map((name) => {
-        const keyframe = new Keyframe();
-        keyframe.name = name;
-        keyframe.user = userRef;
-        return keyframe;
-      }),
-    );
+  const keyframes = await manager.save(
+    keyframeNames.map((name) => {
+      const keyframe = new Keyframe();
+      keyframe.name = name;
+      keyframe.user = userRef;
+      return keyframe;
+    }),
+  );
 
-    await manager.save(
-      keyframes.map((keyframe, order) => {
-        const playlistKeyframe = new PlaylistKeyframe();
-        playlistKeyframe.playlist = playlistRef;
-        playlistKeyframe.keyframe = keyframe;
-        playlistKeyframe.order = order;
-        return playlistKeyframe;
-      }),
-    );
+  await manager.save(
+    keyframes.map((keyframe, order) => {
+      const playlistKeyframe = new PlaylistKeyframe();
+      playlistKeyframe.playlist = playlistRef;
+      playlistKeyframe.keyframe = keyframe;
+      playlistKeyframe.order = order;
+      return playlistKeyframe;
+    }),
+  );
 
-    for (let offset = 0; offset < dreams.length; offset += 500) {
-      const batch = dreams.slice(offset, offset + 500);
-      await manager.query(
-        `UPDATE dream AS dream
+  for (let offset = 0; offset < dreams.length; offset += 500) {
+    const batch = dreams.slice(offset, offset + 500);
+    await manager.query(
+      `UPDATE dream AS dream
          SET "startKeyframeId" = links.start_id, "endKeyframeId" = links.end_id, updated_at = NOW()
          FROM unnest($1::int[], $2::int[], $3::int[]) AS links(id, start_id, end_id)
          WHERE dream.id = links.id AND dream.deleted_at IS NULL`,
-        [
-          batch.map((dream) => dream.id),
-          batch.map((_, index) => keyframes[offset + index].id),
-          batch.map(
-            (_, index) =>
-              (keyframes[offset + index + 1] ?? (loop ? keyframes[0] : null))
-                ?.id ?? null,
-          ),
-        ],
-      );
-    }
+      [
+        batch.map((dream) => dream.id),
+        batch.map((_, index) => keyframes[offset + index].id),
+        batch.map(
+          (_, index) =>
+            (keyframes[offset + index + 1] ?? (loop ? keyframes[0] : null))
+              ?.id ?? null,
+        ),
+      ],
+    );
+  }
 
-    return dreams.length;
-  });
+  return dreams.length;
+};
 
 type UprezRunArgs = {
   playlist: Pick<Playlist, "id" | "uuid">;
@@ -164,6 +175,7 @@ const CANDIDATE_BATCH = 500;
  * inside them; a text match narrows the rows and the planner parses the rest.
  */
 const findUprezCandidates = async (
+  manager: EntityManager,
   userId: number,
   sourceUuids: string[],
 ): Promise<Dream[]> => {
@@ -173,8 +185,9 @@ const findUprezCandidates = async (
       .slice(offset, offset + CANDIDATE_BATCH)
       .map((uuid) => `%${uuid}%`);
     candidates.push(
-      ...(await dreamRepository
-        .createQueryBuilder("dream")
+      ...(await manager
+        .createQueryBuilder(Dream, "dream")
+        .select(["dream.id", "dream.uuid", "dream.status", "dream.prompt"])
         .where("dream.userId = :userId", { userId })
         .andWhere("dream.status = :status", {
           status: DreamStatusType.PROCESSED,
@@ -191,11 +204,14 @@ const findUprezCandidates = async (
   return candidates;
 };
 
-const loadUprezRun = async ({ playlist, prompt, user }: UprezRunArgs) => {
+const loadUprezRun = async (
+  { playlist, prompt, user }: UprezRunArgs,
+  manager: EntityManager = appDataSource.manager,
+) => {
   const dreamAlgorithm = prompt.dream_algorithm ?? "uprez";
   const params = prompt.params ?? {};
 
-  const source = await playlistRepository.findOne({
+  const source = await manager.findOne(Playlist, {
     where: { uuid: prompt.source_playlist_uuid },
     select: { id: true, uuid: true, userId: true, hidden: true, nsfw: true },
   });
@@ -204,7 +220,7 @@ const loadUprezRun = async ({ playlist, prompt, user }: UprezRunArgs) => {
     throw new UprezSourceAccessError();
   }
 
-  const sourceItems = await getOrderedDreamItems(source.id);
+  const sourceItems = await getOrderedDreamItems(manager, source.id);
   const sourceDreams = sourceItems
     .map((item) => item.dreamItem)
     .filter((dream): dream is Dream => Boolean(dream));
@@ -214,8 +230,9 @@ const loadUprezRun = async ({ playlist, prompt, user }: UprezRunArgs) => {
     throw new UprezSourceAccessError();
   }
 
-  const derivedItems = await getOrderedDreamItems(playlist.id);
+  const derivedItems = await getOrderedDreamItems(manager, playlist.id);
   const candidates = await findUprezCandidates(
+    manager,
     user.id,
     sourceDreams.map((dream) => dream.uuid),
   );
@@ -234,55 +251,73 @@ const loadUprezRun = async ({ playlist, prompt, user }: UprezRunArgs) => {
 /** What `runUprezPlaylist` would do with this prompt. Writes nothing. */
 export const previewUprezPlaylist = async (
   args: UprezRunArgs,
-): Promise<RunUprezPlaylistResult> => (await loadUprezRun(args)).plan.result;
+): Promise<UprezRunSummary> => (await loadUprezRun(args)).plan.result;
 
-export const runUprezPlaylist = async (
-  args: UprezRunArgs,
-): Promise<RunUprezPlaylistResult> => {
+const cancelReplacedJobs = async (dreams: Dream[]): Promise<void> => {
+  const uuidsByQueue = new Map<string, string[]>();
+  for (const dream of dreams) {
+    const algorithm = parsePromptJson(dream)?.infinidream_algorithm;
+    const queueName = algorithm ? mapAlgorithmToQueue(algorithm) : null;
+    if (!queueName) continue;
+    uuidsByQueue.set(queueName, [
+      ...(uuidsByQueue.get(queueName) ?? []),
+      dream.uuid,
+    ]);
+  }
+
+  await Promise.all(
+    [...uuidsByQueue].map(([queueName, uuids]) =>
+      cancelJobsByDreamUuids(queueName, uuids).catch((error) =>
+        APP_LOGGER.error(
+          `Failed to cancel replaced uprez jobs in queue ${queueName}:`,
+          error,
+        ),
+      ),
+    ),
+  );
+};
+
+const writeUprezRun = async (manager: EntityManager, args: UprezRunArgs) => {
   const { playlist, user } = args;
-  const userId = user.id;
-  const { plan, sourceDreams, dreamAlgorithm, params } =
-    await loadUprezRun(args);
-  const { result } = plan;
 
-  const sourceOrder = new Map<string, number>();
-  sourceDreams.forEach((dream, index) => sourceOrder.set(dream.uuid, index));
-  const loop = detectSourceLoop(sourceDreams);
+  await manager.query("SELECT pg_advisory_xact_lock(hashtext($1), $2)", [
+    "uprez_run",
+    user.id,
+  ]);
 
-  // Stop renders at settings the user moved away from before dropping them.
-  for (const dream of plan.dreamsToCancel) {
-    try {
-      await cancelJobAcrossQueues(dream.uuid);
-    } catch (error) {
-      APP_LOGGER.error(
-        `Failed to cancel replaced uprez job for dream ${dream.uuid}:`,
-        error,
-      );
-    }
-    await dreamRepository.update(
-      { uuid: dream.uuid },
+  const { plan, sourceDreams, dreamAlgorithm, params } = await loadUprezRun(
+    args,
+    manager,
+  );
+  const { sourceOrder } = plan;
+
+  if (plan.dreamsToCancel.length > 0) {
+    await manager.update(
+      Dream,
+      {
+        id: In(plan.dreamsToCancel.map((dream) => dream.id)),
+        status: In(IN_FLIGHT_STATUSES),
+      },
       { status: DreamStatusType.FAILED, error: UPREZ_SETTINGS_CHANGED },
     );
   }
 
-  if (plan.itemIdsToRemove.length > 0) {
-    await bulkDeletePlaylistItemsAndResetOrder({
-      playlistId: playlist.id,
-      itemIdsToDelete: plan.itemIdsToRemove,
-    });
-  }
+  await bulkDeletePlaylistItemsAndResetOrder({
+    playlistId: playlist.id,
+    itemIdsToDelete: plan.itemIdsToRemove,
+    manager,
+  });
 
-  const userRef = { id: userId } as User;
-  const dreamsToEnqueue: Dream[] = [];
+  const userRef = { id: user.id } as User;
 
-  if (plan.dreamsToRequeue.length > 0) {
-    for (const dream of plan.dreamsToRequeue) {
-      dream.status = DreamStatusType.QUEUE;
-      dream.error = null;
-    }
-    await dreamRepository.save(plan.dreamsToRequeue);
-    dreamsToEnqueue.push(...plan.dreamsToRequeue);
+  for (const dream of plan.dreamsToRequeue) {
+    dream.status = DreamStatusType.QUEUE;
+    dream.error = null;
   }
+  const requeuedDreams =
+    plan.dreamsToRequeue.length > 0
+      ? await manager.save(plan.dreamsToRequeue)
+      : [];
 
   const newDreams = plan.sourcesToCreate.map(({ source }) => {
     const uprezDream = new Dream();
@@ -297,9 +332,7 @@ export const runUprezPlaylist = async (
     });
     return uprezDream;
   });
-  const savedDreams =
-    newDreams.length > 0 ? await dreamRepository.save(newDreams) : [];
-  dreamsToEnqueue.push(...savedDreams);
+  const savedDreams = newDreams.length > 0 ? await manager.save(newDreams) : [];
 
   const itemsToAdd = [
     ...savedDreams.map((dream, index) => ({
@@ -309,7 +342,7 @@ export const runUprezPlaylist = async (
     ...plan.dreamsToReuse,
   ];
   if (itemsToAdd.length > 0) {
-    await playlistItemRepository.save(
+    await manager.save(
       itemsToAdd.map(({ dream, order }) => {
         const item = new PlaylistItem();
         item.playlist = { id: playlist.id } as Playlist;
@@ -321,7 +354,7 @@ export const runUprezPlaylist = async (
     );
   }
 
-  const finalItems = await getOrderedDreamItems(playlist.id);
+  const finalItems = await getOrderedDreamItems(manager, playlist.id);
   const srcUuidByItemId = new Map<number, string | null>(
     finalItems.map((item) => [item.id, getSourceDreamUuid(item.dreamItem)]),
   );
@@ -342,7 +375,7 @@ export const runUprezPlaylist = async (
     .filter((item) => item.previousOrder !== item.order);
   for (let offset = 0; offset < changedOrders.length; offset += 500) {
     const batch = changedOrders.slice(offset, offset + 500);
-    await playlistItemRepository.query(
+    await manager.query(
       `UPDATE playlist_item AS item SET "order" = positions.position, updated_at = NOW()
        FROM unnest($1::int[], $2::int[]) AS positions(id, position)
        WHERE item.id = positions.id AND item."playlistId" = $3 AND item.deleted_at IS NULL`,
@@ -354,10 +387,32 @@ export const runUprezPlaylist = async (
     );
   }
 
+  const linked = await linkUprezPlaylistKeyframes(manager, {
+    playlistId: playlist.id,
+    userId: user.id,
+    loop: detectSourceLoop(sourceDreams),
+  });
+
+  return {
+    result: { ...plan.result, linked },
+    dreamsToCancel: plan.dreamsToCancel,
+    dreamsToEnqueue: [...requeuedDreams, ...savedDreams],
+  };
+};
+
+export const runUprezPlaylist = async (
+  args: UprezRunArgs,
+): Promise<RunUprezPlaylistResult> => {
+  const { playlist } = args;
+  const { result, dreamsToCancel, dreamsToEnqueue } =
+    await appDataSource.transaction((manager) => writeUprezRun(manager, args));
+
+  await cancelReplacedJobs(dreamsToCancel);
+
   for (const dream of dreamsToEnqueue) {
     try {
-      const result = await processDreamRequest(dream, DreamStatusType.NONE);
-      if (result?.status === "failed") {
+      const queued = await processDreamRequest(dream, DreamStatusType.NONE);
+      if (queued?.status === "failed") {
         await failDreamWithError(dream, QUEUE_FAILURE_MESSAGE);
       }
     } catch (error) {
@@ -367,12 +422,6 @@ export const runUprezPlaylist = async (
       );
     }
   }
-
-  result.linked = await linkUprezPlaylistKeyframes({
-    playlistId: playlist.id,
-    userId,
-    loop,
-  });
 
   await refreshPlaylistUpdatedAtTimestamp(playlist.id);
 

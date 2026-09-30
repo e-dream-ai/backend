@@ -1,6 +1,6 @@
 import type { Dream, PlaylistItem } from "entities";
 import { DreamStatusType } from "types/dream.types";
-import { planUprezRun, uprezRunHasWork } from "utils/uprez-plan.util";
+import { planUprezRun } from "utils/uprez-plan.util";
 
 let nextId = 1;
 
@@ -68,7 +68,7 @@ describe("planUprezRun", () => {
       derived: [uprez("a", X2), uprez("b", X2, DreamStatusType.PROCESSING)],
     });
     expect(result).toMatchObject({ kept: 2, created: 0, replaced: 0 });
-    expect(uprezRunHasWork(result)).toBe(false);
+    expect(result.hasWork).toBe(false);
   });
 
   it("replaces uprezes made at other settings", () => {
@@ -87,7 +87,7 @@ describe("planUprezRun", () => {
     });
     expect(p.dreamsToCancel).toEqual([runningB]);
     expect(p.itemIdsToRemove).toHaveLength(2);
-    expect(uprezRunHasWork(p.result)).toBe(true);
+    expect(p.result.hasWork).toBe(true);
   });
 
   it("links an earlier render back in instead of rendering it again", () => {
@@ -136,6 +136,6 @@ describe("planUprezRun", () => {
       derived: [uprez("a", X2), uprez("gone", X2)],
     });
     expect(p.result).toMatchObject({ removed: 1, kept: 1 });
-    expect(uprezRunHasWork(p.result)).toBe(true);
+    expect(p.result.hasWork).toBe(true);
   });
 });

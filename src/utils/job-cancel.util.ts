@@ -40,6 +40,63 @@ const stopJob = async (job: Job, state: string): Promise<void> => {
   }
 };
 
+const getCancellableJobs = async (queue: Queue): Promise<Job[]> => {
+  const [waitingJobs, activeJobs, delayedJobs] = await Promise.all([
+    queue.getWaiting(),
+    queue.getActive(),
+    queue.getDelayed(),
+  ]);
+
+  return [...waitingJobs, ...activeJobs, ...delayedJobs];
+};
+
+const cancelJob = async (job: Job, cancelRunpod: boolean): Promise<string> => {
+  const state = await job.getState();
+
+  await job.updateData({
+    ...job.data,
+    cancelled_by_user: true,
+    cancel_runpod: cancelRunpod,
+  });
+
+  await stopJob(job, state);
+
+  return state;
+};
+
+export const cancelJobsByDreamUuids = async (
+  queueName: string,
+  dreamUuids: string[],
+  cancelRunpod: boolean = true,
+): Promise<string[]> => {
+  const queue = new Queue(queueName, {
+    connection: redisClient,
+  });
+
+  try {
+    const wanted = new Set(dreamUuids);
+    const jobs = (await getCancellableJobs(queue)).filter((job) =>
+      wanted.has(job.data?.dream_uuid),
+    );
+
+    const outcomes = await Promise.allSettled(
+      jobs.map((job) => cancelJob(job, cancelRunpod)),
+    );
+
+    return jobs.flatMap((job, index) => {
+      const outcome = outcomes[index];
+      if (outcome.status === "fulfilled") return [job.data.dream_uuid];
+      APP_LOGGER.error(
+        `Failed to cancel job ${job.id} for dream ${job.data?.dream_uuid} in queue ${queueName}:`,
+        outcome.reason,
+      );
+      return [];
+    });
+  } finally {
+    await queue.close();
+  }
+};
+
 /**
  * Cancel a BullMQ job and optionally cancel the associated RunPod job
  * @param queueName - Name of the BullMQ queue
@@ -57,15 +114,9 @@ export const cancelJobByDreamUuid = async (
   });
 
   try {
-    const [waitingJobs, activeJobs, delayedJobs] = await Promise.all([
-      queue.getWaiting(),
-      queue.getActive(),
-      queue.getDelayed(),
-    ]);
-
-    const allJobs = [...waitingJobs, ...activeJobs, ...delayedJobs];
-
-    const job = allJobs.find((j) => j.data?.dream_uuid === dreamUuid);
+    const job = (await getCancellableJobs(queue)).find(
+      (j) => j.data?.dream_uuid === dreamUuid,
+    );
 
     if (!job) {
       APP_LOGGER.warn(
@@ -84,16 +135,7 @@ export const cancelJobByDreamUuid = async (
     );
 
     const previousStatus = job.data?.previous_dream_status;
-    const state = await job.getState();
-
-    // Mark the job as cancelled by updating its data
-    await job.updateData({
-      ...job.data,
-      cancelled_by_user: true,
-      cancel_runpod: cancelRunpod,
-    });
-
-    await stopJob(job, state);
+    const state = await cancelJob(job, cancelRunpod);
 
     APP_LOGGER.info(
       `Cancelled ${state} job ${job.id} for dream ${dreamUuid} in queue ${queueName}`,

@@ -16,6 +16,7 @@ import {
   removePlaylistItemSchema,
   removePlaylistKeyframeSchema,
   requestPlaylistSchema,
+  previewRunPlaylistSchema,
   runPlaylistSchema,
   updatePlaylistSchema,
 } from "schemas/playlist.schema";
@@ -1017,6 +1018,13 @@ playlistRouter.post(
  *            schema:
  *              allOf:
  *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        result:
+ *                          $ref: '#/components/schemas/UprezRunResult'
  *      '400':
  *        description: Bad request
  *        content:
@@ -1033,6 +1041,66 @@ playlistRouter.post(
   checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
   validatorMiddleware(runPlaylistSchema),
   playlistController.handleRunPlaylist,
+);
+
+/**
+ * @swagger
+ * /api/v1/playlist/{uuid}/run/preview:
+ *  post:
+ *    tags:
+ *      - playlist
+ *    summary: Preview what running an uprez playlist would do
+ *    description: Returns the same counts as /run (created, requeued, kept, reused, replaced, cancelled, removed, skipped) without changing anything. The body can override the saved source playlist and params, to preview unsaved settings.
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        description: Playlist uuid
+ *        required: true
+ *        schema:
+ *          type: string
+ *    requestBody:
+ *      required: false
+ *      content:
+ *        application/json:
+ *          schema:
+ *            type: object
+ *            properties:
+ *              source_playlist_uuid:
+ *                type: string
+ *              params:
+ *                type: object
+ *                example: { upscale_factor: 2, interpolation_factor: 2 }
+ *    responses:
+ *      '200':
+ *        description: Run summary the run would produce
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        result:
+ *                          $ref: '#/components/schemas/UprezRunSummary'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+playlistRouter.post(
+  "/:uuid/run/preview",
+  requireAuth,
+  checkRoleMiddleware([ROLES.CREATOR_GROUP, ROLES.ADMIN_GROUP]),
+  validatorMiddleware(previewRunPlaylistSchema),
+  playlistController.handlePreviewRunPlaylist,
 );
 
 /**

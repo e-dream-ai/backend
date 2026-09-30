@@ -10,6 +10,7 @@ import {
   OrderPlaylistRequest,
   PlaylistItemType,
   PlaylistParamsRequest,
+  PreviewRunPlaylistRequest,
   RemovePlaylistItemRequest,
   RemovePlaylistKeyframeRequest,
   UpdatePlaylistRequest,
@@ -76,6 +77,19 @@ export const updatePlaylistSchema: RequestValidationSchema = {
 export const runPlaylistSchema: RequestValidationSchema = {
   params: Joi.object<PlaylistParamsRequest>().keys({
     uuid: Joi.string().uuid().required(),
+  }),
+};
+
+export const previewRunPlaylistSchema: RequestValidationSchema = {
+  params: Joi.object<PlaylistParamsRequest>().keys({
+    uuid: Joi.string().uuid().required(),
+  }),
+  body: Joi.object<PreviewRunPlaylistRequest>().keys({
+    source_playlist_uuid: Joi.string().uuid(),
+    params: Joi.object().pattern(
+      Joi.string(),
+      Joi.alternatives(Joi.number(), Joi.string(), Joi.boolean()),
+    ),
   }),
 };
 

@@ -15,6 +15,12 @@ export type PlaylistParamsRequest = {
   uuid: string;
 };
 
+/** Settings to preview a run with, instead of the saved ones. */
+export type PreviewRunPlaylistRequest = {
+  source_playlist_uuid?: string;
+  params?: Record<string, unknown>;
+};
+
 export type CreatePlaylistRequest = {
   name: string;
   description?: string;

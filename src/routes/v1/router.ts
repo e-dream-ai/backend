@@ -71,6 +71,34 @@ export const registerRoutes = (app: express.Application) => {
    *           type: string
    *         data:
    *           type: object
+   *     UprezRunSummary:
+   *       type: object
+   *       properties:
+   *         created:
+   *           type: integer
+   *         requeued:
+   *           type: integer
+   *         kept:
+   *           type: integer
+   *         reused:
+   *           type: integer
+   *         replaced:
+   *           type: integer
+   *         cancelled:
+   *           type: integer
+   *         removed:
+   *           type: integer
+   *         skipped:
+   *           type: integer
+   *         hasWork:
+   *           type: boolean
+   *     UprezRunResult:
+   *       allOf:
+   *         - $ref: '#/components/schemas/UprezRunSummary'
+   *         - type: object
+   *           properties:
+   *             linked:
+   *               type: integer
    *     Role:
    *       type: object
    *       properties:

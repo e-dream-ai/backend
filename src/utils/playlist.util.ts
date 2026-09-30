@@ -1,5 +1,6 @@
 import { Dream, Playlist, PlaylistItem, PlaylistKeyframe } from "entities";
 import {
+  EntityManager,
   FindOptionsSelect,
   FindOptionsRelations,
   FindOptionsWhere,
@@ -737,15 +738,17 @@ export const deletePlaylistItemAndResetOrder = async ({
 export const bulkDeletePlaylistItemsAndResetOrder = async ({
   playlistId,
   itemIdsToDelete,
+  manager = appDataSource.manager,
 }: {
   playlistId: number;
   itemIdsToDelete: number[];
+  manager?: EntityManager;
 }) => {
   if (itemIdsToDelete.length === 0) {
     return;
   }
 
-  await appDataSource.transaction(async (transactionalEntityManager) => {
+  await manager.transaction(async (transactionalEntityManager) => {
     await transactionalEntityManager.softRemove(
       PlaylistItem,
       itemIdsToDelete.map((id) => ({ id, playlist: { id: playlistId } })),

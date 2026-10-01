@@ -9,6 +9,7 @@ import feedRouter from "routes/v1/feed.routes";
 import playlistRouter from "routes/v1/playlist.routes";
 import keyframeRouter from "routes/v1/keyframe.routes";
 import modelsRouter from "routes/v1/models.routes";
+import stylePresetRouter from "routes/v1/style-preset.routes";
 import providerKeyRouter from "routes/v1/provider-key.routes";
 import providerKeyInternalRouter from "routes/v1/provider-key-internal.routes";
 import featureRouter from "./feature.routes";
@@ -72,6 +73,36 @@ export const registerRoutes = (app: express.Application) => {
    *           type: string
    *         data:
    *           type: object
+   *     StylePreset:
+   *       type: object
+   *       properties:
+   *         uuid:
+   *           type: string
+   *           format: uuid
+   *         name:
+   *           type: string
+   *         section:
+   *           type: string
+   *         stylePrompt:
+   *           type: string
+   *         thumbnail:
+   *           type: string
+   *           nullable: true
+   *         width:
+   *           type: integer
+   *           nullable: true
+   *         height:
+   *           type: integer
+   *           nullable: true
+   *     RecentItem:
+   *       type: object
+   *       properties:
+   *         dreamUuid:
+   *           type: string
+   *           format: uuid
+   *         lastUsedAt:
+   *           type: string
+   *           format: date-time
    *     UprezRunSummary:
    *       type: object
    *       properties:
@@ -550,6 +581,8 @@ export const registerRoutes = (app: express.Application) => {
 
   // register models router
   app.use("/api/v1/models", modelsRouter);
+
+  app.use("/api/v1/style-presets", stylePresetRouter);
 
   // register provider-key router (user-facing key management)
   app.use("/api/v1/provider-keys", providerKeyRouter);

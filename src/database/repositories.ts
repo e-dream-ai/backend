@@ -16,6 +16,7 @@ import {
   Invite,
   ApiKey,
   EditorProject,
+  UserRecentItem,
 } from "entities";
 
 export const userRepository = appDataSource.getRepository(User);
@@ -37,6 +38,8 @@ export const inviteRepository = appDataSource.getRepository(Invite);
 export const featureRepository = appDataSource.getRepository(Feature);
 export const editorProjectRepository =
   appDataSource.getRepository(EditorProject);
+export const userRecentItemRepository =
+  appDataSource.getRepository(UserRecentItem);
 
 export default {
   userRepository,
@@ -54,4 +57,5 @@ export default {
   feedItemRepository,
   featureRepository,
   editorProjectRepository,
+  userRecentItemRepository,
 };

@@ -52,8 +52,8 @@ importers:
         specifier: ^8.3.0
         version: 8.3.0(socket.io-adapter@2.5.5)
       '@workos-inc/node':
-        specifier: ^8.9.0
-        version: 8.9.0
+        specifier: ^11.0.0
+        version: 11.0.0
       aws-sdk:
         specifier: ^2.1456.0
         version: 2.1692.0
@@ -1668,9 +1668,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@workos-inc/node@8.9.0':
-    resolution: {integrity: sha512-io5D4Scoy7RwjNQGyWWVeljwQz4RSqGRILP1/tbv5vXUxJdhpcGqGwML4AHamgacEay+QyiDW9RvgfjiQN3KLw==}
-    engines: {node: '>=20.15.0'}
+  '@workos-inc/node@11.0.0':
+    resolution: {integrity: sha512-swUT6CbkuVQXMOtUpI70LZ8usjSg8OXcKMjKdoYLeqCApRI0Oo97l+nZ0lKzZ5GxjxgcVZGGVK025h7z9WyCJg==}
+    engines: {node: '>=22.11.0'}
 
   '@zone-eu/mailsplit@5.4.8':
     resolution: {integrity: sha512-eEyACj4JZ7sjzRvy26QhLgKEMWwQbsw1+QZnlLX+/gihcNH07lVPOcnwf5U6UAL7gkc//J3jVd76o/WS+taUiA==}
@@ -6358,7 +6358,7 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
-  '@workos-inc/node@8.9.0': {}
+  '@workos-inc/node@11.0.0': {}
 
   '@zone-eu/mailsplit@5.4.8':
     dependencies:

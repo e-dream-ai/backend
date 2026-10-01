@@ -25,6 +25,7 @@ import authRouterV2 from "routes/v2/auth.routes";
 import webhooksRouterV2 from "routes/v2/webhooks.routes";
 import editorProjectRouterV2 from "routes/v2/editor-project.routes";
 import { EDITOR_PROJECT_API_PATH } from "constants/editor-project.constants";
+import { WEBHOOKS_API_PATH } from "constants/webhook.constants";
 import { jsonResponse } from "utils/responses.util";
 
 export const registerRoutes = (app: express.Application) => {
@@ -71,6 +72,34 @@ export const registerRoutes = (app: express.Application) => {
    *           type: string
    *         data:
    *           type: object
+   *     UprezRunSummary:
+   *       type: object
+   *       properties:
+   *         created:
+   *           type: integer
+   *         requeued:
+   *           type: integer
+   *         kept:
+   *           type: integer
+   *         reused:
+   *           type: integer
+   *         replaced:
+   *           type: integer
+   *         cancelled:
+   *           type: integer
+   *         removed:
+   *           type: integer
+   *         skipped:
+   *           type: integer
+   *         hasWork:
+   *           type: boolean
+   *     UprezRunResult:
+   *       allOf:
+   *         - $ref: '#/components/schemas/UprezRunSummary'
+   *         - type: object
+   *           properties:
+   *             linked:
+   *               type: integer
    *     Role:
    *       type: object
    *       properties:
@@ -553,7 +582,7 @@ export const registerRoutes = (app: express.Application) => {
   app.use("/api/v2/auth", authRouterV2);
 
   // register v2 webhooks
-  app.use("/api/v2/webhooks", webhooksRouterV2);
+  app.use(WEBHOOKS_API_PATH, webhooksRouterV2);
 
   // register v2 editor projects
   app.use(EDITOR_PROJECT_API_PATH, editorProjectRouterV2);

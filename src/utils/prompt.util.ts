@@ -19,7 +19,7 @@ export const serializePrompt = (
   return typeof prompt === "string" ? prompt : JSON.stringify(prompt);
 };
 
-const SUPPORTED_ALGORITHMS = [
+export const SUPPORTED_ALGORITHMS = [
   "animatediff",
   "deforum",
   "uprez",

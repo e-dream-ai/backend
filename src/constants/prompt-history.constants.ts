@@ -1,0 +1,5 @@
+export const PROMPT_HISTORY = {
+  TAKE: 50,
+  MAX_TAKE: 200,
+  SEARCH_MAX_LENGTH: 200,
+};

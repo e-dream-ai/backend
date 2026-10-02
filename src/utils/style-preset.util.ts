@@ -19,15 +19,15 @@ const stylePresetPlaylistFor = (model?: string): string | undefined =>
 const toStylePreset = (dream: Dream): StylePresetResponse | undefined => {
   const prompt = parsePromptJson(dream);
   const stylePrompt = asText(prompt?.style_prompt);
-  if (!stylePrompt) return undefined;
+  if (!stylePrompt || !dream.thumbnail) return undefined;
   return {
     uuid: dream.uuid,
     name: dream.name ?? "",
     section: asText(prompt?.section),
     stylePrompt,
-    thumbnail: dream.thumbnail ?? null,
-    width: dream.processedMediaWidth ?? null,
-    height: dream.processedMediaHeight ?? null,
+    thumbnail: dream.thumbnail,
+    width: dream.processedMediaWidth ?? undefined,
+    height: dream.processedMediaHeight ?? undefined,
   };
 };
 

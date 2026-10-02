@@ -7,7 +7,7 @@ export type StylePresetResponse = {
   name: string;
   section: string;
   stylePrompt: string;
-  thumbnail: string | null;
-  width: number | null;
-  height: number | null;
+  thumbnail: string;
+  width?: number;
+  height?: number;
 };

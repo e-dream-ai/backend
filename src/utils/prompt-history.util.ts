@@ -26,6 +26,7 @@ const HISTORY = `
       AND dream."mediaType" = $3
       AND dream.status = $4
       AND dream.deleted_at IS NULL
+      AND dream.thumbnail IS NOT NULL
       AND COALESCE(recipe ->> 'prompt', '') <> ''
       AND NOT recipe ? 'style_prompt'
       AND ($5::text IS NULL OR recipe ->> 'infinidream_algorithm' = $5)

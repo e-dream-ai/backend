@@ -87,13 +87,10 @@ export const registerRoutes = (app: express.Application) => {
    *           type: string
    *         thumbnail:
    *           type: string
-   *           nullable: true
    *         width:
    *           type: integer
-   *           nullable: true
    *         height:
    *           type: integer
-   *           nullable: true
    *     RecentItem:
    *       type: object
    *       properties:

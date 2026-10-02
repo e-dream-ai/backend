@@ -1,5 +1,25 @@
 import "dotenv/config";
-import { bool, cleanEnv, json, port, str, url } from "envalid";
+import {
+  bool,
+  cleanEnv,
+  EnvError,
+  json,
+  makeValidator,
+  port,
+  str,
+  url,
+} from "envalid";
+import Joi from "joi";
+
+const playlistsByModelSchema = Joi.object<Record<string, string>>()
+  .pattern(Joi.string(), Joi.string().uuid())
+  .required();
+
+const playlistsByModel = makeValidator<Record<string, string>>((input) => {
+  const { error, value } = playlistsByModelSchema.validate(JSON.parse(input));
+  if (error) throw new EnvError(error.message);
+  return value;
+});
 
 export const env = cleanEnv(process.env, {
   npm_package_version: str(),
@@ -181,6 +201,8 @@ export const env = cleanEnv(process.env, {
    * SHEEP Invitation Playlist UUID
    */
   SHEEP_PLAYLIST_UUID: str(),
+
+  STYLE_PRESET_PLAYLISTS: playlistsByModel({ default: {} }),
 
   /**
    * Internal API key for protected internal endpoints

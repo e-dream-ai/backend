@@ -1,5 +1,7 @@
 import { ROLES } from "constants/role.constants";
 import * as userController from "controllers/user.controller";
+import * as recentItemController from "controllers/recent-item.controller";
+import * as promptHistoryController from "controllers/prompt-history.controller";
 import { Router } from "express";
 import { multerSingleFileMiddleware } from "middlewares/multer.middleware";
 import { requireAuth } from "middlewares/require-auth.middleware";
@@ -13,6 +15,11 @@ import {
   updateUserRoleSchema,
   validateUserSchema,
 } from "schemas/user.schema";
+import {
+  getRecentItemsSchema,
+  touchRecentItemSchema,
+} from "schemas/recent-item.schema";
+import { getPromptHistorySchema } from "schemas/prompt-history.schema";
 
 const userRouter = Router();
 
@@ -142,6 +149,209 @@ userRouter.get(
     ROLES.ADMIN_GROUP,
   ]),
   userController.handleGetUserDislikes,
+);
+
+/**
+ * @swagger
+ * /api/v1/user/me/recent-items:
+ *  get:
+ *    tags:
+ *      - user
+ *    summary: Gets the authenticated user's recently used items
+ *    description: Most recently used first. Items whose dream was deleted or hidden by its owner are left out.
+ *    parameters:
+ *      - name: type
+ *        in: query
+ *        required: true
+ *        schema:
+ *          type: string
+ *          enum: [prompt, style]
+ *      - name: take
+ *        in: query
+ *        schema:
+ *          type: integer
+ *          minimum: 1
+ *          maximum: 200
+ *    responses:
+ *      '200':
+ *        description: Recently used items
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        items:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/RecentItem'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+userRouter.get(
+  "/me/recent-items",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(getRecentItemsSchema),
+  recentItemController.handleGetRecentItems,
+);
+
+/**
+ * @swagger
+ * /api/v1/user/me/recent-items/{type}/{dreamUuid}:
+ *  put:
+ *    tags:
+ *      - user
+ *    summary: Marks a dream as just used
+ *    description: Creates the recent item or moves it to the top. Prompt items must be the user's own dreams. Only the most recent 200 items per type are kept.
+ *    parameters:
+ *      - name: type
+ *        in: path
+ *        required: true
+ *        schema:
+ *          type: string
+ *          enum: [prompt, style]
+ *      - name: dreamUuid
+ *        in: path
+ *        required: true
+ *        schema:
+ *          type: string
+ *          format: uuid
+ *    responses:
+ *      '200':
+ *        description: Recent item
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        item:
+ *                          $ref: '#/components/schemas/RecentItem'
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *      '404':
+ *        description: Dream not found
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+userRouter.put(
+  "/me/recent-items/:type/:dreamUuid",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(touchRecentItemSchema),
+  recentItemController.handleTouchRecentItem,
+);
+
+/**
+ * @swagger
+ * /api/v1/user/me/prompt-history:
+ *  get:
+ *    tags:
+ *      - user
+ *    summary: Gets the authenticated user's image prompt history
+ *    description: Processed image dreams with a prompt, excluding style presets. With distinct, only the most recently used image of each prompt and model is returned.
+ *    parameters:
+ *      - name: search
+ *        in: query
+ *        description: Matches the dream name or prompt
+ *        schema:
+ *          type: string
+ *      - name: algorithm
+ *        in: query
+ *        description: Only prompts made with this model
+ *        schema:
+ *          type: string
+ *      - name: sort
+ *        in: query
+ *        schema:
+ *          type: string
+ *          enum: [recent, date, name]
+ *          default: recent
+ *      - name: distinct
+ *        in: query
+ *        schema:
+ *          type: boolean
+ *          default: true
+ *      - name: take
+ *        in: query
+ *        schema:
+ *          type: integer
+ *          minimum: 1
+ *          maximum: 200
+ *          default: 50
+ *      - name: skip
+ *        in: query
+ *        schema:
+ *          type: integer
+ *          minimum: 0
+ *    responses:
+ *      '200':
+ *        description: Prompt history page
+ *        content:
+ *          application/json:
+ *            schema:
+ *              allOf:
+ *                - $ref: '#/components/schemas/ApiResponse'
+ *                - type: object
+ *                  properties:
+ *                    data:
+ *                      type: object
+ *                      properties:
+ *                        dreams:
+ *                          type: array
+ *                          items:
+ *                            $ref: '#/components/schemas/Dream'
+ *                        count:
+ *                          type: integer
+ *      '400':
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+userRouter.get(
+  "/me/prompt-history",
+  requireAuth,
+  checkRoleMiddleware([
+    ROLES.USER_GROUP,
+    ROLES.CREATOR_GROUP,
+    ROLES.ADMIN_GROUP,
+  ]),
+  validatorMiddleware(getPromptHistorySchema),
+  promptHistoryController.handleGetPromptHistory,
 );
 
 /**

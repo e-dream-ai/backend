@@ -43,6 +43,7 @@ import {
   handleNotFound,
   jsonResponse,
 } from "utils/responses.util";
+import { escapeLikePattern } from "utils/like-pattern.util";
 
 const isLockHeldByAnotherSession = (
   project: Pick<EditorProject, "lockedBy" | "lockedAt">,
@@ -62,9 +63,6 @@ const handleLocked = (res: ResponseType, lockedAt: Date | null) =>
       data: { lock: { lockedAt } },
     }),
   );
-
-const escapeLikePattern = (value: string): string =>
-  value.replace(/[\\%_]/g, (match) => `\\${match}`);
 
 type PlaylistResolution =
   | { status: "unchanged" }

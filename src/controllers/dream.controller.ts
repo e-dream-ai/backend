@@ -310,6 +310,11 @@ export const handleCreateMultipartUpload = async (
       dream.ccbyLicense = ccbyLicense ?? false;
       dream.mediaType = mediaType;
       await dreamRepository.save(dream);
+      [dream] = await dreamRepository.find({
+        where: { uuid: dream.uuid },
+        relations: { user: true },
+        select: getDreamSelectedColumns(),
+      });
     } else {
       // find dream
       [dream] = await dreamRepository.find({

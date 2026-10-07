@@ -73,6 +73,7 @@ import {
   findOnePlaylistWithoutItems,
   getPaginatedPlaylistItems,
   getPaginatedPlaylistKeyframes,
+  getPlaylistFindOptionsRelations,
   getPlaylistFindOptionsWhere,
   getPlaylistSelectedColumns,
   populateDefautPlaylist,
@@ -724,11 +725,15 @@ export const handleCreatePlaylist = async (
       playlist_uuid: playlist.uuid,
     });
 
+    const savedPlaylist = await playlistRepository.findOneOrFail({
+      where: { id: createdPlaylist.id },
+      relations: getPlaylistFindOptionsRelations(),
+      select: getPlaylistSelectedColumns(),
+    });
+
     return res
       .status(httpStatus.CREATED)
-      .json(
-        jsonResponse({ success: true, data: { playlist: createdPlaylist } }),
-      );
+      .json(jsonResponse({ success: true, data: { playlist: savedPlaylist } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);

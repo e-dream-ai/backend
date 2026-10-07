@@ -75,6 +75,7 @@
     "envalid": "^8.1.0",
     "express": "^5.2.1",
     "http-status": "^2.1.0",
+    "image-size": "^2.0.4",
     "ioredis": "^5.8.1",
     "jest": "^30.2.0",
     "joi": "^18.0.2",

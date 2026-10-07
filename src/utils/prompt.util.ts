@@ -111,6 +111,12 @@ export const isValidAlgorithm = (
   return SUPPORTED_ALGORITHMS.includes(algorithm as SupportedAlgorithm);
 };
 
+export const hasGenerationAlgorithm = (entity: PromptCarrier): boolean => {
+  const promptJson = parsePromptJson(entity);
+  const algorithm = promptJson ? getAlgorithmFromPrompt(promptJson) : null;
+  return !!algorithm && isValidAlgorithm(algorithm);
+};
+
 export const mapAlgorithmToQueue = (algorithm: string): string | null => {
   if (!isValidAlgorithm(algorithm)) {
     return null;

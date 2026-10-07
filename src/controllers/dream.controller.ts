@@ -5,11 +5,6 @@ import { tracker } from "clients/google-analytics";
 import { r2Client } from "clients/r2.client";
 import { redisClient } from "clients/redis.client";
 
-import {
-  FILE_EXTENSIONS,
-  MYME_TYPES,
-  MYME_TYPES_EXTENSIONS,
-} from "constants/file.constants";
 import { DREAM_MESSAGES } from "constants/messages/dream.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
@@ -35,7 +30,6 @@ import {
   DreamMediaType,
   DreamParamsRequest,
   DreamStatusType,
-  Frame,
   GetDreamsQuery,
   RefreshMultipartUploadUrlRequest,
   SetDreamStatusFailedRequest,
@@ -45,7 +39,6 @@ import {
 import { RequestType, ResponseType } from "types/express.types";
 import { VoteType } from "types/vote.types";
 import {
-  createFeedItem,
   findDreamPlaylistItems,
   failDreamWithError,
   getDreamSelectedColumns,
@@ -59,10 +52,7 @@ import {
 import { isImageGenerationAlgorithm } from "utils/prompt.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { INSUFFICIENT_CREDITS_CODE } from "services/provider-credit.service";
-import {
-  refreshPlaylistUpdatedAtTimestampFromPlaylistItems,
-  computePlaylistThumbnailRecursive,
-} from "utils/playlist.util";
+import { computePlaylistThumbnailRecursive } from "utils/playlist.util";
 import { isBrowserRequest } from "utils/request.util";
 import {
   jsonResponse,
@@ -88,6 +78,7 @@ import {
   transformDreamsWithSignedUrls,
 } from "utils/transform.util";
 import { detectMediaTypeFromExtension } from "utils/media.util";
+import { prepareImageUpload } from "utils/image.util";
 import {
   clearFilmstripVersion,
   delThumbVersion,
@@ -101,6 +92,11 @@ import {
   getDreamProgressSnapshots,
   emitDreamJobStatus,
 } from "services/job-progress.service";
+import { markDreamProcessed } from "services/dream-processing.service";
+import {
+  finalizeUploadedImageDream,
+  requestImageNormalization,
+} from "services/image-ingest.service";
 
 const PENDING_DREAM_STATUSES = new Set<string>([
   DreamStatusType.QUEUE,
@@ -694,18 +690,36 @@ export const handleCompleteMultipartUpload = async (
       select: getDreamSelectedColumns({ originalVideo: true }),
     });
 
+    let responseDream = updatedDream;
+
     if (type === DreamFileType.DREAM && !processed) {
-      /**
-       * process dream requests: it needs to provide updated dream with originalVideo value
-       */
-      const result = await processDreamRequest(
-        updatedDream,
-        statusBeforeUpload,
-      );
-      if (result?.status === "failed") {
-        await failDreamWithError(updatedDream, QUEUE_FAILURE_MESSAGE);
-        updatedDream.status = DreamStatusType.FAILED;
-        updatedDream.error = QUEUE_FAILURE_MESSAGE;
+      const finalized = await finalizeUploadedImageDream({
+        dream: updatedDream,
+        objectKey: filePath!,
+        isAdmin: isAdmin(user),
+      });
+
+      if (finalized) {
+        responseDream = finalized.dream;
+        tracker.sendEventWithRequestContext(
+          res,
+          finalized.ownerUuid,
+          "DREAM_UPLOADED",
+          { size_bytes: finalized.dream.processedVideoSize },
+        );
+      } else {
+        /**
+         * process dream requests: it needs to provide updated dream with originalVideo value
+         */
+        const result = await processDreamRequest(
+          updatedDream,
+          statusBeforeUpload,
+        );
+        if (result?.status === "failed") {
+          await failDreamWithError(updatedDream, QUEUE_FAILURE_MESSAGE);
+          updatedDream.status = DreamStatusType.FAILED;
+          updatedDream.error = QUEUE_FAILURE_MESSAGE;
+        }
       }
     }
 
@@ -713,7 +727,7 @@ export const handleCompleteMultipartUpload = async (
 
     return res
       .status(httpStatus.CREATED)
-      .json(jsonResponse({ success: true, data: { dream: updatedDream } }));
+      .json(jsonResponse({ success: true, data: { dream: responseDream } }));
   } catch (err) {
     if (dream) {
       dream.status = DreamStatusType.FAILED;
@@ -1176,20 +1190,7 @@ export const handleSetDreamStatusProcessed = async (
   res: ResponseType,
 ) => {
   const user = res.locals.user!;
-  const isUserAdmin = isAdmin(user);
   const dreamUUID: string = req.params.uuid!;
-  const processedVideoSize = req.body.processedVideoSize;
-  const processedVideoFrames = req.body.processedVideoFrames!;
-  const processedVideoFPS = req.body.processedVideoFPS;
-  const processedMediaWidth = req.body.processedMediaWidth;
-  const processedMediaHeight = req.body.processedMediaHeight;
-  const render_duration = req.body.render_duration;
-  const activityLevel = req.body.activityLevel!;
-  const filmstrip = req.body.filmstrip
-    ? (req.body.filmstrip as number[])
-    : undefined;
-  const md5 = req.body.md5;
-  const mediaType = req.body.mediaType;
 
   try {
     const [dream] = await dreamRepository.find({
@@ -1202,102 +1203,21 @@ export const handleSetDreamStatusProcessed = async (
       return handleNotFound(req as RequestType, res);
     }
 
-    /**
-     * Save processed dream data
-     */
-
-    const user = await getRetainedOwner(dream);
-    const filmstripVersion = filmstrip
-      ? await getFilmstripVersion(dreamUUID)
-      : undefined;
-    const formatedFilmstrip: Frame[] | undefined = filmstrip?.map(
-      (frame) =>
-        ({
-          frameNumber: Number(frame),
-          url: filmstripVersion
-            ? `${getUserIdentifier(
-              user,
-            )}/${dreamUUID}/filmstrip/${filmstripVersion}/frame-${frame}.${
-              FILE_EXTENSIONS.JPG
-            }`
-            : `${getUserIdentifier(
-              user,
-            )}/${dreamUUID}/filmstrip/frame-${frame}.${FILE_EXTENSIONS.JPG}`,
-        }) as Frame,
-    );
-    if (filmstripVersion) await clearFilmstripVersion(dreamUUID);
-
-    const updateData: Partial<Dream> = {
-      status: DreamStatusType.PROCESSED,
-      processed_at: new Date(),
-      processedVideoSize,
-      processedVideoFrames,
-      processedVideoFPS,
-      processedMediaWidth,
-      processedMediaHeight,
-      render_duration,
-      activityLevel,
-      md5,
-      reservedCostUsd: null,
-    };
-
-    if (mediaType === DreamMediaType.IMAGE) {
-      updateData.filmstrip = null as unknown as Frame[];
-    } else if (formatedFilmstrip) {
-      updateData.filmstrip = formatedFilmstrip;
-    }
-
-    if (mediaType) {
-      updateData.mediaType = mediaType;
-    }
-
-    await dreamRepository.update(dream.id, updateData);
-
-    const [updatedDream] = await dreamRepository.find({
-      where: { uuid: dreamUUID! },
-      relations: { user: true },
-      select: getDreamSelectedColumns(),
+    const { dream: updatedDream, ownerUuid } = await markDreamProcessed({
+      dream,
+      data: {
+        ...req.body,
+        filmstrip: req.body.filmstrip as number[] | undefined,
+      },
+      isAdmin: isAdmin(user),
     });
 
-    // Get playlist items separately
-    updatedDream.playlistItems = await findDreamPlaylistItems(
-      dreamUUID,
-      user.id,
-      isUserAdmin,
-    );
-
-    for (const pi of updatedDream.playlistItems ?? []) {
-      if (pi.playlist && !pi.playlist.thumbnail) {
-        const fallbackThumb = await computePlaylistThumbnailRecursive(
-          pi.playlist.id,
-          {
-            userId: user.id,
-            isAdmin: isUserAdmin,
-            nsfw: user?.nsfw,
-            onlyProcessedDreams: true,
-            rootPlaylistNsfw: pi.playlist.nsfw,
-          },
-        );
-        if (fallbackThumb) {
-          pi.playlist.thumbnail = fallbackThumb;
-        }
-      }
-    }
-
-    await createFeedItem(updatedDream);
-    await refreshPlaylistUpdatedAtTimestampFromPlaylistItems(
-      updatedDream.playlistItems?.map((pi) => pi.id),
-    );
-
-    tracker.sendEventWithRequestContext(res, user.uuid, "DREAM_UPLOADED", {
-      size_bytes: processedVideoSize,
-      duration_seconds: framesToSeconds(processedVideoFrames, activityLevel),
-    });
-
-    await emitDreamJobStatus({
-      userId: user.id,
-      dreamUuid: dreamUUID,
-      status: DreamStatusType.PROCESSED,
+    tracker.sendEventWithRequestContext(res, ownerUuid, "DREAM_UPLOADED", {
+      size_bytes: req.body.processedVideoSize,
+      duration_seconds: framesToSeconds(
+        req.body.processedVideoFrames!,
+        req.body.activityLevel!,
+      ),
     });
 
     return res
@@ -1623,34 +1543,42 @@ export const handleUpdateThumbnailDream = async (
     }
 
     // update dream
-    const thumbnailBuffer = req.file?.buffer;
-    const bucketName = env.R2_BUCKET_NAME;
-    const fileMymeType = req.file?.mimetype;
-    const fileExtension = MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.MP4];
-    const filePath = generateThumbnailPath({
-      userIdentifier: getUserIdentifier(await getRetainedOwner(dream)),
-      dreamUUID,
-      extension: fileExtension,
-      renderVersion: Date.now(),
-    });
+    const upload = req.file
+      ? prepareImageUpload(req.file, "thumbnail")
+      : undefined;
+    let filePath: string | null = null;
 
-    if (thumbnailBuffer) {
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: filePath,
-        Body: thumbnailBuffer,
-        ContentType: fileMymeType || "image/jpeg",
-        CacheControl: "no-cache",
-        Expires: new Date(),
+    if (upload) {
+      filePath = generateThumbnailPath({
+        userIdentifier: getUserIdentifier(await getRetainedOwner(dream)),
+        dreamUUID,
+        extension: upload.extension,
+        renderVersion: Date.now(),
       });
-      await r2Client.send(command);
+      await r2Client.send(
+        new PutObjectCommand({
+          Bucket: env.R2_BUCKET_NAME,
+          Key: filePath,
+          Body: upload.buffer,
+          ContentType: upload.contentType || "image/jpeg",
+          CacheControl: "no-cache",
+          Expires: new Date(),
+        }),
+      );
+      if (upload.needsNormalization) {
+        requestImageNormalization({
+          object_key: filePath,
+          preset: "thumbnail",
+          cache_control: "no-cache",
+        });
+      }
     }
 
     const updatedDream = await dreamRepository.save({
       ...dream,
       user: dream.user ?? undefined,
       displayedOwner: dream.displayedOwner ?? undefined,
-      thumbnail: thumbnailBuffer ? filePath : null,
+      thumbnail: filePath,
     });
 
     return res

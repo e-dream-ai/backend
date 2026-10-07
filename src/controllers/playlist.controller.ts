@@ -14,7 +14,8 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
 import { r2Client } from "clients/r2.client";
 
-import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
+import { prepareImageUpload } from "utils/image.util";
+import { requestImageNormalization } from "services/image-ingest.service";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { THUMBNAIL } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
@@ -951,29 +952,36 @@ export const handleUpdateThumbnailPlaylist = async (
     }
 
     // update playlist
-    const thumbnailBuffer = req.file?.buffer;
-    const bucketName = env.R2_BUCKET_NAME;
-    const fileMymeType = req.file?.mimetype;
-    const fileExtension =
-      MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
-    const fileName = `${THUMBNAIL}-${Date.now()}.${fileExtension}`;
-    const filePath = `${getUserIdentifier(user)}/${PLAYLIST_PREFIX}-${
-      playlist.id
-    }/${fileName}`;
+    const upload = req.file
+      ? prepareImageUpload(req.file, "thumbnail")
+      : undefined;
+    let newThumbnail: string | null = null;
 
-    if (thumbnailBuffer) {
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: filePath,
-        Body: thumbnailBuffer,
-        ContentType: fileMymeType || "image/jpeg",
-        CacheControl: "no-cache",
-        Expires: new Date(),
-      });
-      await r2Client.send(command);
+    if (upload) {
+      const playlistFolder = `${getUserIdentifier(user)}/${PLAYLIST_PREFIX}-${
+        playlist.id
+      }`;
+      newThumbnail = `${playlistFolder}/${THUMBNAIL}-${Date.now()}.${
+        upload.extension
+      }`;
+      await r2Client.send(
+        new PutObjectCommand({
+          Bucket: env.R2_BUCKET_NAME,
+          Key: newThumbnail,
+          Body: upload.buffer,
+          ContentType: upload.contentType || "image/jpeg",
+          CacheControl: "no-cache",
+          Expires: new Date(),
+        }),
+      );
+      if (upload.needsNormalization) {
+        requestImageNormalization({
+          object_key: newThumbnail,
+          preset: "thumbnail",
+          cache_control: "no-cache",
+        });
+      }
     }
-
-    const newThumbnail = thumbnailBuffer ? filePath : null;
 
     await playlistRepository.update(
       { id: playlist.id },

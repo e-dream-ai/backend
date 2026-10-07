@@ -51,6 +51,8 @@ export const env = cleanEnv(process.env, {
   R2_BUCKET_NAME: str(),
   R2_BUCKET_URL: str(),
 
+  IMAGE_NORMALIZE: bool({ default: false }),
+
   /**
    * SES
    */

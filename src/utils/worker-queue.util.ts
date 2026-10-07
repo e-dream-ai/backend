@@ -2,7 +2,11 @@ import { randomUUID } from "crypto";
 import { Queue } from "bullmq";
 import { redisClient } from "clients/redis.client";
 import { APP_LOGGER } from "shared/logger";
-import { VIDEO_INGEST_QUEUE } from "constants/job.constants";
+import {
+  IMAGE_NORMALIZE_QUEUE,
+  VIDEO_INGEST_QUEUE,
+} from "constants/job.constants";
+import type { ImageNormalizeJobData } from "types/image.types";
 
 type JobData = {
   dream_uuid: string;
@@ -74,3 +78,34 @@ export const queueVideoIngestJob = (
     { stage: "ingesting", job_type: jobData.type },
     `videoingest job (${jobData.type})`,
   );
+
+let imageNormalizeQueue: Queue<ImageNormalizeJobData> | undefined;
+
+const getImageNormalizeQueue = () =>
+  (imageNormalizeQueue ??= new Queue<ImageNormalizeJobData>(
+    IMAGE_NORMALIZE_QUEUE,
+    { connection: redisClient },
+  ));
+
+export const queueImageNormalizeJob = async (
+  jobData: ImageNormalizeJobData,
+): Promise<QueueResult> => {
+  try {
+    const job = await getImageNormalizeQueue().add("message", jobData, {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 2000 },
+      removeOnComplete: { age: 24 * 60 * 60 },
+      removeOnFail: { age: 7 * 24 * 60 * 60 },
+    });
+    return { success: true, jobId: job.id };
+  } catch (error) {
+    APP_LOGGER.error(
+      `Failed to queue image normalize job for ${jobData.object_key}:`,
+      error,
+    );
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+};

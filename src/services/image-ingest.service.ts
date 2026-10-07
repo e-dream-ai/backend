@@ -5,7 +5,6 @@ import {
   WEBP_EXTENSION,
 } from "constants/image.constants";
 import { Dream } from "entities";
-import env from "shared/env";
 import { APP_LOGGER } from "shared/logger";
 import { DreamMediaType } from "types/dream.types";
 import type { ImageNormalizeJobData } from "types/image.types";
@@ -25,12 +24,10 @@ import {
 export const requestImageNormalization = (
   jobData: ImageNormalizeJobData,
 ): void => {
-  if (!env.IMAGE_NORMALIZE) return;
   void queueImageNormalizeJob(jobData);
 };
 
 const canFinalizeInline = (dream: Dream, objectKey: string): boolean =>
-  env.IMAGE_NORMALIZE &&
   dream.mediaType === DreamMediaType.IMAGE &&
   extractFileExtension(objectKey) === WEBP_EXTENSION &&
   !hasGenerationAlgorithm(dream);

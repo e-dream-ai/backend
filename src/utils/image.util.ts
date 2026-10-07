@@ -7,7 +7,6 @@ import {
   WEBP_MIME_TYPE,
 } from "constants/image.constants";
 import { MYME_TYPES_EXTENSIONS } from "constants/file.constants";
-import env from "shared/env";
 import type {
   ImageDigest,
   ImageInfo,
@@ -64,7 +63,7 @@ export const prepareImageUpload = (
   file: Express.Multer.File,
   preset: ImagePresetName,
 ): PreparedImageUpload => {
-  const info = env.IMAGE_NORMALIZE ? inspectImage(file.buffer) : null;
+  const info = inspectImage(file.buffer);
 
   if (info && isNormalizedImage(info, preset)) {
     return {
@@ -81,6 +80,6 @@ export const prepareImageUpload = (
     extension:
       MYME_TYPES_EXTENSIONS[file.mimetype] ??
       extractFileExtension(file.originalname),
-    needsNormalization: env.IMAGE_NORMALIZE,
+    needsNormalization: true,
   };
 };

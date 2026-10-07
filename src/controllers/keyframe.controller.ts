@@ -160,7 +160,12 @@ export const handleCreateKeyframe = async (
     const keyframe = new Keyframe();
     keyframe.name = name;
     keyframe.user = user!;
-    const createdKeyframe = await keyframeRepository.save(keyframe);
+    const { id } = await keyframeRepository.save(keyframe);
+    const createdKeyframe = await keyframeRepository.findOneOrFail({
+      where: { id },
+      relations: { user: true },
+      select: getKeyframeSelectedColumns(),
+    });
 
     return res
       .status(httpStatus.CREATED)

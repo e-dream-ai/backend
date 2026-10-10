@@ -296,13 +296,14 @@ export const handleGetGroupedFeed = async (
   const user = res.locals.user!;
   const nsfw = user?.nsfw;
   const onlyHidden = req.query.onlyHidden === "true";
+  const orphans = req.query.orphans;
   const isUserAdmin = isAdmin(user);
 
   try {
-    // Base query options
+    // Base query options, orphans are dreams so "only" leaves out playlists
     const baseOptions: FindOptionsWhere<FeedItem> = {
       user: userUUID ? { uuid: userUUID } : undefined,
-      type: type,
+      type: orphans === "only" ? FeedItemType.DREAM : type,
     };
 
     // Get where conditions with appropriate hidden item handling
@@ -313,6 +314,7 @@ export const handleGetGroupedFeed = async (
       isAdmin: isUserAdmin,
       userId: user.id,
       mediaType,
+      orphans,
     });
 
     const [rawFeed, count] = await feedItemRepository.findAndCount({

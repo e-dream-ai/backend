@@ -9,7 +9,7 @@ import {
   Raw,
 } from "typeorm";
 import { getUserSelectedColumns } from "./user.util";
-import { VirtualPlaylist } from "types/feed.types";
+import { FeedOrphansFilter, VirtualPlaylist } from "types/feed.types";
 import { computePlaylistThumbnailRecursive } from "./playlist.util";
 import { DreamMediaType } from "types/dream.types";
 
@@ -28,6 +28,25 @@ type FeedItemFindOptions = {
   ranked?: boolean;
   // Filters by media type (image/video)
   mediaType?: DreamMediaType;
+  // Hides or isolates dreams that are not in any playlist
+  orphans?: FeedOrphansFilter;
+};
+
+/**
+ * Matches a dream id that is (or, negated, is not) in a live playlist.
+ * Deleting a playlist soft-removes its items, the playlist check is a backstop.
+ */
+const inPlaylistSql = (alias: string) =>
+  `EXISTS (SELECT 1 FROM playlist_item pi INNER JOIN playlist p ON p.id = pi."playlistId" WHERE pi."dreamItemId" = ${alias} AND pi.deleted_at IS NULL AND p.deleted_at IS NULL)`;
+
+const getOrphansCondition = (orphans?: FeedOrphansFilter) => {
+  if (orphans === "hide") {
+    return { id: Raw((alias) => inPlaylistSql(alias)) };
+  }
+  if (orphans === "only") {
+    return { id: Raw((alias) => `NOT ${inPlaylistSql(alias)}`) };
+  }
+  return {};
 };
 
 type FeedItemFindOptionsWhere =
@@ -127,6 +146,7 @@ export const getFeedFindOptionsWhere = (
   const onlyHidden = findOptions?.onlyHidden || false;
   const ranked = findOptions?.ranked || false;
   const mediaType = findOptions?.mediaType;
+  const orphans = findOptions?.orphans;
 
   const nsfwCondition = findOptions?.nsfw ? {} : { nsfw: false };
 
@@ -140,6 +160,7 @@ export const getFeedFindOptionsWhere = (
   const dreamBaseConditions: FeedItemFindOptionsWhere = {
     ...baseConditions,
     ...(mediaType ? { mediaType } : {}),
+    ...getOrphansCondition(orphans),
   };
 
   const conditionOpts = { isAdmin, onlyHidden, ranked, userId: userId ?? 0 };

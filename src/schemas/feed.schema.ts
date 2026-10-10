@@ -12,5 +12,6 @@ export const feedSchema = {
     userUUID: Joi.string().uuid(),
     onlyHidden: Joi.string().valid("true", "false"),
     mediaType: Joi.string().valid(...Object.values(DreamMediaType)),
+    orphans: Joi.string().valid("hide", "only"),
   }),
 };

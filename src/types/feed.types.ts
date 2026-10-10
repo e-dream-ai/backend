@@ -10,7 +10,14 @@ export type GetFeedRequest = {
   type?: FeedItemType;
   onlyHidden?: string;
   mediaType?: DreamMediaType;
+  orphans?: FeedOrphansFilter;
 };
+
+/**
+ * Orphans are dreams that are not in any playlist.
+ * "hide" leaves them out of the feed, "only" shows nothing else.
+ */
+export type FeedOrphansFilter = "hide" | "only";
 
 export type VirtualPlaylist = {
   id: number;

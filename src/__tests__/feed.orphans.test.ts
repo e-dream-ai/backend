@@ -1,6 +1,7 @@
 import { FindOperator } from "typeorm";
 import { getFeedFindOptionsWhere } from "utils/feed.util";
-import { FeedOrphansFilter } from "types/feed.types";
+import { groupedFeedSchema } from "schemas/feed.schema";
+import { FEED_ORPHANS_FILTERS, FeedOrphansFilter } from "types/feed.types";
 
 type DreamCondition = { id?: FindOperator<unknown> };
 
@@ -42,5 +43,21 @@ describe("feed orphans filter", () => {
     getDreamConditions("only").forEach((condition) => {
       expect(getIdSql(condition)).toMatch(/^NOT EXISTS \(/);
     });
+  });
+});
+
+describe("grouped feed orphans param", () => {
+  it("accepts hide and only", () => {
+    FEED_ORPHANS_FILTERS.forEach((orphans) => {
+      expect(
+        groupedFeedSchema.query.validate({ orphans }).error,
+      ).toBeUndefined();
+    });
+  });
+
+  it("rejects any other value", () => {
+    expect(
+      groupedFeedSchema.query.validate({ orphans: "bogus" }).error,
+    ).toBeDefined();
   });
 });

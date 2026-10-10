@@ -7,7 +7,7 @@ import httpStatus from "http-status";
 import { FindOptionsWhere } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
-import { GetFeedRequest } from "types/feed.types";
+import { GetFeedRequest, GetGroupedFeedRequest } from "types/feed.types";
 import { DreamMediaType } from "types/dream.types";
 import {
   formatFeedResponse,
@@ -279,7 +279,7 @@ export const handleGetMyDreams = async (
  *
  */
 export const handleGetGroupedFeed = async (
-  req: RequestType<unknown, GetFeedRequest>,
+  req: RequestType<unknown, GetGroupedFeedRequest>,
   res: ResponseType,
 ) => {
   const take = Math.min(

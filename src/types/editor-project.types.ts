@@ -2,6 +2,7 @@ export enum EditorId {
   FLOW = "flow",
   ACTION = "action",
   UPREZ = "uprez",
+  DEFORUM = "deforum",
 }
 
 export type EditorProjectState = Record<string, unknown>;

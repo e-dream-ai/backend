@@ -171,12 +171,17 @@ export const handleGetPlaylist = async (
     // Transform playlist to include signed URLs
     const transformedPlaylist = await transformPlaylistWithSignedUrls(playlist);
 
-    const { totalDurationSeconds, totalDreamCount, progress } =
-      await computePlaylistTotals(playlist.id, {
-        userId: user.id,
-        isAdmin: isUserAdmin,
-        nsfw: user?.nsfw,
-      });
+    const {
+      totalDurationSeconds,
+      totalFrames,
+      totalDreamCount,
+      media,
+      progress,
+    } = await computePlaylistTotals(playlist.id, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw: user?.nsfw,
+    });
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -185,7 +190,9 @@ export const handleGetPlaylist = async (
           playlist: {
             ...transformedPlaylist,
             totalDurationSeconds,
+            totalFrames,
             totalDreamCount,
+            media,
             progress,
           },
         },

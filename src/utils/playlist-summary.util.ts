@@ -90,15 +90,72 @@ export const populatePlaylistThumbnails = async (
   }
 };
 
+/** Resolution and fps across a playlist's processed videos. */
+export interface PlaylistMediaSummary {
+  /** Largest resolution by pixel count. */
+  width: number;
+  height: number;
+  /** Highest fps, or null when no dream reports one. */
+  fps: number | null;
+  mixedResolution: boolean;
+  mixedFps: boolean;
+}
+
 export interface PlaylistTotals {
   totalDurationSeconds: number;
+  totalFrames: number;
   totalDreamCount: number;
+  /** Null when no counted dream has a known resolution. */
+  media: PlaylistMediaSummary | null;
   progress: PlaylistProgress;
 }
 
+const accumulateMedia = (
+  totals: PlaylistTotals,
+  dream: {
+    processedMediaWidth?: number | null;
+    processedMediaHeight?: number | null;
+    processedVideoFPS?: number | string | null;
+  },
+): void => {
+  const width = dream.processedMediaWidth;
+  const height = dream.processedMediaHeight;
+  if (!width || !height) return;
+  // decimal column: pg returns it as a string
+  const fps = Number(dream.processedVideoFPS) || null;
+
+  const media = totals.media;
+  if (!media) {
+    totals.media = {
+      width,
+      height,
+      fps,
+      mixedResolution: false,
+      mixedFps: false,
+    };
+    return;
+  }
+
+  if (width !== media.width || height !== media.height) {
+    media.mixedResolution = true;
+    if (width * height > media.width * media.height) {
+      media.width = width;
+      media.height = height;
+    }
+  }
+  if (fps !== media.fps) {
+    media.mixedFps = true;
+    if (fps !== null && (media.fps === null || fps > media.fps)) {
+      media.fps = fps;
+    }
+  }
+};
+
 const emptyTotals = (): PlaylistTotals => ({
   totalDurationSeconds: 0,
+  totalFrames: 0,
   totalDreamCount: 0,
+  media: null,
   progress: {
     total: 0,
     queued: 0,
@@ -128,6 +185,9 @@ const queryPlaylistItems = (
       "dream.activityLevel",
       "dream.status",
       "dream.mediaType",
+      "dream.processedMediaWidth",
+      "dream.processedMediaHeight",
+      "dream.processedVideoFPS",
     ])
     .leftJoin("item.playlistItem", "nested")
     .addSelect("nested.id")
@@ -195,6 +255,9 @@ export const computePlaylistTotalsBatch = async (
           const rootTotals = totals.get(rootId)!;
 
           if (dream) {
+            if (dream.processedVideoFrames) {
+              rootTotals.totalFrames += dream.processedVideoFrames;
+            }
             if (dream.processedVideoFrames && dream.activityLevel) {
               rootTotals.totalDurationSeconds += framesToSeconds(
                 dream.processedVideoFrames,
@@ -206,6 +269,7 @@ export const computePlaylistTotalsBatch = async (
               dream.mediaType !== DreamMediaType.IMAGE
             ) {
               rootTotals.totalDreamCount++;
+              accumulateMedia(rootTotals, dream);
             }
 
             const counted = countedDreams.get(rootId)!;

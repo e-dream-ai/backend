@@ -71,6 +71,7 @@ describe("computePlaylistTotals media summary", () => {
     expect(media).toEqual({
       width: 1280,
       height: 720,
+      minShortSide: 720,
       fps: 24,
       mixedResolution: false,
       mixedFps: false,
@@ -101,6 +102,7 @@ describe("computePlaylistTotals media summary", () => {
     expect(media).toEqual({
       width: 1920,
       height: 1080,
+      minShortSide: 720,
       fps: 30,
       mixedResolution: true,
       mixedFps: true,

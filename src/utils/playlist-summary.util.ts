@@ -95,6 +95,7 @@ export interface PlaylistMediaSummary {
   /** Largest resolution by pixel count. */
   width: number;
   height: number;
+  minShortSide: number;
   /** Highest fps, or null when no dream reports one. */
   fps: number | null;
   mixedResolution: boolean;
@@ -123,12 +124,14 @@ const accumulateMedia = (
   if (!width || !height) return;
   // decimal column: pg returns it as a string
   const fps = Number(dream.processedVideoFPS) || null;
+  const shortSide = Math.min(width, height);
 
   const media = totals.media;
   if (!media) {
     totals.media = {
       width,
       height,
+      minShortSide: shortSide,
       fps,
       mixedResolution: false,
       mixedFps: false,
@@ -136,6 +139,7 @@ const accumulateMedia = (
     return;
   }
 
+  media.minShortSide = Math.min(media.minShortSide, shortSide);
   if (width !== media.width || height !== media.height) {
     media.mixedResolution = true;
     if (width * height > media.width * media.height) {
@@ -143,11 +147,12 @@ const accumulateMedia = (
       media.height = height;
     }
   }
-  if (fps !== media.fps) {
+  if (fps === null) return;
+  if (media.fps === null) {
+    media.fps = fps;
+  } else if (fps !== media.fps) {
     media.mixedFps = true;
-    if (fps !== null && (media.fps === null || fps > media.fps)) {
-      media.fps = fps;
-    }
+    media.fps = Math.max(media.fps, fps);
   }
 };
 

@@ -1001,8 +1001,8 @@ playlistRouter.post(
  *  post:
  *    tags:
  *      - playlist
- *    summary: Run (or re-run) a playlist-level algorithm (e.g. uprez_playlist)
- *    description: Syncs a derived uprez playlist with its source playlist and enqueues uprez jobs for dreams that need it.
+ *    summary: Run (or re-run) a playlist-level algorithm (e.g. enhance_playlist)
+ *    description: Syncs a derived enhance playlist with its source playlist and enqueues enhance jobs for dreams that need it.
  *    parameters:
  *      - name: uuid
  *        in: path
@@ -1024,7 +1024,7 @@ playlistRouter.post(
  *                      type: object
  *                      properties:
  *                        result:
- *                          $ref: '#/components/schemas/UprezRunResult'
+ *                          $ref: '#/components/schemas/EnhanceRunResult'
  *      '400':
  *        description: Bad request
  *        content:
@@ -1049,7 +1049,7 @@ playlistRouter.post(
  *  post:
  *    tags:
  *      - playlist
- *    summary: Preview what running an uprez playlist would do
+ *    summary: Preview what running an enhance playlist would do
  *    description: Returns the same counts as /run (created, requeued, kept, reused, replaced, cancelled, removed, skipped) without changing anything. The body can override the saved source playlist and params, to preview unsaved settings.
  *    parameters:
  *      - name: uuid
@@ -1084,7 +1084,7 @@ playlistRouter.post(
  *                      type: object
  *                      properties:
  *                        result:
- *                          $ref: '#/components/schemas/UprezRunSummary'
+ *                          $ref: '#/components/schemas/EnhanceRunSummary'
  *      '400':
  *        description: Bad request
  *        content:
@@ -1110,7 +1110,7 @@ playlistRouter.post(
  *    tags:
  *      - playlist
  *    summary: Cancel in-flight worker jobs for a playlist's derived dreams
- *    description: Cancels any running uprez jobs for the derived dreams of a playlist.
+ *    description: Cancels any running enhance jobs for the derived dreams of a playlist.
  *    parameters:
  *      - name: uuid
  *        in: path

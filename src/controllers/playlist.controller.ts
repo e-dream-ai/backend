@@ -57,15 +57,15 @@ import { computeDefaultPlaylistFromUserId } from "utils/default-playlist.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { parsePromptJson, serializePrompt } from "utils/prompt.util";
 import {
-  isUprezPlaylistPrompt,
-  UprezPlaylistPromptJson,
+  isEnhancePlaylistPrompt,
+  EnhancePlaylistPromptJson,
 } from "utils/playlist-prompt.util";
 import {
-  previewUprezPlaylist,
-  runUprezPlaylist,
-  UprezSourceAccessError,
-  cancelUprezPlaylist,
-} from "utils/uprez-playlist.util";
+  previewEnhancePlaylist,
+  runEnhancePlaylist,
+  EnhanceSourceAccessError,
+  cancelEnhancePlaylist,
+} from "utils/enhance-playlist.util";
 import {
   deletePlaylistItemAndResetOrder,
   deletePlaylistKeyframeAndResetOrder,
@@ -1534,20 +1534,23 @@ const loadPlaylistForOwnerAction = async (
   return playlist;
 };
 
-const loadUprezPlaylistForRun = async (
+const loadEnhancePlaylistForRun = async (
   req: RequestType<unknown, unknown, PlaylistParamsRequest>,
   res: ResponseType,
-): Promise<{ playlist: Playlist; prompt: UprezPlaylistPromptJson } | null> => {
+): Promise<{
+  playlist: Playlist;
+  prompt: EnhancePlaylistPromptJson;
+} | null> => {
   const playlist = await loadPlaylistForOwnerAction(req, res);
   if (!playlist) return null;
 
   const prompt = parsePromptJson(playlist);
 
-  if (!isUprezPlaylistPrompt(prompt)) {
+  if (!isEnhancePlaylistPrompt(prompt)) {
     res.status(httpStatus.BAD_REQUEST).json(
       jsonResponse({
         success: false,
-        message: "Playlist is not a runnable uprez playlist",
+        message: "Playlist is not a runnable enhance playlist",
       }),
     );
     return null;
@@ -1556,12 +1559,12 @@ const loadUprezPlaylistForRun = async (
   return { playlist, prompt };
 };
 
-const handleUprezRunError = (
+const handleEnhanceRunError = (
   err: unknown,
   req: RequestType,
   res: ResponseType,
 ) =>
-  err instanceof UprezSourceAccessError
+  err instanceof EnhanceSourceAccessError
     ? handleNotFound(req, res)
     : handleInternalServerError(err as Error, req, res);
 
@@ -1570,10 +1573,10 @@ export const handleRunPlaylist = async (
   res: ResponseType,
 ) => {
   try {
-    const loaded = await loadUprezPlaylistForRun(req, res);
+    const loaded = await loadEnhancePlaylistForRun(req, res);
     if (!loaded) return;
 
-    const result = await runUprezPlaylist({
+    const result = await runEnhancePlaylist({
       ...loaded,
       user: res.locals.user!,
     });
@@ -1582,7 +1585,7 @@ export const handleRunPlaylist = async (
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { result } }));
   } catch (err) {
-    return handleUprezRunError(err, req as RequestType, res);
+    return handleEnhanceRunError(err, req as RequestType, res);
   }
 };
 
@@ -1595,12 +1598,12 @@ export const handlePreviewRunPlaylist = async (
   res: ResponseType,
 ) => {
   try {
-    const loaded = await loadUprezPlaylistForRun(req, res);
+    const loaded = await loadEnhancePlaylistForRun(req, res);
     if (!loaded) return;
 
     const { playlist, prompt } = loaded;
     const { source_playlist_uuid, params } = req.body ?? {};
-    const result = await previewUprezPlaylist({
+    const result = await previewEnhancePlaylist({
       playlist,
       prompt: {
         ...prompt,
@@ -1615,7 +1618,7 @@ export const handlePreviewRunPlaylist = async (
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { result } }));
   } catch (err) {
-    return handleUprezRunError(err, req as RequestType, res);
+    return handleEnhanceRunError(err, req as RequestType, res);
   }
 };
 
@@ -1627,7 +1630,7 @@ export const handleCancelPlaylist = async (
     const playlist = await loadPlaylistForOwnerAction(req, res);
     if (!playlist) return;
 
-    const result = await cancelUprezPlaylist(playlist.id);
+    const result = await cancelEnhancePlaylist(playlist.id);
 
     return res
       .status(httpStatus.OK)

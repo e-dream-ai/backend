@@ -4,35 +4,35 @@ import { DreamStatusType } from "types/dream.types";
 import { parsePromptJson, PromptJson } from "./prompt.util";
 
 /**
- * Counts for one uprez run. The same shape is returned by the dry-run
+ * Counts for one enhance run. The same shape is returned by the dry-run
  * preview and by the real run, so the UI can say what a run *would* do.
  */
-export interface UprezRunSummary {
-  /** New uprez dreams queued. */
+export interface EnhanceRunSummary {
+  /** New enhanced dreams queued. */
   created: number;
-  /** Failed uprez dreams at the current settings, queued again. */
+  /** Failed enhanced dreams at the current settings, queued again. */
   requeued: number;
-  /** Uprez dreams already at the current settings, left alone. */
+  /** Enhanced dreams already at the current settings, left alone. */
   kept: number;
-  /** Earlier uprez dreams at the current settings, linked back in. */
+  /** Earlier enhanced dreams at the current settings, linked back in. */
   reused: number;
-  /** Uprez dreams at other settings, taken out of the playlist. */
+  /** Enhanced dreams at other settings, taken out of the playlist. */
   replaced: number;
   /** Of `replaced`, how many were still in flight and get cancelled. */
   cancelled: number;
-  /** Uprez dreams whose source left the source playlist. */
+  /** Enhanced dreams whose source left the source playlist. */
   removed: number;
-  /** Source dreams not yet processed, so there's nothing to uprez. */
+  /** Source dreams not yet processed, so there's nothing to enhance. */
   skipped: number;
   hasWork: boolean;
 }
 
-export interface RunUprezPlaylistResult extends UprezRunSummary {
+export interface RunEnhancePlaylistResult extends EnhanceRunSummary {
   linked: number;
 }
 
-export interface UprezPlan {
-  result: UprezRunSummary;
+export interface EnhancePlan {
+  result: EnhanceRunSummary;
   sourceOrder: Map<string, number>;
   /** Playlist item ids to take out: obsolete sources and replaced dreams. */
   itemIdsToRemove: number[];
@@ -40,9 +40,9 @@ export interface UprezPlan {
   dreamsToCancel: Dream[];
   /** Failed dreams at the current settings. */
   dreamsToRequeue: Dream[];
-  /** Earlier uprez dreams to link back in, with their source position. */
+  /** Earlier enhanced dreams to link back in, with their source position. */
   dreamsToReuse: { dream: Dream; order: number }[];
-  /** Source dreams that need a fresh uprez, with their source position. */
+  /** Source dreams that need a fresh enhanced dream, with their source position. */
   sourcesToCreate: { source: Dream; order: number }[];
 }
 
@@ -65,7 +65,7 @@ export const getSourceDreamUuid = (
  * `params`. Only the keys the playlist sets are compared, so a derived dream
  * carrying extra fields (video_uuid, source_dream_uuid) still matches.
  */
-export const matchesUprezSettings = (
+export const matchesEnhanceSettings = (
   prompt: PromptJson | null,
   dreamAlgorithm: string,
   params: Record<string, unknown>,
@@ -79,12 +79,12 @@ export const matchesUprezSettings = (
 /**
  * Decide what a run does, without touching the database.
  *
- * `candidates` are the runner's other uprez dreams of these sources, possibly
+ * `candidates` are the runner's other enhanced dreams of these sources, possibly
  * in no playlist at all: the results of earlier runs at other settings. A
  * processed one that matches the current settings is linked back in instead
  * of being rendered again.
  */
-export const planUprezRun = ({
+export const planEnhanceRun = ({
   sourceDreams,
   derivedItems,
   candidates,
@@ -96,12 +96,12 @@ export const planUprezRun = ({
   candidates: Dream[];
   dreamAlgorithm: string;
   params: Record<string, unknown>;
-}): UprezPlan => {
+}): EnhancePlan => {
   const sourceOrder = new Map(
     sourceDreams.map((dream, index) => [dream.uuid, index]),
   );
 
-  const plan: UprezPlan = {
+  const plan: EnhancePlan = {
     result: {
       created: 0,
       requeued: 0,
@@ -145,7 +145,7 @@ export const planUprezRun = ({
     const prompt = parsePromptJson(dream);
     const srcUuid = prompt?.source_dream_uuid;
     if (typeof srcUuid !== "string" || reusableBySource.has(srcUuid)) continue;
-    if (!matchesUprezSettings(prompt, dreamAlgorithm, params)) continue;
+    if (!matchesEnhanceSettings(prompt, dreamAlgorithm, params)) continue;
     reusableBySource.set(srcUuid, dream);
   }
 
@@ -160,7 +160,7 @@ export const planUprezRun = ({
     if (existing) {
       const { itemId, dream } = existing;
       if (
-        matchesUprezSettings(parsePromptJson(dream), dreamAlgorithm, params)
+        matchesEnhanceSettings(parsePromptJson(dream), dreamAlgorithm, params)
       ) {
         if (dream.status === DreamStatusType.FAILED) {
           plan.dreamsToRequeue.push(dream);

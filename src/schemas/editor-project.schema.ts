@@ -32,13 +32,16 @@ const uuidParams = Joi.object<EditorProjectParamsRequest>().keys({
 });
 
 export const getEditorProjectsSchema: RequestValidationSchema = {
-  query: Joi.object<GetEditorProjectsQuery>().keys({
-    editorId,
-    playlistUuid: Joi.string().uuid(),
-    search: Joi.string().trim().max(EDITOR_PROJECT_NAME_MAX_LENGTH).allow(""),
-    take: Joi.number().integer().min(1).max(PAGINATION.MAX_TAKE),
-    skip: Joi.number().integer().min(0),
-  }),
+  query: Joi.object<GetEditorProjectsQuery>()
+    .keys({
+      editorId,
+      playlistUuid: Joi.string().uuid(),
+      dreamUuid: Joi.string().uuid(),
+      search: Joi.string().trim().max(EDITOR_PROJECT_NAME_MAX_LENGTH).allow(""),
+      take: Joi.number().integer().min(1).max(PAGINATION.MAX_TAKE),
+      skip: Joi.number().integer().min(0),
+    })
+    .oxor("playlistUuid", "dreamUuid"),
 };
 
 export const getEditorProjectSchema: RequestValidationSchema = {

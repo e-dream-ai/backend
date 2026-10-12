@@ -1,6 +1,6 @@
 import type { Dream, PlaylistItem } from "entities";
 import { DreamStatusType } from "types/dream.types";
-import { planUprezRun } from "utils/uprez-plan.util";
+import { planEnhanceRun } from "utils/enhance-plan.util";
 
 let nextId = 1;
 
@@ -8,18 +8,18 @@ const source = (uuid: string, status = DreamStatusType.PROCESSED): Dream =>
   ({ id: nextId++, uuid, status }) as Dream;
 
 // Prompts are stored JSON-encoded, as the run writes them.
-const uprez = (
+const enhance = (
   src: string,
   factors: { upscale_factor: number; interpolation_factor: number },
   status = DreamStatusType.PROCESSED,
 ): Dream =>
   ({
     id: nextId++,
-    uuid: `uprez-${nextId}`,
+    uuid: `enhance-${nextId}`,
     status,
     prompt: JSON.stringify({
       ...factors,
-      infinidream_algorithm: "uprez",
+      infinidream_algorithm: "enhance",
       video_uuid: src,
       source_dream_uuid: src,
     }),
@@ -42,19 +42,19 @@ const plan = ({
   candidates?: Dream[];
   params?: Record<string, unknown>;
 }) =>
-  planUprezRun({
+  planEnhanceRun({
     sourceDreams,
     derivedItems: derived.map(item),
     candidates,
-    dreamAlgorithm: "uprez",
+    dreamAlgorithm: "enhance",
     params,
   });
 
-describe("planUprezRun", () => {
+describe("planEnhanceRun", () => {
   const a = source("a");
   const b = source("b");
 
-  it("creates an uprez for every processed source on a first run", () => {
+  it("creates an enhanced dream for every processed source on a first run", () => {
     const { result, sourcesToCreate } = plan({
       sourceDreams: [a, b, source("c", DreamStatusType.PROCESSING)],
     });
@@ -62,18 +62,18 @@ describe("planUprezRun", () => {
     expect(sourcesToCreate.map((s) => s.order)).toEqual([0, 1]);
   });
 
-  it("does nothing when every uprez is already at the current settings", () => {
+  it("does nothing when every enhanced dream is already at the current settings", () => {
     const { result } = plan({
       sourceDreams: [a, b],
-      derived: [uprez("a", X2), uprez("b", X2, DreamStatusType.PROCESSING)],
+      derived: [enhance("a", X2), enhance("b", X2, DreamStatusType.PROCESSING)],
     });
     expect(result).toMatchObject({ kept: 2, created: 0, replaced: 0 });
     expect(result.hasWork).toBe(false);
   });
 
-  it("replaces uprezes made at other settings", () => {
-    const doneA = uprez("a", X2);
-    const runningB = uprez("b", X2, DreamStatusType.PROCESSING);
+  it("replaces enhanced dreams made at other settings", () => {
+    const doneA = enhance("a", X2);
+    const runningB = enhance("b", X2, DreamStatusType.PROCESSING);
     const p = plan({
       sourceDreams: [a, b],
       derived: [doneA, runningB],
@@ -91,11 +91,11 @@ describe("planUprezRun", () => {
   });
 
   it("links an earlier render back in instead of rendering it again", () => {
-    const earlier = uprez("a", X2);
+    const earlier = enhance("a", X2);
     const p = plan({
       sourceDreams: [a, b],
-      derived: [uprez("a", X4), uprez("b", X4)],
-      candidates: [earlier, uprez("b", X2, DreamStatusType.FAILED)],
+      derived: [enhance("a", X4), enhance("b", X4)],
+      candidates: [earlier, enhance("b", X2, DreamStatusType.FAILED)],
       params: X2,
     });
     expect(p.result).toMatchObject({ replaced: 2, reused: 1, created: 1 });
@@ -104,15 +104,15 @@ describe("planUprezRun", () => {
   });
 
   it("prefers the newest matching earlier render", () => {
-    const older = uprez("a", X2);
-    const newer = uprez("a", X2);
+    const older = enhance("a", X2);
+    const newer = enhance("a", X2);
     const p = plan({ sourceDreams: [a], candidates: [older, newer] });
     expect(p.dreamsToReuse[0].dream).toBe(newer);
   });
 
   it("ignores other algorithms that also record a source dream", () => {
     const ltx = {
-      ...uprez("a", X2),
+      ...enhance("a", X2),
       prompt: JSON.stringify({
         ...X2,
         infinidream_algorithm: "ltx-i2v",
@@ -123,17 +123,17 @@ describe("planUprezRun", () => {
     expect(p.result).toMatchObject({ reused: 0, created: 1 });
   });
 
-  it("requeues a failed uprez at the current settings", () => {
-    const failed = uprez("a", X2, DreamStatusType.FAILED);
+  it("requeues a failed enhanced dream at the current settings", () => {
+    const failed = enhance("a", X2, DreamStatusType.FAILED);
     const p = plan({ sourceDreams: [a], derived: [failed] });
     expect(p.result).toMatchObject({ requeued: 1, created: 0 });
     expect(p.dreamsToRequeue).toEqual([failed]);
   });
 
-  it("removes uprezes whose source left the source playlist", () => {
+  it("removes enhanced dreams whose source left the source playlist", () => {
     const p = plan({
       sourceDreams: [a],
-      derived: [uprez("a", X2), uprez("gone", X2)],
+      derived: [enhance("a", X2), enhance("gone", X2)],
     });
     expect(p.result).toMatchObject({ removed: 1, kept: 1 });
     expect(p.result.hasWork).toBe(true);

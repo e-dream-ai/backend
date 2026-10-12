@@ -103,7 +103,7 @@ export const registerRoutes = (app: express.Application) => {
    *         lastUsedAt:
    *           type: string
    *           format: date-time
-   *     UprezRunSummary:
+   *     EnhanceRunSummary:
    *       type: object
    *       properties:
    *         created:
@@ -124,9 +124,9 @@ export const registerRoutes = (app: express.Application) => {
    *           type: integer
    *         hasWork:
    *           type: boolean
-   *     UprezRunResult:
+   *     EnhanceRunResult:
    *       allOf:
-   *         - $ref: '#/components/schemas/UprezRunSummary'
+   *         - $ref: '#/components/schemas/EnhanceRunSummary'
    *         - type: object
    *           properties:
    *             linked:

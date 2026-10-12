@@ -1,7 +1,7 @@
 export enum EditorId {
   FLOW = "flow",
   ACTION = "action",
-  UPREZ = "uprez",
+  ENHANCE = "enhance",
   DEFORUM = "deforum",
 }
 

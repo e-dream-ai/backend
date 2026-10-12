@@ -67,8 +67,13 @@ const ALGORITHM_REGISTRY: Record<SupportedAlgorithm, AlgorithmSpec> = {
   "krea-2-turbo-style": { queue: "falimage", media: "image" },
 };
 
+const LEGACY_QUEUES = ["uprezvideo"];
+
 export const GENERATION_QUEUES: string[] = [
-  ...new Set(Object.values(ALGORITHM_REGISTRY).map((spec) => spec.queue)),
+  ...new Set([
+    ...Object.values(ALGORITHM_REGISTRY).map((spec) => spec.queue),
+    ...LEGACY_QUEUES,
+  ]),
 ];
 
 export const parsePromptJson = (entity: PromptCarrier): PromptJson | null => {

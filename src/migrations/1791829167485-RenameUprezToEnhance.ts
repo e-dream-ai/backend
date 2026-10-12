@@ -23,7 +23,7 @@ const renamePrompts = (
         ELSE prompt::jsonb
       END AS p
     FROM "${table}"
-    WHERE prompt IS NOT NULL
+    WHERE prompt IS NOT NULL AND prompt::text LIKE '%' || $1::text || '%'
   )
   UPDATE "${table}" t
   SET prompt = CASE
@@ -33,8 +33,8 @@ const renamePrompts = (
   FROM parsed
   WHERE t.id = parsed.id AND jsonb_typeof(parsed.p) = 'object' AND ${where}`;
 
-const setKey = (expr: string, key: string, value: string): string =>
-  `jsonb_set(${expr}, '{${key}}', '"${value}"')`;
+const setKey = (expr: string, key: string): string =>
+  `jsonb_set(${expr}, '{${key}}', to_jsonb($2::text))`;
 
 export class RenameUprezToEnhance1791829167485 implements MigrationInterface {
   name = "RenameUprezToEnhance1791829167485";
@@ -60,25 +60,28 @@ export class RenameUprezToEnhance1791829167485 implements MigrationInterface {
     await queryRunner.query(
       renamePrompts(
         "dream",
-        `parsed.p->>'infinidream_algorithm' = '${from}'`,
-        setKey("parsed.p", "infinidream_algorithm", to),
+        `parsed.p->>'infinidream_algorithm' = $1`,
+        setKey("parsed.p", "infinidream_algorithm"),
       ),
+      [from, to],
     );
 
     // Playlists: the playlist algorithm and the per-dream algorithm it runs.
     await queryRunner.query(
       renamePrompts(
         "playlist",
-        `parsed.p->>'infinidream_algorithm' = '${from}_playlist'`,
-        setKey("parsed.p", "infinidream_algorithm", `${to}_playlist`),
+        `parsed.p->>'infinidream_algorithm' = $1`,
+        setKey("parsed.p", "infinidream_algorithm"),
       ),
+      [`${from}_playlist`, `${to}_playlist`],
     );
     await queryRunner.query(
       renamePrompts(
         "playlist",
-        `parsed.p->>'infinidream_algorithm' = '${to}_playlist' AND parsed.p->>'dream_algorithm' = '${from}'`,
-        setKey("parsed.p", "dream_algorithm", to),
+        `parsed.p->>'infinidream_algorithm' = $3 AND parsed.p->>'dream_algorithm' = $1`,
+        setKey("parsed.p", "dream_algorithm"),
       ),
+      [from, to, `${to}_playlist`],
     );
   }
 }

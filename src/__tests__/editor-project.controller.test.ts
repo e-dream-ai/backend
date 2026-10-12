@@ -3,7 +3,7 @@ import type { RequestType, ResponseType } from "types/express.types";
 describe("editor-project.controller", () => {
   const USER_ID = 7;
 
-  const createReqRes = () => {
+  const createReqRes = (role = "user") => {
     const req = {
       body: {},
       params: {},
@@ -15,10 +15,20 @@ describe("editor-project.controller", () => {
     const status = jest.fn(() => ({ json }));
     const res = {
       status,
-      locals: { user: { id: USER_ID, uuid: "u1", role: { name: "user" } } },
+      locals: { user: { id: USER_ID, uuid: "u1", role: { name: role } } },
       cookies: {},
     } as unknown as ResponseType;
     return { req, res, json, status };
+  };
+
+  const someoneElsesProject = {
+    id: 9,
+    uuid: "someone-elses-uuid",
+    userId: 99,
+    revision: 1,
+    state: {},
+    playlist: null,
+    user: { id: 99, uuid: "owner-uuid", name: "Scott", avatar: null },
   };
 
   const mockResponses = () => {
@@ -41,12 +51,12 @@ describe("editor-project.controller", () => {
     jest.clearAllMocks();
   });
 
-  it("scopes reads to the owner so another user's project is not found", async () => {
+  it("hides another user's project from a regular user", async () => {
     const { req, res } = createReqRes();
     req.params.uuid = "someone-elses-uuid";
 
     const editorProjectRepository = {
-      findOne: jest.fn().mockResolvedValue(null),
+      findOne: jest.fn().mockResolvedValue(someoneElsesProject),
     };
     jest.mock("database/repositories", () => ({
       __esModule: true,
@@ -62,11 +72,42 @@ describe("editor-project.controller", () => {
     await handleGetEditorProject(req, res);
 
     expect(editorProjectRepository.findOne).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { uuid: "someone-elses-uuid", userId: USER_ID },
-      }),
+      expect.objectContaining({ where: { uuid: "someone-elses-uuid" } }),
     );
     expect(handleNotFound).toHaveBeenCalled();
+  });
+
+  it("opens another user's project read-only for a creator", async () => {
+    const { req, res, json } = createReqRes("creator-group");
+    req.params.uuid = "someone-elses-uuid";
+
+    jest.mock("database/repositories", () => ({
+      __esModule: true,
+      editorProjectRepository: {
+        findOne: jest.fn().mockResolvedValue(someoneElsesProject),
+      },
+      playlistRepository: { findOne: jest.fn() },
+      dreamRepository: { findOne: jest.fn() },
+    }));
+    const { handleNotFound } = mockResponses();
+
+    const { handleGetEditorProject } = await import(
+      "controllers/editor-project.controller"
+    );
+    await handleGetEditorProject(req, res);
+
+    expect(handleNotFound).not.toHaveBeenCalled();
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          project: expect.objectContaining({
+            uuid: "someone-elses-uuid",
+            canEdit: false,
+            owner: { uuid: "owner-uuid", name: "Scott", avatar: null },
+          }),
+        },
+      }),
+    );
   });
 
   it("rejects a stale revision with 409 and returns the current project", async () => {
@@ -74,7 +115,14 @@ describe("editor-project.controller", () => {
     req.params.uuid = "p1";
     req.body = { revision: 1, state: { a: 1 } };
 
-    const current = { id: 3, uuid: "p1", revision: 5, state: { b: 2 } };
+    const owner = { id: USER_ID, uuid: "u1", name: "Me", avatar: null };
+    const current = {
+      id: 3,
+      uuid: "p1",
+      revision: 5,
+      state: { b: 2 },
+      user: owner,
+    };
     const editorProjectRepository = {
       findOne: jest.fn().mockResolvedValue(current),
       update: jest.fn(),
@@ -97,7 +145,18 @@ describe("editor-project.controller", () => {
       req,
       res,
       expect.objectContaining({
-        data: { project: { ...current, thumbnail: null, playlist: null } },
+        data: {
+          project: {
+            id: 3,
+            uuid: "p1",
+            revision: 5,
+            state: { b: 2 },
+            thumbnail: null,
+            playlist: null,
+            owner: { uuid: "u1", name: "Me", avatar: null },
+            canEdit: true,
+          },
+        },
       }),
     );
   });

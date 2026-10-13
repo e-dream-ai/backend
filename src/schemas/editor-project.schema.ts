@@ -38,6 +38,7 @@ export const getEditorProjectsSchema: RequestValidationSchema = {
       playlistUuid: Joi.string().uuid(),
       dreamUuid: Joi.string().uuid(),
       search: Joi.string().trim().max(EDITOR_PROJECT_NAME_MAX_LENGTH).allow(""),
+      archived: Joi.string().valid("true", "false"),
       take: Joi.number().integer().min(1).max(PAGINATION.MAX_TAKE),
       skip: Joi.number().integer().min(0),
     })
@@ -77,6 +78,10 @@ export const updateEditorProjectSchema: RequestValidationSchema = {
 };
 
 export const deleteEditorProjectSchema: RequestValidationSchema = {
+  params: uuidParams,
+};
+
+export const archiveEditorProjectSchema: RequestValidationSchema = {
   params: uuidParams,
 };
 

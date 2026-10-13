@@ -5,6 +5,7 @@ import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
 import {
+  archiveEditorProjectSchema,
   createEditorProjectSchema,
   deleteEditorProjectSchema,
   lockEditorProjectSchema,
@@ -47,6 +48,12 @@ const allowedRoles = checkRoleMiddleware([
  *          type: string
  *        name: search
  *        in: query
+ *      - schema:
+ *          type: string
+ *          enum: ["true", "false"]
+ *        name: archived
+ *        in: query
+ *        description: Only archived projects when true, only active ones when false, and both when omitted
  *      - schema:
  *          type: number
  *        name: take
@@ -277,6 +284,80 @@ editorProjectRouter.delete(
   allowedRoles,
   validatorMiddleware(deleteEditorProjectSchema),
   editorProjectController.handleDeleteEditorProject,
+);
+
+/**
+ * @swagger
+ * /api/v2/editor-projects/{uuid}/archive:
+ *  put:
+ *    tags:
+ *      - editor-project
+ *    summary: Archives an editor project
+ *    description: Hides the project from the Studio list without touching its playlist, revision or edit lock. Archiving an archived project keeps its original archivedAt.
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Archived
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/ApiResponse'
+ *      '404':
+ *        description: Not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ *  delete:
+ *    tags:
+ *      - editor-project
+ *    summary: Unarchives an editor project
+ *    description: Shows the project in the Studio list again
+ *    parameters:
+ *      - name: uuid
+ *        in: path
+ *        required: true
+ *        schema:
+ *          type: string
+ *    responses:
+ *      '200':
+ *        description: Unarchived
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/ApiResponse'
+ *      '404':
+ *        description: Not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BadApiResponse'
+ *    security:
+ *      - bearerAuth: []
+ *      - apiKeyAuth: []
+ */
+editorProjectRouter.put(
+  "/:uuid/archive",
+  requireAuth,
+  allowedRoles,
+  validatorMiddleware(archiveEditorProjectSchema),
+  editorProjectController.handleArchiveEditorProject,
+);
+
+editorProjectRouter.delete(
+  "/:uuid/archive",
+  requireAuth,
+  allowedRoles,
+  validatorMiddleware(archiveEditorProjectSchema),
+  editorProjectController.handleUnarchiveEditorProject,
 );
 
 /**

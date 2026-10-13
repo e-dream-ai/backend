@@ -1,5 +1,5 @@
 import httpStatus from "http-status";
-import { FindOptionsWhere, ILike, In, IsNull, LessThan } from "typeorm";
+import { FindOptionsWhere, ILike, In, IsNull, LessThan, Not } from "typeorm";
 import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import { EditorProject, User } from "entities";
 import { PAGINATION } from "constants/pagination.constants";
@@ -175,7 +175,7 @@ export const handleGetEditorProjects = async (
   res: ResponseType,
 ) => {
   const user = res.locals.user!;
-  const { editorId, search } = req.query;
+  const { editorId, search, archived } = req.query;
   const take = Number(req.query.take ?? PAGINATION.TAKE);
   const skip = Number(req.query.skip ?? PAGINATION.SKIP);
 
@@ -196,6 +196,9 @@ export const handleGetEditorProjects = async (
         ...scope,
         ...(editorId ? { editorId } : {}),
         ...(search ? { name: ILike(`%${escapeLikePattern(search)}%`) } : {}),
+        ...(archived
+          ? { archivedAt: archived === "true" ? Not(IsNull()) : IsNull() }
+          : {}),
       },
       select: getEditorProjectSummaryColumns(),
       relations: getEditorProjectRelations(),
@@ -444,6 +447,54 @@ export const handleDeleteEditorProject = async (
     return handleInternalServerError(error as Error, req as RequestType, res);
   }
 };
+
+const setEditorProjectArchived = async (
+  req: RequestType<unknown, unknown, EditorProjectParamsRequest>,
+  res: ResponseType,
+  archived: boolean,
+) => {
+  const uuid: string = req.params.uuid!;
+  const user = res.locals.user!;
+
+  try {
+    const project = await editorProjectRepository.findOne({
+      where: { uuid, userId: user.id },
+      select: { id: true, archivedAt: true },
+    });
+
+    if (!project) {
+      return handleNotFound(req as RequestType, res);
+    }
+
+    const archivedAt = archived ? project.archivedAt ?? new Date() : null;
+
+    if (Boolean(project.archivedAt) !== archived) {
+      await editorProjectRepository.update(
+        { id: project.id },
+        { archivedAt, updated_at: () => `"updated_at"` },
+      );
+    }
+
+    return res.status(httpStatus.OK).json(
+      jsonResponse({
+        success: true,
+        data: { uuid, archivedAt },
+      }),
+    );
+  } catch (error) {
+    return handleInternalServerError(error as Error, req as RequestType, res);
+  }
+};
+
+export const handleArchiveEditorProject = (
+  req: RequestType<unknown, unknown, EditorProjectParamsRequest>,
+  res: ResponseType,
+) => setEditorProjectArchived(req, res, true);
+
+export const handleUnarchiveEditorProject = (
+  req: RequestType<unknown, unknown, EditorProjectParamsRequest>,
+  res: ResponseType,
+) => setEditorProjectArchived(req, res, false);
 
 export const handleLockEditorProject = async (
   req: RequestType<

@@ -286,6 +286,139 @@ describe("editor-project.controller", () => {
     expect(status).toHaveBeenCalledWith(200);
   });
 
+  it("filters the list by archivedAt when the archived flag is set", async () => {
+    const { req, res } = createReqRes();
+    req.query = { archived: "true" };
+
+    const editorProjectRepository = {
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    jest.mock("database/repositories", () => ({
+      __esModule: true,
+      editorProjectRepository,
+    }));
+    mockResponses();
+
+    const { handleGetEditorProjects } = await import(
+      "controllers/editor-project.controller"
+    );
+    const { IsNull, Not } = await import("typeorm");
+    await handleGetEditorProjects(req, res);
+
+    const args = editorProjectRepository.findAndCount.mock.calls[0][0];
+    expect(args.where).toEqual({
+      userId: USER_ID,
+      archivedAt: Not(IsNull()),
+    });
+  });
+
+  it("archives an owned project without bumping its revision or updated_at", async () => {
+    const { req, res, json } = createReqRes();
+    req.params.uuid = "p1";
+
+    const editorProjectRepository = {
+      findOne: jest.fn().mockResolvedValue({ id: 3, archivedAt: null }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    jest.mock("database/repositories", () => ({
+      __esModule: true,
+      editorProjectRepository,
+    }));
+    mockResponses();
+
+    const { handleArchiveEditorProject } = await import(
+      "controllers/editor-project.controller"
+    );
+    await handleArchiveEditorProject(req, res);
+
+    expect(editorProjectRepository.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { uuid: "p1", userId: USER_ID } }),
+    );
+    const [where, values] = editorProjectRepository.update.mock.calls[0];
+    expect(where).toEqual({ id: 3 });
+    expect(values.archivedAt).toBeInstanceOf(Date);
+    expect(values.revision).toBeUndefined();
+    expect(values.updated_at()).toBe(`"updated_at"`);
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { uuid: "p1", archivedAt: values.archivedAt },
+      }),
+    );
+  });
+
+  it("keeps the original archivedAt when archiving twice", async () => {
+    const { req, res } = createReqRes();
+    req.params.uuid = "p1";
+
+    const editorProjectRepository = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: 3, archivedAt: new Date("2026-01-01") }),
+      update: jest.fn(),
+    };
+    jest.mock("database/repositories", () => ({
+      __esModule: true,
+      editorProjectRepository,
+    }));
+    mockResponses();
+
+    const { handleArchiveEditorProject } = await import(
+      "controllers/editor-project.controller"
+    );
+    await handleArchiveEditorProject(req, res);
+
+    expect(editorProjectRepository.update).not.toHaveBeenCalled();
+  });
+
+  it("unarchives an owned project", async () => {
+    const { req, res } = createReqRes();
+    req.params.uuid = "p1";
+
+    const editorProjectRepository = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: 3, archivedAt: new Date("2026-01-01") }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    jest.mock("database/repositories", () => ({
+      __esModule: true,
+      editorProjectRepository,
+    }));
+    mockResponses();
+
+    const { handleUnarchiveEditorProject } = await import(
+      "controllers/editor-project.controller"
+    );
+    await handleUnarchiveEditorProject(req, res);
+
+    const [where, values] = editorProjectRepository.update.mock.calls[0];
+    expect(where).toEqual({ id: 3 });
+    expect(values.archivedAt).toBeNull();
+  });
+
+  it("does not archive another user's project", async () => {
+    const { req, res } = createReqRes();
+    req.params.uuid = "someone-elses-uuid";
+
+    const editorProjectRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
+    };
+    jest.mock("database/repositories", () => ({
+      __esModule: true,
+      editorProjectRepository,
+    }));
+    const { handleNotFound } = mockResponses();
+
+    const { handleArchiveEditorProject } = await import(
+      "controllers/editor-project.controller"
+    );
+    await handleArchiveEditorProject(req, res);
+
+    expect(editorProjectRepository.update).not.toHaveBeenCalled();
+    expect(handleNotFound).toHaveBeenCalled();
+  });
+
   it("does not link a project to a playlist the user does not own", async () => {
     const { req, res } = createReqRes();
     req.body = {

@@ -27,6 +27,7 @@ export const getEditorProjectSummaryColumns =
     },
     thumbnailDream: { uuid: true, thumbnail: true, nsfw: true },
     user: { id: true, uuid: true, name: true, avatar: true },
+    archivedAt: true,
     created_at: true,
     updated_at: true,
   });

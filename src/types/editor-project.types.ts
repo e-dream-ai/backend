@@ -16,6 +16,7 @@ export type GetEditorProjectsQuery = {
   playlistUuid?: string;
   dreamUuid?: string;
   search?: string;
+  archived?: "true" | "false";
   take?: number;
   skip?: number;
 };

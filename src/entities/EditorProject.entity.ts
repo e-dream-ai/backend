@@ -71,6 +71,9 @@ export class EditorProject {
   @Column({ type: "timestamp", nullable: true })
   lockedAt: Date | null;
 
+  @Column({ type: "timestamp", nullable: true })
+  archivedAt: Date | null;
+
   @CreateDateColumn()
   created_at: Date;
 

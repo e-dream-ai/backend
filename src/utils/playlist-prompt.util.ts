@@ -1,18 +1,18 @@
 import { PromptJson } from "./prompt.util";
 
-export interface UprezPlaylistPromptJson extends PromptJson {
-  infinidream_algorithm: "uprez_playlist";
+export interface EnhancePlaylistPromptJson extends PromptJson {
+  infinidream_algorithm: "enhance_playlist";
   source_playlist_uuid: string;
   dream_algorithm?: string;
   params?: Record<string, unknown>;
 }
 
-export const isUprezPlaylistPrompt = (
+export const isEnhancePlaylistPrompt = (
   prompt: PromptJson | null,
-): prompt is UprezPlaylistPromptJson => {
+): prompt is EnhancePlaylistPromptJson => {
   return (
     !!prompt &&
-    prompt.infinidream_algorithm === "uprez_playlist" &&
+    prompt.infinidream_algorithm === "enhance_playlist" &&
     typeof prompt.source_playlist_uuid === "string"
   );
 };

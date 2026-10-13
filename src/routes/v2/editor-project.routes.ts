@@ -28,8 +28,8 @@ const allowedRoles = checkRoleMiddleware([
  *  get:
  *    tags:
  *      - editor-project
- *    summary: Lists the signed in user's editor projects
- *    description: Returns metadata only, without the state blob
+ *    summary: Lists editor projects
+ *    description: Returns metadata only, without the state blob. Lists the signed in user's projects, or with playlistUuid or dreamUuid, the projects behind that playlist or dream that the user can open. Each project carries its owner and whether the user can edit it.
  *    parameters:
  *      - schema:
  *          type: string
@@ -38,6 +38,10 @@ const allowedRoles = checkRoleMiddleware([
  *      - schema:
  *          type: string
  *        name: playlistUuid
+ *        in: query
+ *      - schema:
+ *          type: string
+ *        name: dreamUuid
  *        in: query
  *      - schema:
  *          type: string
@@ -83,7 +87,7 @@ editorProjectRouter.get(
  *    tags:
  *      - editor-project
  *    summary: Gets one editor project including its state
- *    description: Gets one editor project including its state
+ *    description: Owners can edit their projects. Creators and admins can open other users' projects read-only, so canEdit is false.
  *    parameters:
  *      - name: uuid
  *        in: path

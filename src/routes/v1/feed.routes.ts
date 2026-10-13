@@ -4,7 +4,7 @@ import { Router } from "express";
 import { requireAuth } from "middlewares/require-auth.middleware";
 import { checkRoleMiddleware } from "middlewares/role.middleware";
 import validatorMiddleware from "middlewares/validator.middleware";
-import { feedSchema } from "schemas/feed.schema";
+import { feedSchema, groupedFeedSchema } from "schemas/feed.schema";
 
 const feedRouter = Router();
 
@@ -207,7 +207,7 @@ feedRouter.get(
     ROLES.CREATOR_GROUP,
     ROLES.ADMIN_GROUP,
   ]),
-  validatorMiddleware(feedSchema),
+  validatorMiddleware(groupedFeedSchema),
   feedController.handleGetGroupedFeed,
 );
 

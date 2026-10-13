@@ -4,7 +4,9 @@ import {
   CompleteMultipartUploadCommand,
   CompletedPart,
   AbortMultipartUploadCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
+import { Readable } from "stream";
 import { r2Client } from "clients/r2.client";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
@@ -105,6 +107,25 @@ export const abortMultipartUpload = async (
 
   const response = await r2Client.send(command);
   return response;
+};
+
+export const getObjectStream = async (
+  objectKey: string,
+  { maxBytes, timeoutMs }: { maxBytes: number; timeoutMs: number },
+): Promise<Readable | null> => {
+  const { Body, ContentLength } = await r2Client.send(
+    new GetObjectCommand({ Bucket: BUCKET_NAME, Key: objectKey }),
+    { abortSignal: AbortSignal.timeout(timeoutMs) },
+  );
+
+  if (!(Body instanceof Readable)) return null;
+
+  if (ContentLength === undefined || ContentLength > maxBytes) {
+    Body.destroy();
+    return null;
+  }
+
+  return Body;
 };
 
 /**

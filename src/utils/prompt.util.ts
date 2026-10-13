@@ -22,7 +22,7 @@ export const serializePrompt = (
 export const SUPPORTED_ALGORITHMS = [
   "animatediff",
   "deforum",
-  "uprez",
+  "enhance",
   "qwen-image",
   "z-image-turbo",
   "flux-schnell",
@@ -50,7 +50,7 @@ interface AlgorithmSpec {
 const ALGORITHM_REGISTRY: Record<SupportedAlgorithm, AlgorithmSpec> = {
   animatediff: { queue: "video", media: "video" },
   deforum: { queue: "deforumvideo", media: "video" },
-  uprez: { queue: "uprezvideo", media: "video" },
+  enhance: { queue: "enhancevideo", media: "video" },
   "qwen-image": { queue: "qwenimage", media: "image" },
   "z-image-turbo": { queue: "zimageturbo", media: "image" },
   "flux-schnell": { queue: "falimage", media: "image" },
@@ -109,6 +109,12 @@ export const isValidAlgorithm = (
   algorithm: string,
 ): algorithm is SupportedAlgorithm => {
   return SUPPORTED_ALGORITHMS.includes(algorithm as SupportedAlgorithm);
+};
+
+export const hasGenerationAlgorithm = (entity: PromptCarrier): boolean => {
+  const promptJson = parsePromptJson(entity);
+  const algorithm = promptJson ? getAlgorithmFromPrompt(promptJson) : null;
+  return !!algorithm && isValidAlgorithm(algorithm);
 };
 
 export const mapAlgorithmToQueue = (algorithm: string): string | null => {

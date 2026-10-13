@@ -14,7 +14,8 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { tracker } from "clients/google-analytics";
 import { r2Client } from "clients/r2.client";
 
-import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
+import { prepareImageUpload } from "utils/image.util";
+import { requestImageNormalization } from "services/image-ingest.service";
 import { GENERAL_MESSAGES } from "constants/messages/general.constants";
 import { THUMBNAIL } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
@@ -56,15 +57,15 @@ import { computeDefaultPlaylistFromUserId } from "utils/default-playlist.util";
 import { canExecuteAction } from "utils/permissions.util";
 import { parsePromptJson, serializePrompt } from "utils/prompt.util";
 import {
-  isUprezPlaylistPrompt,
-  UprezPlaylistPromptJson,
+  isEnhancePlaylistPrompt,
+  EnhancePlaylistPromptJson,
 } from "utils/playlist-prompt.util";
 import {
-  previewUprezPlaylist,
-  runUprezPlaylist,
-  UprezSourceAccessError,
-  cancelUprezPlaylist,
-} from "utils/uprez-playlist.util";
+  previewEnhancePlaylist,
+  runEnhancePlaylist,
+  EnhanceSourceAccessError,
+  cancelEnhancePlaylist,
+} from "utils/enhance-playlist.util";
 import {
   deletePlaylistItemAndResetOrder,
   deletePlaylistKeyframeAndResetOrder,
@@ -72,6 +73,7 @@ import {
   findOnePlaylistWithoutItems,
   getPaginatedPlaylistItems,
   getPaginatedPlaylistKeyframes,
+  getPlaylistFindOptionsRelations,
   getPlaylistFindOptionsWhere,
   getPlaylistSelectedColumns,
   populateDefautPlaylist,
@@ -169,12 +171,17 @@ export const handleGetPlaylist = async (
     // Transform playlist to include signed URLs
     const transformedPlaylist = await transformPlaylistWithSignedUrls(playlist);
 
-    const { totalDurationSeconds, totalDreamCount, progress } =
-      await computePlaylistTotals(playlist.id, {
-        userId: user.id,
-        isAdmin: isUserAdmin,
-        nsfw: user?.nsfw,
-      });
+    const {
+      totalDurationSeconds,
+      totalFrames,
+      totalDreamCount,
+      media,
+      progress,
+    } = await computePlaylistTotals(playlist.id, {
+      userId: user.id,
+      isAdmin: isUserAdmin,
+      nsfw: user?.nsfw,
+    });
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
@@ -183,7 +190,9 @@ export const handleGetPlaylist = async (
           playlist: {
             ...transformedPlaylist,
             totalDurationSeconds,
+            totalFrames,
             totalDreamCount,
+            media,
             progress,
           },
         },
@@ -723,11 +732,15 @@ export const handleCreatePlaylist = async (
       playlist_uuid: playlist.uuid,
     });
 
+    const savedPlaylist = await playlistRepository.findOneOrFail({
+      where: { id: createdPlaylist.id },
+      relations: getPlaylistFindOptionsRelations(),
+      select: getPlaylistSelectedColumns(),
+    });
+
     return res
       .status(httpStatus.CREATED)
-      .json(
-        jsonResponse({ success: true, data: { playlist: createdPlaylist } }),
-      );
+      .json(jsonResponse({ success: true, data: { playlist: savedPlaylist } }));
   } catch (err) {
     const error = err as Error;
     return handleInternalServerError(error, req, res);
@@ -951,29 +964,36 @@ export const handleUpdateThumbnailPlaylist = async (
     }
 
     // update playlist
-    const thumbnailBuffer = req.file?.buffer;
-    const bucketName = env.R2_BUCKET_NAME;
-    const fileMymeType = req.file?.mimetype;
-    const fileExtension =
-      MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
-    const fileName = `${THUMBNAIL}-${Date.now()}.${fileExtension}`;
-    const filePath = `${getUserIdentifier(user)}/${PLAYLIST_PREFIX}-${
-      playlist.id
-    }/${fileName}`;
+    const upload = req.file
+      ? prepareImageUpload(req.file, "thumbnail")
+      : undefined;
+    let newThumbnail: string | null = null;
 
-    if (thumbnailBuffer) {
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: filePath,
-        Body: thumbnailBuffer,
-        ContentType: fileMymeType || "image/jpeg",
-        CacheControl: "no-cache",
-        Expires: new Date(),
-      });
-      await r2Client.send(command);
+    if (upload) {
+      const playlistFolder = `${getUserIdentifier(user)}/${PLAYLIST_PREFIX}-${
+        playlist.id
+      }`;
+      newThumbnail = `${playlistFolder}/${THUMBNAIL}-${Date.now()}.${
+        upload.extension
+      }`;
+      await r2Client.send(
+        new PutObjectCommand({
+          Bucket: env.R2_BUCKET_NAME,
+          Key: newThumbnail,
+          Body: upload.buffer,
+          ContentType: upload.contentType || "image/jpeg",
+          CacheControl: "no-cache",
+          Expires: new Date(),
+        }),
+      );
+      if (upload.needsNormalization) {
+        requestImageNormalization({
+          object_key: newThumbnail,
+          preset: "thumbnail",
+          cache_control: "no-cache",
+        });
+      }
     }
-
-    const newThumbnail = thumbnailBuffer ? filePath : null;
 
     await playlistRepository.update(
       { id: playlist.id },
@@ -1514,20 +1534,23 @@ const loadPlaylistForOwnerAction = async (
   return playlist;
 };
 
-const loadUprezPlaylistForRun = async (
+const loadEnhancePlaylistForRun = async (
   req: RequestType<unknown, unknown, PlaylistParamsRequest>,
   res: ResponseType,
-): Promise<{ playlist: Playlist; prompt: UprezPlaylistPromptJson } | null> => {
+): Promise<{
+  playlist: Playlist;
+  prompt: EnhancePlaylistPromptJson;
+} | null> => {
   const playlist = await loadPlaylistForOwnerAction(req, res);
   if (!playlist) return null;
 
   const prompt = parsePromptJson(playlist);
 
-  if (!isUprezPlaylistPrompt(prompt)) {
+  if (!isEnhancePlaylistPrompt(prompt)) {
     res.status(httpStatus.BAD_REQUEST).json(
       jsonResponse({
         success: false,
-        message: "Playlist is not a runnable uprez playlist",
+        message: "Playlist is not a runnable enhance playlist",
       }),
     );
     return null;
@@ -1536,12 +1559,12 @@ const loadUprezPlaylistForRun = async (
   return { playlist, prompt };
 };
 
-const handleUprezRunError = (
+const handleEnhanceRunError = (
   err: unknown,
   req: RequestType,
   res: ResponseType,
 ) =>
-  err instanceof UprezSourceAccessError
+  err instanceof EnhanceSourceAccessError
     ? handleNotFound(req, res)
     : handleInternalServerError(err as Error, req, res);
 
@@ -1550,10 +1573,10 @@ export const handleRunPlaylist = async (
   res: ResponseType,
 ) => {
   try {
-    const loaded = await loadUprezPlaylistForRun(req, res);
+    const loaded = await loadEnhancePlaylistForRun(req, res);
     if (!loaded) return;
 
-    const result = await runUprezPlaylist({
+    const result = await runEnhancePlaylist({
       ...loaded,
       user: res.locals.user!,
     });
@@ -1562,7 +1585,7 @@ export const handleRunPlaylist = async (
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { result } }));
   } catch (err) {
-    return handleUprezRunError(err, req as RequestType, res);
+    return handleEnhanceRunError(err, req as RequestType, res);
   }
 };
 
@@ -1575,12 +1598,12 @@ export const handlePreviewRunPlaylist = async (
   res: ResponseType,
 ) => {
   try {
-    const loaded = await loadUprezPlaylistForRun(req, res);
+    const loaded = await loadEnhancePlaylistForRun(req, res);
     if (!loaded) return;
 
     const { playlist, prompt } = loaded;
     const { source_playlist_uuid, params } = req.body ?? {};
-    const result = await previewUprezPlaylist({
+    const result = await previewEnhancePlaylist({
       playlist,
       prompt: {
         ...prompt,
@@ -1595,7 +1618,7 @@ export const handlePreviewRunPlaylist = async (
       .status(httpStatus.OK)
       .json(jsonResponse({ success: true, data: { result } }));
   } catch (err) {
-    return handleUprezRunError(err, req as RequestType, res);
+    return handleEnhanceRunError(err, req as RequestType, res);
   }
 };
 
@@ -1607,7 +1630,7 @@ export const handleCancelPlaylist = async (
     const playlist = await loadPlaylistForOwnerAction(req, res);
     if (!playlist) return;
 
-    const result = await cancelUprezPlaylist(playlist.id);
+    const result = await cancelEnhancePlaylist(playlist.id);
 
     return res
       .status(httpStatus.OK)

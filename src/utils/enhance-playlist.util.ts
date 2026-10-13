@@ -13,15 +13,15 @@ import { dreamRepository, playlistItemRepository } from "database/repositories";
 import { DreamStatusType } from "types/dream.types";
 import { PlaylistItemType } from "types/playlist.types";
 import { APP_LOGGER } from "shared/logger";
-import { UprezPlaylistPromptJson } from "./playlist-prompt.util";
+import { EnhancePlaylistPromptJson } from "./playlist-prompt.util";
 import { mapAlgorithmToQueue, parsePromptJson } from "./prompt.util";
 import {
   getSourceDreamUuid,
   IN_FLIGHT_STATUSES,
-  planUprezRun,
-  RunUprezPlaylistResult,
-  UprezRunSummary,
-} from "./uprez-plan.util";
+  planEnhanceRun,
+  RunEnhancePlaylistResult,
+  EnhanceRunSummary,
+} from "./enhance-plan.util";
 import {
   failDreamWithError,
   processDreamRequest,
@@ -37,16 +37,16 @@ import {
 } from "./job-cancel.util";
 
 export type {
-  RunUprezPlaylistResult,
-  UprezRunSummary,
-} from "./uprez-plan.util";
+  RunEnhancePlaylistResult,
+  EnhanceRunSummary,
+} from "./enhance-plan.util";
 
-const UPREZ_SETTINGS_CHANGED = "Cancelled: uprez settings changed";
+const ENHANCE_SETTINGS_CHANGED = "Cancelled: enhance settings changed";
 
-export class UprezSourceAccessError extends Error {
+export class EnhanceSourceAccessError extends Error {
   constructor() {
     super("Source playlist is unavailable");
-    this.name = "UprezSourceAccessError";
+    this.name = "EnhanceSourceAccessError";
   }
 }
 
@@ -78,7 +78,7 @@ const detectSourceLoop = (dreams: Dream[]): boolean => {
   );
 };
 
-const linkUprezPlaylistKeyframes = async (
+const linkEnhancePlaylistKeyframes = async (
   manager: EntityManager,
   {
     playlistId,
@@ -157,9 +157,9 @@ const linkUprezPlaylistKeyframes = async (
   return dreams.length;
 };
 
-type UprezRunArgs = {
+type EnhanceRunArgs = {
   playlist: Pick<Playlist, "id" | "uuid">;
-  prompt: UprezPlaylistPromptJson;
+  prompt: EnhancePlaylistPromptJson;
   user: User;
 };
 
@@ -167,14 +167,14 @@ const CANDIDATE_BATCH = 500;
 
 /**
  * The runner's processed dreams of these sources that sit in no playlist:
- * mostly uprezes an earlier run swapped out. A dream still in another
+ * mostly enhanced dreams an earlier run swapped out. A dream still in another
  * playlist is left alone, since linking keyframes here would rewrite the
  * start/end keyframes that playlist relies on.
  *
  * Prompts are stored as JSON-encoded strings, so `prompt->>'…'` can't reach
  * inside them; a text match narrows the rows and the planner parses the rest.
  */
-const findUprezCandidates = async (
+const findEnhanceCandidates = async (
   manager: EntityManager,
   userId: number,
   sourceUuids: string[],
@@ -204,11 +204,11 @@ const findUprezCandidates = async (
   return candidates;
 };
 
-const loadUprezRun = async (
-  { playlist, prompt, user }: UprezRunArgs,
+const loadEnhanceRun = async (
+  { playlist, prompt, user }: EnhanceRunArgs,
   manager: EntityManager = appDataSource.manager,
 ) => {
-  const dreamAlgorithm = prompt.dream_algorithm ?? "uprez";
+  const dreamAlgorithm = prompt.dream_algorithm ?? "enhance";
   const params = prompt.params ?? {};
 
   const source = await manager.findOne(Playlist, {
@@ -217,7 +217,7 @@ const loadUprezRun = async (
   });
 
   if (!source || !canReadSource(source, user)) {
-    throw new UprezSourceAccessError();
+    throw new EnhanceSourceAccessError();
   }
 
   const sourceItems = await getOrderedDreamItems(manager, source.id);
@@ -227,17 +227,17 @@ const loadUprezRun = async (
 
   // Check every source before mutating the destination or queuing work.
   if (sourceDreams.some((dream) => !canReadSource(dream, user))) {
-    throw new UprezSourceAccessError();
+    throw new EnhanceSourceAccessError();
   }
 
   const derivedItems = await getOrderedDreamItems(manager, playlist.id);
-  const candidates = await findUprezCandidates(
+  const candidates = await findEnhanceCandidates(
     manager,
     user.id,
     sourceDreams.map((dream) => dream.uuid),
   );
 
-  const plan = planUprezRun({
+  const plan = planEnhanceRun({
     sourceDreams,
     derivedItems,
     candidates,
@@ -248,10 +248,10 @@ const loadUprezRun = async (
   return { plan, sourceDreams, dreamAlgorithm, params };
 };
 
-/** What `runUprezPlaylist` would do with this prompt. Writes nothing. */
-export const previewUprezPlaylist = async (
-  args: UprezRunArgs,
-): Promise<UprezRunSummary> => (await loadUprezRun(args)).plan.result;
+/** What `runEnhancePlaylist` would do with this prompt. Writes nothing. */
+export const previewEnhancePlaylist = async (
+  args: EnhanceRunArgs,
+): Promise<EnhanceRunSummary> => (await loadEnhanceRun(args)).plan.result;
 
 const cancelReplacedJobs = async (dreams: Dream[]): Promise<void> => {
   const uuidsByQueue = new Map<string, string[]>();
@@ -269,7 +269,7 @@ const cancelReplacedJobs = async (dreams: Dream[]): Promise<void> => {
     [...uuidsByQueue].map(([queueName, uuids]) =>
       cancelJobsByDreamUuids(queueName, uuids).catch((error) =>
         APP_LOGGER.error(
-          `Failed to cancel replaced uprez jobs in queue ${queueName}:`,
+          `Failed to cancel replaced enhance jobs in queue ${queueName}:`,
           error,
         ),
       ),
@@ -277,15 +277,18 @@ const cancelReplacedJobs = async (dreams: Dream[]): Promise<void> => {
   );
 };
 
-const writeUprezRun = async (manager: EntityManager, args: UprezRunArgs) => {
+const writeEnhanceRun = async (
+  manager: EntityManager,
+  args: EnhanceRunArgs,
+) => {
   const { playlist, user } = args;
 
   await manager.query("SELECT pg_advisory_xact_lock(hashtext($1), $2)", [
-    "uprez_run",
+    "enhance_run",
     user.id,
   ]);
 
-  const { plan, sourceDreams, dreamAlgorithm, params } = await loadUprezRun(
+  const { plan, sourceDreams, dreamAlgorithm, params } = await loadEnhanceRun(
     args,
     manager,
   );
@@ -298,7 +301,7 @@ const writeUprezRun = async (manager: EntityManager, args: UprezRunArgs) => {
         id: In(plan.dreamsToCancel.map((dream) => dream.id)),
         status: In(IN_FLIGHT_STATUSES),
       },
-      { status: DreamStatusType.FAILED, error: UPREZ_SETTINGS_CHANGED },
+      { status: DreamStatusType.FAILED, error: ENHANCE_SETTINGS_CHANGED },
     );
   }
 
@@ -320,17 +323,17 @@ const writeUprezRun = async (manager: EntityManager, args: UprezRunArgs) => {
       : [];
 
   const newDreams = plan.sourcesToCreate.map(({ source }) => {
-    const uprezDream = new Dream();
-    uprezDream.name = `${source.name ?? "dream"} (uprez)`;
-    uprezDream.user = userRef;
-    uprezDream.status = DreamStatusType.QUEUE;
-    uprezDream.prompt = JSON.stringify({
+    const enhanceDream = new Dream();
+    enhanceDream.name = `${source.name ?? "dream"} (enhance)`;
+    enhanceDream.user = userRef;
+    enhanceDream.status = DreamStatusType.QUEUE;
+    enhanceDream.prompt = JSON.stringify({
       ...params,
       infinidream_algorithm: dreamAlgorithm,
       video_uuid: source.uuid,
       source_dream_uuid: source.uuid,
     });
-    return uprezDream;
+    return enhanceDream;
   });
   const savedDreams = newDreams.length > 0 ? await manager.save(newDreams) : [];
 
@@ -387,7 +390,7 @@ const writeUprezRun = async (manager: EntityManager, args: UprezRunArgs) => {
     );
   }
 
-  const linked = await linkUprezPlaylistKeyframes(manager, {
+  const linked = await linkEnhancePlaylistKeyframes(manager, {
     playlistId: playlist.id,
     userId: user.id,
     loop: detectSourceLoop(sourceDreams),
@@ -400,12 +403,14 @@ const writeUprezRun = async (manager: EntityManager, args: UprezRunArgs) => {
   };
 };
 
-export const runUprezPlaylist = async (
-  args: UprezRunArgs,
-): Promise<RunUprezPlaylistResult> => {
+export const runEnhancePlaylist = async (
+  args: EnhanceRunArgs,
+): Promise<RunEnhancePlaylistResult> => {
   const { playlist } = args;
   const { result, dreamsToCancel, dreamsToEnqueue } =
-    await appDataSource.transaction((manager) => writeUprezRun(manager, args));
+    await appDataSource.transaction((manager) =>
+      writeEnhanceRun(manager, args),
+    );
 
   await cancelReplacedJobs(dreamsToCancel);
 
@@ -417,7 +422,7 @@ export const runUprezPlaylist = async (
       }
     } catch (error) {
       APP_LOGGER.error(
-        `Failed to enqueue uprez job for dream ${dream.uuid} in playlist ${playlist.uuid}:`,
+        `Failed to enqueue enhance job for dream ${dream.uuid} in playlist ${playlist.uuid}:`,
         error,
       );
     }
@@ -426,13 +431,13 @@ export const runUprezPlaylist = async (
   await refreshPlaylistUpdatedAtTimestamp(playlist.id);
 
   APP_LOGGER.info(
-    `Ran uprez playlist ${playlist.uuid}: ${JSON.stringify(result)}`,
+    `Ran enhance playlist ${playlist.uuid}: ${JSON.stringify(result)}`,
   );
 
   return result;
 };
 
-export const cancelUprezPlaylist = async (
+export const cancelEnhancePlaylist = async (
   playlistId: number,
 ): Promise<{ cancelled: number }> => {
   const items = await playlistItemRepository.find({
@@ -456,7 +461,7 @@ export const cancelUprezPlaylist = async (
         return true;
       } catch (error) {
         APP_LOGGER.error(
-          `Failed to cancel uprez job for dream ${dream.uuid}:`,
+          `Failed to cancel enhance job for dream ${dream.uuid}:`,
           error,
         );
         return false;

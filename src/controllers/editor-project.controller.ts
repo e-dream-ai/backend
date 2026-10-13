@@ -1,7 +1,7 @@
 import httpStatus from "http-status";
-import { ILike, IsNull, LessThan } from "typeorm";
+import { FindOptionsWhere, ILike, In, IsNull, LessThan } from "typeorm";
 import { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
-import { EditorProject } from "entities";
+import { EditorProject, User } from "entities";
 import { PAGINATION } from "constants/pagination.constants";
 import {
   EDITOR_PROJECT_LOCK_TTL_MS,
@@ -26,6 +26,7 @@ import {
 import {
   dreamRepository,
   editorProjectRepository,
+  playlistItemRepository,
   playlistRepository,
 } from "database/repositories";
 import {
@@ -35,6 +36,7 @@ import {
   toEditorProjectResponse,
   toEditorProjectResponses,
 } from "utils/editor-project.util";
+import { canOpenEditorProject } from "utils/editor-project-access.util";
 import { fillEditorProjectPlaylistThumbnails } from "services/editor-project-playlist.service";
 import { isAdmin } from "utils/user.util";
 import {
@@ -109,37 +111,90 @@ const resolveThumbnailDreamId = async (
   return dream?.id ?? null;
 };
 
+type ProjectScope = FindOptionsWhere<EditorProject>;
+
+const resolvePlaylistScope = async (
+  playlistUuid: string,
+  viewer: User,
+): Promise<ProjectScope | null> => {
+  const playlist = await playlistRepository.findOne({
+    where: { uuid: playlistUuid },
+    select: { id: true, userId: true, hidden: true, nsfw: true },
+  });
+
+  if (!playlist?.userId) return null;
+  if (!canOpenEditorProject(viewer, playlist.userId, playlist)) return null;
+
+  return { playlistId: playlist.id, userId: playlist.userId };
+};
+
+const resolveDreamScope = async (
+  dreamUuid: string,
+  viewer: User,
+): Promise<ProjectScope | null> => {
+  const dream = await dreamRepository.findOne({
+    where: { uuid: dreamUuid },
+    select: { id: true, userId: true },
+  });
+
+  if (!dream?.userId) return null;
+  const ownerId = dream.userId;
+
+  const items = await playlistItemRepository.find({
+    where: { dreamItem: { id: dream.id }, playlist: { userId: ownerId } },
+    relations: { playlist: true },
+    select: { id: true, playlist: { id: true, hidden: true, nsfw: true } },
+  });
+
+  const playlistIds = [
+    ...new Set(
+      items
+        .filter(({ playlist }) =>
+          canOpenEditorProject(viewer, ownerId, playlist),
+        )
+        .map(({ playlist }) => playlist.id),
+    ),
+  ];
+
+  return playlistIds.length > 0
+    ? { playlistId: In(playlistIds), userId: ownerId }
+    : null;
+};
+
+const resolveProjectScope = (
+  viewer: User,
+  { playlistUuid, dreamUuid }: GetEditorProjectsQuery,
+): Promise<ProjectScope | null> => {
+  if (playlistUuid) return resolvePlaylistScope(playlistUuid, viewer);
+  if (dreamUuid) return resolveDreamScope(dreamUuid, viewer);
+  return Promise.resolve({ userId: viewer.id });
+};
+
 export const handleGetEditorProjects = async (
   req: RequestType<unknown, GetEditorProjectsQuery>,
   res: ResponseType,
 ) => {
   const user = res.locals.user!;
-  const showNsfw = Boolean(user.nsfw);
-  const { editorId, playlistUuid, search } = req.query;
+  const { editorId, search } = req.query;
   const take = Number(req.query.take ?? PAGINATION.TAKE);
   const skip = Number(req.query.skip ?? PAGINATION.SKIP);
 
   try {
-    let playlistId: number | undefined;
+    const scope = await resolveProjectScope(user, req.query);
 
-    if (playlistUuid) {
-      playlistId = await findOwnedPlaylistId(playlistUuid, user.id);
-
-      if (playlistId === undefined) {
-        return res.status(httpStatus.OK).json(
-          jsonResponse({
-            success: true,
-            data: { projects: [], count: 0 },
-          }),
-        );
-      }
+    if (!scope) {
+      return res.status(httpStatus.OK).json(
+        jsonResponse({
+          success: true,
+          data: { projects: [], count: 0 },
+        }),
+      );
     }
 
     const [projects, count] = await editorProjectRepository.findAndCount({
       where: {
-        userId: user.id,
+        ...scope,
         ...(editorId ? { editorId } : {}),
-        ...(playlistId !== undefined ? { playlistId } : {}),
         ...(search ? { name: ILike(`%${escapeLikePattern(search)}%`) } : {}),
       },
       select: getEditorProjectSummaryColumns(),
@@ -159,7 +214,7 @@ export const handleGetEditorProjects = async (
       jsonResponse({
         success: true,
         data: {
-          projects: toEditorProjectResponses(projects, showNsfw),
+          projects: toEditorProjectResponses(projects, user),
           count,
         },
       }),
@@ -175,23 +230,25 @@ export const handleGetEditorProject = async (
 ) => {
   const uuid: string = req.params.uuid!;
   const user = res.locals.user!;
-  const showNsfw = Boolean(user.nsfw);
 
   try {
     const project = await editorProjectRepository.findOne({
-      where: { uuid, userId: user.id },
+      where: { uuid },
       select: getEditorProjectSelectedColumns(),
       relations: getEditorProjectRelations(),
     });
 
-    if (!project) {
+    if (
+      !project ||
+      !canOpenEditorProject(user, project.userId, project.playlist)
+    ) {
       return handleNotFound(req as RequestType, res);
     }
 
     return res.status(httpStatus.OK).json(
       jsonResponse({
         success: true,
-        data: { project: toEditorProjectResponse(project, showNsfw) },
+        data: { project: toEditorProjectResponse(project, user) },
       }),
     );
   } catch (error) {
@@ -204,7 +261,6 @@ export const handleCreateEditorProject = async (
   res: ResponseType,
 ) => {
   const user = res.locals.user!;
-  const showNsfw = Boolean(user.nsfw);
   const body = req.body as CreateEditorProjectRequest;
 
   try {
@@ -239,7 +295,7 @@ export const handleCreateEditorProject = async (
       jsonResponse({
         success: true,
         data: {
-          project: created ? toEditorProjectResponse(created, showNsfw) : saved,
+          project: created ? toEditorProjectResponse(created, user) : saved,
         },
       }),
     );
@@ -258,7 +314,6 @@ export const handleUpdateEditorProject = async (
 ) => {
   const uuid: string = req.params.uuid!;
   const user = res.locals.user!;
-  const showNsfw = Boolean(user.nsfw);
   const body = req.body as UpdateEditorProjectRequest;
 
   try {
@@ -275,7 +330,7 @@ export const handleUpdateEditorProject = async (
     if (project.revision !== body.revision) {
       return handleConflict(req as RequestType, res, {
         message: EDITOR_PROJECT_MESSAGES.REVISION_CONFLICT,
-        data: { project: toEditorProjectResponse(project, showNsfw) },
+        data: { project: toEditorProjectResponse(project, user) },
       });
     }
 
@@ -336,7 +391,7 @@ export const handleUpdateEditorProject = async (
       return handleConflict(req as RequestType, res, {
         message: EDITOR_PROJECT_MESSAGES.REVISION_CONFLICT,
         ...(current
-          ? { data: { project: toEditorProjectResponse(current, showNsfw) } }
+          ? { data: { project: toEditorProjectResponse(current, user) } }
           : {}),
       });
     }
@@ -351,7 +406,7 @@ export const handleUpdateEditorProject = async (
       jsonResponse({
         success: true,
         data: {
-          project: updated ? toEditorProjectResponse(updated, showNsfw) : null,
+          project: updated ? toEditorProjectResponse(updated, user) : null,
         },
       }),
     );

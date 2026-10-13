@@ -37,6 +37,7 @@ import {
   setKeyframeVersion,
 } from "utils/uploadVersion.util";
 import { CreateMultipartUploadFileRequest } from "types/keyframe.types";
+import { requestImageNormalization } from "services/image-ingest.service";
 import { keyframeRepository, userRepository } from "database/repositories";
 import {
   transformKeyframesWithSignedUrls,
@@ -159,7 +160,12 @@ export const handleCreateKeyframe = async (
     const keyframe = new Keyframe();
     keyframe.name = name;
     keyframe.user = user!;
-    const createdKeyframe = await keyframeRepository.save(keyframe);
+    const { id } = await keyframeRepository.save(keyframe);
+    const createdKeyframe = await keyframeRepository.findOneOrFail({
+      where: { id },
+      relations: { user: true },
+      select: getKeyframeSelectedColumns(),
+    });
 
     return res
       .status(httpStatus.CREATED)
@@ -314,13 +320,16 @@ export const handleCompleteKeyframeImageUpload = async (
       renderVersion: await getKeyframeVersion(keyframeUUID),
     });
 
-    await keyframeRepository.update(keyframe.id, { image: filePath! });
-    await delKeyframeVersion(keyframeUUID);
-
     /**
      * completes multipart upload with path, upload id and parts
      */
-    await completeMultipartUpload(filePath!, uploadId!, parts!);
+    await completeMultipartUpload(filePath, uploadId!, parts!);
+
+    await Promise.all([
+      keyframeRepository.update(keyframe.id, { image: filePath }),
+      delKeyframeVersion(keyframeUUID),
+    ]);
+    requestImageNormalization({ object_key: filePath, preset: "dream" });
 
     return res
       .status(httpStatus.CREATED)

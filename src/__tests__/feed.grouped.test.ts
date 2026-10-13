@@ -84,4 +84,49 @@ describe("feed grouped endpoint", () => {
     ).toBeUndefined();
     expect(payload.data.count).toBe(2);
   });
+
+  it("handleGetGroupedFeed limits orphans=only to dreams and passes the filter on", async () => {
+    const { req, res, status } = createReqRes();
+    req.query = { orphans: "only", type: "playlist" };
+
+    const feedItemRepository = {
+      findAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    jest.mock("database/repositories", () => ({
+      __esModule: true,
+      feedItemRepository,
+    }));
+    const getFeedFindOptionsWhere = jest.fn().mockReturnValue({});
+    jest.mock("utils/feed.util", () => ({
+      __esModule: true,
+      formatFeedResponse: jest.fn().mockResolvedValue([]),
+      getFeedFindOptionsRelations: jest.fn().mockReturnValue({}),
+      getFeedFindOptionsWhere,
+      getFeedSelectedColumns: jest.fn().mockReturnValue({}),
+      groupFeedDreamItemsByPlaylist: jest.fn().mockReturnValue(new Map()),
+    }));
+    jest.mock("utils/transform.util", () => ({
+      __esModule: true,
+      transformFeedItemsWithSignedUrls: jest.fn().mockResolvedValue([]),
+    }));
+    jest.mock("utils/responses.util", () => ({
+      __esModule: true,
+      jsonResponse: (p: unknown) => p,
+    }));
+    jest.mock("utils/user.util", () => ({
+      __esModule: true,
+      isAdmin: () => false,
+    }));
+
+    const { handleGetGroupedFeed } = await import(
+      "controllers/feed.controller"
+    );
+    await handleGetGroupedFeed(req, res);
+
+    expect(status).toHaveBeenCalledWith(200);
+    expect(getFeedFindOptionsWhere).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "dream" }),
+      expect.objectContaining({ orphans: "only" }),
+    );
+  });
 });

@@ -94,8 +94,14 @@ describe("keyframe.controller", () => {
   it("handleCreateKeyframe creates and returns 201", async () => {
     const { req, res, json, status } = createReqRes();
     req.body = { name: "KF" };
+    const publicKeyframe = { id: 5, name: "KF", user: { id: 1 } };
     const keyframeRepository = {
-      save: jest.fn().mockResolvedValue({ id: 5, name: "KF" }),
+      save: jest.fn().mockResolvedValue({
+        id: 5,
+        name: "KF",
+        user: { id: 1, email: "owner@example.com", currentDream: {} },
+      }),
+      findOneOrFail: jest.fn().mockResolvedValue(publicKeyframe),
     };
     jest.mock("database/repositories", () => ({
       __esModule: true,
@@ -110,10 +116,13 @@ describe("keyframe.controller", () => {
       "controllers/keyframe.controller"
     );
     await handleCreateKeyframe(req, res);
+    expect(keyframeRepository.findOneOrFail).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 5 }, relations: { user: true } }),
+    );
     expect(status).toHaveBeenCalledWith(201);
     expect(json).toHaveBeenCalledWith({
       success: true,
-      data: { keyframe: { id: 5, name: "KF" } },
+      data: { keyframe: publicKeyframe },
     });
   });
 

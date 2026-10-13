@@ -7,7 +7,7 @@ import httpStatus from "http-status";
 import { FindOptionsWhere } from "typeorm";
 import { RequestType, ResponseType } from "types/express.types";
 import { FeedItemType } from "types/feed-item.types";
-import { GetFeedRequest } from "types/feed.types";
+import { GetFeedRequest, GetGroupedFeedRequest } from "types/feed.types";
 import { DreamMediaType } from "types/dream.types";
 import {
   formatFeedResponse,
@@ -279,7 +279,7 @@ export const handleGetMyDreams = async (
  *
  */
 export const handleGetGroupedFeed = async (
-  req: RequestType<unknown, GetFeedRequest>,
+  req: RequestType<unknown, GetGroupedFeedRequest>,
   res: ResponseType,
 ) => {
   const take = Math.min(
@@ -296,13 +296,14 @@ export const handleGetGroupedFeed = async (
   const user = res.locals.user!;
   const nsfw = user?.nsfw;
   const onlyHidden = req.query.onlyHidden === "true";
+  const orphans = req.query.orphans;
   const isUserAdmin = isAdmin(user);
 
   try {
-    // Base query options
+    // Base query options, orphans are dreams so "only" leaves out playlists
     const baseOptions: FindOptionsWhere<FeedItem> = {
       user: userUUID ? { uuid: userUUID } : undefined,
-      type: type,
+      type: orphans === "only" ? FeedItemType.DREAM : type,
     };
 
     // Get where conditions with appropriate hidden item handling
@@ -313,6 +314,7 @@ export const handleGetGroupedFeed = async (
       isAdmin: isUserAdmin,
       userId: user.id,
       mediaType,
+      orphans,
     });
 
     const [rawFeed, count] = await feedItemRepository.findAndCount({

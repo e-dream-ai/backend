@@ -1,7 +1,8 @@
 export enum EditorId {
   FLOW = "flow",
   ACTION = "action",
-  UPREZ = "uprez",
+  ENHANCE = "enhance",
+  DEFORUM = "deforum",
 }
 
 export type EditorProjectState = Record<string, unknown>;
@@ -13,6 +14,7 @@ export type EditorProjectParamsRequest = {
 export type GetEditorProjectsQuery = {
   editorId?: EditorId;
   playlistUuid?: string;
+  dreamUuid?: string;
   search?: string;
   take?: number;
   skip?: number;

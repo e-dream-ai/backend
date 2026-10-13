@@ -1,7 +1,8 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { r2Client } from "clients/r2.client";
 
-import { MYME_TYPES, MYME_TYPES_EXTENSIONS } from "constants/file.constants";
+import { prepareImageUpload } from "utils/image.util";
+import { requestImageNormalization } from "services/image-ingest.service";
 import { AVATAR } from "constants/multimedia.constants";
 import { PAGINATION } from "constants/pagination.constants";
 import { ROLES } from "constants/role.constants";
@@ -604,28 +605,33 @@ export const handleUpdateUserAvatar = async (
       return handleForbidden(req as RequestType, res);
     }
 
-    // update playlist
-    const avatarBuffer = req.file?.buffer;
-    const bucketName = env.R2_BUCKET_NAME;
-    const fileMymeType = req.file?.mimetype;
-    const fileExtension =
-      MYME_TYPES_EXTENSIONS[fileMymeType ?? MYME_TYPES.JPEG];
-    const fileName = `${AVATAR}-${Date.now()}.${fileExtension}`;
-    const filePath = `${getUserIdentifier(user)}/${fileName}`;
+    const upload = req.file
+      ? prepareImageUpload(req.file, "avatar")
+      : undefined;
+    let avatar: string | null = null;
 
-    if (avatarBuffer) {
-      const command = new PutObjectCommand({
-        Bucket: bucketName,
-        Key: filePath,
-        Body: avatarBuffer,
-        ContentType: fileMymeType || "image/jpeg",
-        CacheControl: "no-store",
-        Expires: new Date(),
-      });
-      await r2Client.send(command);
+    if (upload) {
+      avatar = `${getUserIdentifier(user)}/${AVATAR}-${Date.now()}.${
+        upload.extension
+      }`;
+      await r2Client.send(
+        new PutObjectCommand({
+          Bucket: env.R2_BUCKET_NAME,
+          Key: avatar,
+          Body: upload.buffer,
+          ContentType: upload.contentType || "image/jpeg",
+          CacheControl: "no-store",
+          Expires: new Date(),
+        }),
+      );
+      if (upload.needsNormalization) {
+        requestImageNormalization({
+          object_key: avatar,
+          preset: "avatar",
+          cache_control: "no-store",
+        });
+      }
     }
-
-    const avatar = avatarBuffer ? filePath : null;
     const update = await userRepository.update(
       { id: user.id, deleted_at: IsNull() },
       { avatar },

@@ -15,7 +15,6 @@ services:
       - TYPEORM_HOST=postgres
       - TYPEORM_LOGGING=false
       - TYPEORM_MIGRATIONS=src/migrations/**/*.ts
-      - TYPEORM_MIGRATIONS_RUN=false
       - TYPEORM_PASSWORD=Pass2023!
       - TYPEORM_PORT=5432
       - TYPEORM_SYNCHRONIZE=true

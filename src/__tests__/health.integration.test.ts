@@ -71,7 +71,6 @@ describe("/api/v1/health integration", () => {
       TYPEORM_HOST: "localhost",
       TYPEORM_LOGGING: "false",
       TYPEORM_MIGRATIONS: "src/migrations",
-      TYPEORM_MIGRATIONS_RUN: "false",
       TYPEORM_PASSWORD: "pass",
       TYPEORM_PORT: "5432",
       TYPEORM_SYNCHRONIZE: "false",

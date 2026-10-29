@@ -35,6 +35,7 @@
     "migration:run": "pnpm run typeorm migration:run -d src/database/app-data-source.ts",
     "migration:revert": "pnpm run typeorm migration:revert -d src/database/app-data-source.ts",
     "migration:show": "pnpm run typeorm migration:show -d src/database/app-data-source.ts",
+    "migration:release": "NODE_PATH=dist node ./node_modules/typeorm/cli.js migration:run -d dist/database/app-data-source.js",
     "script": "ts-node -r tsconfig-paths/register src/script/$script",
     "migrate:s3-to-r2": "ts-node -r tsconfig-paths/register src/script/migrate-s3-to-r2.ts",
     "transfer:ownership": "ts-node -r tsconfig-paths/register src/script/transfer-ownership.ts",

@@ -120,14 +120,14 @@ Test any non-trivial migrations on a development instance, before deploying to s
 
 ## Deployment process
 
+Pending migrations run automatically on both stage and production through the Heroku [release phase](https://devcenter.heroku.com/articles/release-phase) (`release:` in `Procfile`). It runs `npm run migration:release` once, before any dyno starts the new version. If a migration fails, the deploy is aborted and the previous version keeps running. The app never runs migrations on boot.
+
 ### Stage
 
 - When you merge a change from a branch feat/name or fix/name to stage, or push changes directly to stage a deploy is trigger automatically on heroku.
-- As stage and development share database, you don't need to run migrations on this environment.
 
 ### Production
 
-- Before push any change to production branch (**main**), you have to run migrations on this environment. Use `npm run migration:run` command using `env.production` file values on `.env` file. This process will be automated configured in the future.
 - When you merge a change from a branch feat/name or fix/name to production, or push changes directly to production a deploy is trigger automatically on heroku.
 
 ## TypeORM commands

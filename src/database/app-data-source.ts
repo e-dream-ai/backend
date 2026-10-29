@@ -12,7 +12,7 @@ const appDataSource = new DataSource({
   migrationsTableName: "migrations",
   entities: [path.join(__dirname, "..", "entities/**/*.{ts,js}")],
   migrations: [path.join(__dirname, "..", "migrations/**/*.{ts,js}")],
-  migrationsRun: env.TYPEORM_MIGRATIONS_RUN || false,
+  migrationsRun: false,
   logging: env.TYPEORM_LOGGING || false,
   synchronize: env.TYPEORM_SYNCHRONIZE || false,
   ssl: env.TYPEORM_SSL ?? {

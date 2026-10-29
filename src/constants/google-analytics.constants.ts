@@ -22,6 +22,10 @@ export const GAEventKeys = {
     category: "dream",
     action: "played",
   },
+  DREAM_FINISHED: {
+    category: "dream",
+    action: "finished",
+  },
 
   // Playlists
   PLAYLIST_CREATED: {

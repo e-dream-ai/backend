@@ -77,6 +77,7 @@ export const getPlaylistSelectedColumns = ({
     nsfw: true,
     hidden: true,
     loops: true,
+    transitionTime: true,
     featureRank,
     user: getUserSelectedColumns({ userEmail }),
     displayedOwner: getUserSelectedColumns({ userEmail }),

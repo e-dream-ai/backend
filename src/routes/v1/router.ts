@@ -244,6 +244,14 @@ export const registerRoutes = (app: express.Application) => {
    *           type: string
    *         featureRank:
    *           type: number
+   *         loops:
+   *           type: integer
+   *           minimum: 0
+   *         transitionTime:
+   *           type: [number, "null"]
+   *           minimum: 0
+   *           maximum: 60
+   *           description: Crossfade seconds between dreams. 0 = hard cut, null = client default.
    *         nsfw:
    *           type: boolean
    *         items:
@@ -494,6 +502,14 @@ export const registerRoutes = (app: express.Application) => {
    *           type: string
    *         nsfw:
    *           type: boolean
+   *         loops:
+   *           type: integer
+   *           minimum: 0
+   *         transitionTime:
+   *           type: [number, "null"]
+   *           minimum: 0
+   *           maximum: 60
+   *           description: Crossfade seconds between dreams. 0 = hard cut, null = client default.
    *         contents:
    *            type: array
    *            items:
@@ -520,6 +536,14 @@ export const registerRoutes = (app: express.Application) => {
    *           type: boolean
    *         hidden:
    *           type: boolean
+   *         loops:
+   *           type: integer
+   *           minimum: 0
+   *         transitionTime:
+   *           type: [number, "null"]
+   *           minimum: 0
+   *           maximum: 60
+   *           description: Crossfade seconds between dreams. 0 = hard cut, null = client default.
    *     UpdatePlaylistRequest:
    *       type: object
    *       required:
@@ -537,6 +561,14 @@ export const registerRoutes = (app: express.Application) => {
    *           type: number
    *         hidden:
    *           type: boolean
+   *         loops:
+   *           type: integer
+   *           minimum: 0
+   *         transitionTime:
+   *           type: [number, "null"]
+   *           minimum: 0
+   *           maximum: 60
+   *           description: Crossfade seconds between dreams. 0 = hard cut, null = send null to reset to client default.
    *   requestBodies: {}
    *   securitySchemes:
    *     bearerAuth:

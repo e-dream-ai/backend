@@ -39,6 +39,7 @@ export type ClientPlaylist = {
   thumbnail?: string | null;
   nsfw: boolean;
   loops: number;
+  transitionTime: number | null;
   contents: {
     uuid: string;
     timestamp: number;

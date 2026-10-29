@@ -128,6 +128,13 @@ export class Playlist {
   @Column({ type: "integer", default: 0 })
   loops: number;
 
+  /**
+   * Crossfade length in seconds between dreams. 0 = hard cut.
+   * null = client default.
+   */
+  @Column({ type: "real", nullable: true })
+  transitionTime: number | null;
+
   @CreateDateColumn()
   created_at: Date;
 

@@ -40,6 +40,7 @@ export const createPlaylistSchema: RequestValidationSchema = {
       otherwise: Joi.forbidden(),
     }),
     loops: Joi.number().integer().min(0),
+    transitionTime: Joi.number().min(0).max(60).allow(null),
     prompt: Joi.alternatives().try(
       Joi.object().unknown(true),
       Joi.string().max(30000),
@@ -59,6 +60,7 @@ export const updatePlaylistSchema: RequestValidationSchema = {
       otherwise: Joi.forbidden(),
     }),
     loops: Joi.number().integer().min(0),
+    transitionTime: Joi.number().min(0).max(60).allow(null),
     user: Joi.string().uuid().when("$isUserAdmin", {
       is: true,
       then: Joi.allow(),

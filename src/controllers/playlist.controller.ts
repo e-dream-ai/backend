@@ -699,7 +699,8 @@ export const handleCreatePlaylist = async (
   req: RequestType<CreatePlaylistRequest>,
   res: ResponseType,
 ) => {
-  const { name, description, nsfw, hidden, loops, prompt } = req.body;
+  const { name, description, nsfw, hidden, loops, transitionTime, prompt } =
+    req.body;
   const user = res.locals.user!;
 
   try {
@@ -710,6 +711,7 @@ export const handleCreatePlaylist = async (
     playlist.nsfw = nsfw ?? false;
     playlist.hidden = hidden ?? false;
     playlist.loops = loops ?? 0;
+    playlist.transitionTime = transitionTime ?? null;
     playlist.prompt = serializePrompt(prompt);
     playlist.user = user!;
     const createdPlaylist = await playlistRepository.save(playlist);

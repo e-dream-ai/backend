@@ -27,6 +27,7 @@ export type CreatePlaylistRequest = {
   nsfw?: boolean;
   hidden?: boolean;
   loops?: number;
+  transitionTime?: number | null;
   prompt?: Record<string, unknown> | string;
 };
 
@@ -38,6 +39,7 @@ export type UpdatePlaylistRequest = {
   nsfw?: boolean;
   hidden?: boolean;
   loops?: number;
+  transitionTime?: number | null;
   user?: string;
   prompt?: Record<string, unknown> | string;
 };

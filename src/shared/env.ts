@@ -103,7 +103,6 @@ export const env = cleanEnv(process.env, {
   TYPEORM_HOST: str(),
   TYPEORM_LOGGING: bool(),
   TYPEORM_MIGRATIONS: str(),
-  TYPEORM_MIGRATIONS_RUN: bool(),
   TYPEORM_PASSWORD: str(),
   TYPEORM_PORT: port(),
   TYPEORM_SYNCHRONIZE: bool(),

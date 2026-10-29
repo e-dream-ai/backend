@@ -309,6 +309,27 @@ export const handleNewControlEvent = ({
     const event = data.event;
 
     /**
+     * Playback end report from the desktop client. Analytics only: it is not
+     * a control, so it is not broadcast to the user's other clients.
+     */
+    if (event === REMOTE_CONTROLS.FINISHED) {
+      tracker.sendEventWithSocketRequestContext(
+        socket,
+        user.uuid,
+        "DREAM_FINISHED",
+        {
+          dream_uuid: data.uuid,
+          reason: data.reason,
+          progress: data.progress,
+          seconds: data.seconds,
+          frame: data.frame,
+          frames: data.frames,
+        },
+      );
+      return;
+    }
+
+    /**
      * Set user current dream
      */
     if ([REMOTE_CONTROLS.PLAY_DREAM, REMOTE_CONTROLS.PLAYING].includes(event)) {

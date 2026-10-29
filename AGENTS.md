@@ -56,11 +56,12 @@ local Postgres. Everything you do locally reads and writes the database that oth
 developers and the deployed stage frontend are using.
 
 **So do not run `migration:run` as a reflex after `git pull`.** This service deploys
-to Heroku on push to `stage`, which applies migrations there. A migration file
+to Heroku on push to `stage`, and the Heroku release phase (`release:` in `Procfile`)
+applies pending migrations there before the new version goes live. A migration file
 arriving in your working tree is therefore almost always one that staging _already
-has_ — you pulled the source, not a pending change. `TYPEORM_MIGRATIONS_RUN=false`
-and `TYPEORM_SYNCHRONIZE=false`, so the dev server won't apply anything on startup
-either.
+has_ — you pulled the source, not a pending change. The app itself never runs
+migrations on boot (`migrationsRun: false`) and `TYPEORM_SYNCHRONIZE=false`, so the
+dev server won't apply anything on startup either.
 
 Check before acting: `pnpm run migration:show`. Run `migration:run` only against a
 genuine `[ ]`, normally a migration you just generated yourself.
@@ -79,4 +80,7 @@ functional index on `lower(email)`) and exist only because a migration created t
 
 ## Deployment
 
-Heroku — push to `stage` or `main` branch.
+Heroku — push to `stage` or `main` branch. On every release, the `release:` process in
+`Procfile` runs `npm run migration:release` (TypeORM CLI against compiled `dist/`) once,
+before any dyno starts the new version. If a migration fails, the deploy is aborted
+and the previous version keeps running.

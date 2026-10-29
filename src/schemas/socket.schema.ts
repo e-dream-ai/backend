@@ -15,4 +15,10 @@ export const remoteControlSchema = Joi.object<RemoteControlEvent>({
   duration: Joi.number(),
   fps: Joi.number(),
   paused: Joi.boolean(),
+  // Playback end report
+  reason: Joi.string().max(64),
+  progress: Joi.number().min(0).max(100),
+  seconds: Joi.number().min(0),
+  frame: Joi.number().integer().min(0),
+  frames: Joi.number().integer().min(0),
 }).required();

@@ -42,7 +42,6 @@ describe("shared/env", () => {
     process.env.TYPEORM_HOST = "localhost";
     process.env.TYPEORM_LOGGING = "false";
     process.env.TYPEORM_MIGRATIONS = "src/migrations";
-    process.env.TYPEORM_MIGRATIONS_RUN = "false";
     process.env.TYPEORM_PASSWORD = "pass";
     process.env.TYPEORM_PORT = "5432";
     process.env.TYPEORM_SYNCHRONIZE = "false";

@@ -1,5 +1,9 @@
 export const REMOTE_CONTROLS = {
   PLAYING: "playing",
+  /**
+   * `FINISHED` is sent by the desktop client when playback of a dream ends
+   */
+  FINISHED: "finished",
   PLAY_DREAM: "play_dream",
   PLAY_PLAYLIST: "play_playlist",
   /**
@@ -65,4 +69,10 @@ export type RemoteControlEvent = {
   duration?: number; // seconds
   fps?: number; // display fps
   paused?: boolean; // desktop pause state
+  // Playback end report (FINISHED)
+  reason?: string; // what ended it: "natural" or the user action, e.g. "next"
+  progress?: number; // percent of the dream reached, 0-100
+  seconds?: number; // how long it played
+  frame?: number; // last frame shown, 0-based
+  frames?: number; // frame count of the dream
 };

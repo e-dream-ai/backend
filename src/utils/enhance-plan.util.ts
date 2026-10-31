@@ -199,3 +199,59 @@ export const planEnhanceRun = ({
 
   return plan;
 };
+
+export interface EnhanceKeyframePlan {
+  /** One new keyframe per distinct source keyframe, in first-use order. */
+  keyframes: { sourceUuid: string; name: string | null }[];
+  /** Start/end for each enhanced dream, as indexes into `keyframes`. */
+  links: { dreamId: number; start: number | null; end: number | null }[];
+}
+
+/**
+ * Copy the source playlist's keyframe structure onto its enhanced dreams.
+ *
+ * An enhanced dream gets a start or end keyframe only where its source dream
+ * has one, and two enhanced dreams share a keyframe exactly where their sources
+ * do, so loops and chains carry over and unlinked sources stay unlinked. Each
+ * source keyframe maps to one new keyframe, because the enhanced frames are
+ * not the source frames. Dreams with no source in `sourceDreams` are left out.
+ */
+export const planEnhanceKeyframes = (
+  sourceDreams: Dream[],
+  enhancedDreams: Dream[],
+): EnhanceKeyframePlan => {
+  const sourceByUuid = new Map(
+    sourceDreams.map((dream) => [dream.uuid, dream]),
+  );
+  const plan: EnhanceKeyframePlan = { keyframes: [], links: [] };
+  const indexBySourceKeyframe = new Map<string, number>();
+
+  const mapKeyframe = (
+    keyframe: Dream["startKeyframe"] | undefined,
+  ): number | null => {
+    if (!keyframe?.uuid) return null;
+    let index = indexBySourceKeyframe.get(keyframe.uuid);
+    if (index === undefined) {
+      index = plan.keyframes.length;
+      plan.keyframes.push({
+        sourceUuid: keyframe.uuid,
+        name: keyframe.name ?? null,
+      });
+      indexBySourceKeyframe.set(keyframe.uuid, index);
+    }
+    return index;
+  };
+
+  for (const dream of enhancedDreams) {
+    const srcUuid = getSourceDreamUuid(dream);
+    const source = srcUuid ? sourceByUuid.get(srcUuid) : undefined;
+    if (!source) continue;
+    plan.links.push({
+      dreamId: dream.id,
+      start: mapKeyframe(source.startKeyframe),
+      end: mapKeyframe(source.endKeyframe),
+    });
+  }
+
+  return plan;
+};

@@ -18,6 +18,7 @@ import { mapAlgorithmToQueue, parsePromptJson } from "./prompt.util";
 import {
   getSourceDreamUuid,
   IN_FLIGHT_STATUSES,
+  planEnhanceKeyframes,
   planEnhanceRun,
   RunEnhancePlaylistResult,
   EnhanceRunSummary,
@@ -68,93 +69,104 @@ const getOrderedDreamItems = (
     order: { order: "ASC" },
   });
 
-const detectSourceLoop = (dreams: Dream[]): boolean => {
-  const first = dreams[0];
-  const last = dreams[dreams.length - 1];
-  return Boolean(
-    first?.startKeyframe?.uuid &&
-      last?.endKeyframe?.uuid &&
-      last.endKeyframe.uuid === first.startKeyframe.uuid,
-  );
-};
-
+/**
+ * Give the enhanced dreams the source playlist's keyframe structure (see
+ * `planEnhanceKeyframes`). Keyframes from an earlier run are dropped from the
+ * playlist first. An unmanaged dream keeps its own keyframes, except any that
+ * point at those dropped keyframes. Returns how many dreams got a keyframe.
+ */
 const linkEnhancePlaylistKeyframes = async (
   manager: EntityManager,
   {
     playlistId,
     userId,
-    loop,
+    sourceDreams,
   }: {
     playlistId: number;
     userId: number;
-    loop: boolean;
+    sourceDreams: Dream[];
   },
 ): Promise<number> => {
-  const items = await manager.find(PlaylistItem, {
-    where: { playlist: { id: playlistId }, type: PlaylistItemType.DREAM },
-    relations: { dreamItem: true },
-    order: { order: "ASC" },
-  });
-  const dreams = items
+  const dreams = (await getOrderedDreamItems(manager, playlistId))
     .map((item) => item.dreamItem)
     .filter((dream): dream is Dream => Boolean(dream));
 
-  if (dreams.length === 0) return 0;
-
   const existing = await manager.find(PlaylistKeyframe, {
     where: { playlist: { id: playlistId } },
+    relations: { keyframe: true },
   });
+  const staleKeyframeIds = new Set(
+    existing.map((playlistKeyframe) => playlistKeyframe.keyframe?.id),
+  );
   if (existing.length > 0) await manager.softRemove(existing);
+
+  const plan = planEnhanceKeyframes(sourceDreams, dreams);
 
   const userRef = { id: userId } as User;
   const playlistRef = { id: playlistId } as Playlist;
-  const keyframeNames = dreams.map(
-    (dream, index) => `kf_${dream.name ?? index}`,
-  );
-  if (!loop) {
-    const lastDream = dreams[dreams.length - 1];
-    keyframeNames.push(`kf_end_${lastDream.name ?? dreams.length - 1}`);
+  let keyframes: Keyframe[] = [];
+  if (plan.keyframes.length > 0) {
+    keyframes = await manager.save(
+      plan.keyframes.map(({ name }) => {
+        const keyframe = new Keyframe();
+        keyframe.name = name;
+        keyframe.user = userRef;
+        return keyframe;
+      }),
+    );
+    await manager.save(
+      keyframes.map((keyframe, order) => {
+        const playlistKeyframe = new PlaylistKeyframe();
+        playlistKeyframe.playlist = playlistRef;
+        playlistKeyframe.keyframe = keyframe;
+        playlistKeyframe.order = order;
+        return playlistKeyframe;
+      }),
+    );
   }
 
-  const keyframes = await manager.save(
-    keyframeNames.map((name) => {
-      const keyframe = new Keyframe();
-      keyframe.name = name;
-      keyframe.user = userRef;
-      return keyframe;
-    }),
-  );
+  const keyframeId = (index: number | null) =>
+    index === null ? null : keyframes[index].id;
+  const linkByDreamId = new Map(plan.links.map((link) => [link.dreamId, link]));
+  const keepUnlessStale = (keyframe: Keyframe | null | undefined) =>
+    keyframe && !staleKeyframeIds.has(keyframe.id) ? keyframe.id : null;
 
-  await manager.save(
-    keyframes.map((keyframe, order) => {
-      const playlistKeyframe = new PlaylistKeyframe();
-      playlistKeyframe.playlist = playlistRef;
-      playlistKeyframe.keyframe = keyframe;
-      playlistKeyframe.order = order;
-      return playlistKeyframe;
-    }),
-  );
+  const updates = dreams
+    .map((dream) => {
+      const link = linkByDreamId.get(dream.id);
+      return {
+        id: dream.id,
+        startId: link
+          ? keyframeId(link.start)
+          : keepUnlessStale(dream.startKeyframe),
+        endId: link ? keyframeId(link.end) : keepUnlessStale(dream.endKeyframe),
+        changed:
+          Boolean(link) ||
+          (dream.startKeyframe?.id ?? null) !==
+            keepUnlessStale(dream.startKeyframe) ||
+          (dream.endKeyframe?.id ?? null) !==
+            keepUnlessStale(dream.endKeyframe),
+      };
+    })
+    .filter((update) => update.changed);
 
-  for (let offset = 0; offset < dreams.length; offset += 500) {
-    const batch = dreams.slice(offset, offset + 500);
+  for (let offset = 0; offset < updates.length; offset += 500) {
+    const batch = updates.slice(offset, offset + 500);
     await manager.query(
       `UPDATE dream AS dream
          SET "startKeyframeId" = links.start_id, "endKeyframeId" = links.end_id, updated_at = NOW()
          FROM unnest($1::int[], $2::int[], $3::int[]) AS links(id, start_id, end_id)
          WHERE dream.id = links.id AND dream.deleted_at IS NULL`,
       [
-        batch.map((dream) => dream.id),
-        batch.map((_, index) => keyframes[offset + index].id),
-        batch.map(
-          (_, index) =>
-            (keyframes[offset + index + 1] ?? (loop ? keyframes[0] : null))
-              ?.id ?? null,
-        ),
+        batch.map((update) => update.id),
+        batch.map((update) => update.startId),
+        batch.map((update) => update.endId),
       ],
     );
   }
 
-  return dreams.length;
+  return plan.links.filter((link) => link.start !== null || link.end !== null)
+    .length;
 };
 
 type EnhanceRunArgs = {
@@ -393,7 +405,7 @@ const writeEnhanceRun = async (
   const linked = await linkEnhancePlaylistKeyframes(manager, {
     playlistId: playlist.id,
     userId: user.id,
-    loop: detectSourceLoop(sourceDreams),
+    sourceDreams,
   });
 
   return {

@@ -1,6 +1,7 @@
 import type { Dream, PlaylistItem } from "entities";
 import { DreamStatusType } from "types/dream.types";
-import { planEnhanceRun } from "utils/enhance-plan.util";
+import type { Keyframe } from "entities";
+import { planEnhanceKeyframes, planEnhanceRun } from "utils/enhance-plan.util";
 
 let nextId = 1;
 
@@ -137,5 +138,92 @@ describe("planEnhanceRun", () => {
     });
     expect(p.result).toMatchObject({ removed: 1, kept: 1 });
     expect(p.result.hasWork).toBe(true);
+  });
+});
+
+describe("planEnhanceKeyframes", () => {
+  const kf = (uuid: string): Keyframe => ({ uuid, name: uuid }) as Keyframe;
+  const linked = (
+    uuid: string,
+    start: Keyframe | null,
+    end: Keyframe | null,
+  ): Dream =>
+    ({ ...source(uuid), startKeyframe: start, endKeyframe: end }) as Dream;
+  const keyframesOf = (sources: Dream[]) => {
+    const enhanced = sources.map((src) => enhance(src.uuid, X2));
+    const { keyframes, links } = planEnhanceKeyframes(sources, enhanced);
+    return {
+      keyframes: keyframes.map((keyframe) => keyframe.sourceUuid),
+      links: links.map(({ start, end }) => [start, end]),
+      dreamIds: links.map((link) => link.dreamId),
+      enhanced,
+    };
+  };
+
+  it("makes no keyframes when the source has none", () => {
+    const { keyframes, links } = keyframesOf([
+      linked("a", null, null),
+      linked("b", null, null),
+    ]);
+    expect(keyframes).toEqual([]);
+    expect(links).toEqual([
+      [null, null],
+      [null, null],
+    ]);
+  });
+
+  it("copies a chain, sharing keyframes where the sources do", () => {
+    const [k1, k2, k3] = [kf("k1"), kf("k2"), kf("k3")];
+    const { keyframes, links } = keyframesOf([
+      linked("a", k1, k2),
+      linked("b", k2, k3),
+    ]);
+    expect(keyframes).toEqual(["k1", "k2", "k3"]);
+    expect(links).toEqual([
+      [0, 1],
+      [1, 2],
+    ]);
+  });
+
+  it("carries a loop over", () => {
+    const [k1, k2] = [kf("k1"), kf("k2")];
+    const { keyframes, links } = keyframesOf([
+      linked("a", k1, k2),
+      linked("b", k2, k1),
+    ]);
+    expect(keyframes).toEqual(["k1", "k2"]);
+    expect(links).toEqual([
+      [0, 1],
+      [1, 0],
+    ]);
+  });
+
+  it("copies partial links without inventing the missing ones", () => {
+    const [k1, k2] = [kf("k1"), kf("k2")];
+    const { keyframes, links } = keyframesOf([
+      linked("a", null, k1),
+      linked("b", k1, null),
+      linked("c", null, null),
+      linked("d", k2, null),
+    ]);
+    expect(keyframes).toEqual(["k1", "k2"]);
+    expect(links).toEqual([
+      [null, 0],
+      [0, null],
+      [null, null],
+      [1, null],
+    ]);
+  });
+
+  it("follows the enhanced dreams' sources, not their position", () => {
+    const [k1, k2] = [kf("k1"), kf("k2")];
+    const a = linked("a", k1, k2);
+    const b = linked("b", null, null);
+    const enhanced = [enhance("b", X2), enhance("a", X2), source("manual")];
+    const { links } = planEnhanceKeyframes([a, b], enhanced);
+    expect(links).toEqual([
+      { dreamId: enhanced[0].id, start: null, end: null },
+      { dreamId: enhanced[1].id, start: 0, end: 1 },
+    ]);
   });
 });

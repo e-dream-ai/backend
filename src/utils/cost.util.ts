@@ -4,6 +4,7 @@ import { ModelCatalogEntry, ModelPricing } from "types/model.types";
 export interface JobCostParams {
   durationSec?: number;
   imageSize?: string;
+  creativity?: string;
 }
 
 export const INVALID_JOB_PARAMS_CODE = "INVALID_JOB_PARAMS";
@@ -29,6 +30,17 @@ const assertValidParams = (
   params: JobCostParams,
 ): void => {
   const { constraints } = model;
+  const { creativity } = constraints;
+
+  if (
+    creativity &&
+    params.creativity !== undefined &&
+    !creativity.options.includes(params.creativity)
+  ) {
+    throw new InvalidJobParamsError(
+      `Creativity must be one of ${creativity.options.join(", ")}.`,
+    );
+  }
 
   if (pricing.kind === "perSecond") {
     const duration = params.durationSec;
@@ -53,6 +65,17 @@ const assertValidParams = (
     if (!constraints.imageSizes?.includes(size)) {
       throw new InvalidJobParamsError();
     }
+    return;
+  }
+
+  // A flat price does not depend on the size, but a model that lists its sizes
+  // still only takes those.
+  if (
+    params.imageSize !== undefined &&
+    constraints.imageSizes &&
+    !constraints.imageSizes.includes(params.imageSize)
+  ) {
+    throw new InvalidJobParamsError();
   }
 };
 

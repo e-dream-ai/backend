@@ -37,6 +37,7 @@ export const SUPPORTED_ALGORITHMS = [
   "flux-kontext-i2i",
   "krea-2-turbo",
   "krea-2-turbo-style",
+  "krea-2-large",
 ] as const;
 export type SupportedAlgorithm = (typeof SUPPORTED_ALGORITHMS)[number];
 
@@ -65,6 +66,7 @@ const ALGORITHM_REGISTRY: Record<SupportedAlgorithm, AlgorithmSpec> = {
   "flux-kontext-i2i": { queue: "falimage", media: "image" },
   "krea-2-turbo": { queue: "falimage", media: "image" },
   "krea-2-turbo-style": { queue: "falimage", media: "image" },
+  "krea-2-large": { queue: "falimage", media: "image" },
 };
 
 export const GENERATION_QUEUES: string[] = [

@@ -113,6 +113,34 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     },
     pricing: { kind: "perMegapixel", usdPerMegapixel: 0.01 },
   },
+  {
+    id: "krea-2-large",
+    label: "Krea 2 Large",
+    provider: PROVIDERS.FAL,
+    mediaType: DreamMediaType.IMAGE,
+    // fal's Krea 2 Large takes an aspect ratio, not a size: each size here is
+    // one of its ratios (1:1, 4:3, 3:2, 16:9, 2.35:1, 4:5, 2:3, 9:16), and Krea
+    // picks the output resolution.
+    constraints: {
+      imageSizes: [
+        "1024*768",
+        "1024*1024",
+        "1280*720",
+        "720*1280",
+        "1152*768",
+        "768*1152",
+        "1024*1280",
+        "1280*544",
+      ],
+      supportsSteps: false,
+      supportsNegativePrompt: false,
+      creativity: {
+        options: ["raw", "low", "medium", "high"],
+        default: "medium",
+      },
+    },
+    pricing: { kind: "perImage", usdPerImage: 0.06 },
+  },
 ];
 
 export const getModelCatalog = (

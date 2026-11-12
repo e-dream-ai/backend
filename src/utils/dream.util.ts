@@ -118,6 +118,10 @@ export const processDreamRequest = async (
                 typeof promptJson.size === "string"
                   ? promptJson.size
                   : undefined,
+              creativity:
+                typeof promptJson.creativity === "string"
+                  ? promptJson.creativity
+                  : undefined,
             });
             useGlobalKey = await resolveProviderKeyDecision({
               userId: getOwnerId(dream),

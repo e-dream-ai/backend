@@ -53,6 +53,17 @@ const assertValidParams = (
     if (!constraints.imageSizes?.includes(size)) {
       throw new InvalidJobParamsError();
     }
+    return;
+  }
+
+  // A flat price does not depend on the size, but a model that lists its sizes
+  // still only takes those.
+  if (
+    params.imageSize !== undefined &&
+    constraints.imageSizes &&
+    !constraints.imageSizes.includes(params.imageSize)
+  ) {
+    throw new InvalidJobParamsError();
   }
 };
 

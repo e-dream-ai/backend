@@ -5,19 +5,19 @@ describe("parseClientType", () => {
     // 0.17+ clients, as sent in the Edream-Client-Type header
     [
       "native macOS arm64 27.2",
-      { type: "native macos", arch: "arm64", osVersion: "27.2" },
+      { type: "macos", arch: "arm64", osVersion: "27.2" },
     ],
     [
       "native macOS x86_64 15.8",
-      { type: "native macos", arch: "x64", osVersion: "15.8" },
+      { type: "macos", arch: "x64", osVersion: "15.8" },
     ],
     [
       "native W64 x64 10.0.26300",
-      { type: "native w64", arch: "x64", osVersion: "10.0.26300" },
+      { type: "w64", arch: "x64", osVersion: "10.0.26300" },
     ],
     [
       "native W64 arm64 10.0.28000",
-      { type: "native w64", arch: "arm64", osVersion: "10.0.28000" },
+      { type: "w64", arch: "arm64", osVersion: "10.0.28000" },
     ],
     [
       "Linux x86_64 ubuntu 26.04",
@@ -39,19 +39,22 @@ describe("parseClientType", () => {
   });
 
   it.each([
-    ["native macOS", "native macos"],
-    ["native W64", "native w64"],
+    ["native macOS", "macos"],
+    ["native W64", "w64"],
     ["Linux", "linux"],
     ["react", "react"],
     ["web", "web"],
     ["desktop", "desktop"],
-  ])("leaves the older platform-only type %s alone", (raw, type) => {
-    expect(parseClientType(raw)).toEqual({
-      type,
-      arch: undefined,
-      osVersion: undefined,
-    });
-  });
+  ])(
+    "reports the older platform-only type %s without the native prefix",
+    (raw, type) => {
+      expect(parseClientType(raw)).toEqual({
+        type,
+        arch: undefined,
+        osVersion: undefined,
+      });
+    },
+  );
 
   it("gives every version of a platform the same type", () => {
     const types = [
@@ -60,6 +63,6 @@ describe("parseClientType", () => {
       "native macOS x86_64 12.7",
     ].map((raw) => parseClientType(raw).type);
 
-    expect(new Set(types)).toEqual(new Set(["native macos"]));
+    expect(new Set(types)).toEqual(new Set(["macos"]));
   });
 });

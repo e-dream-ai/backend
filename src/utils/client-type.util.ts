@@ -5,10 +5,11 @@
  * send only the platform ("native macOS", "native W64", "Linux").
  *
  * Analytics needs the platform on its own, or every OS version becomes its own
- * "type" and nothing can be grouped by platform.
+ * "type" and nothing can be grouped by platform. The "native" prefix is dropped
+ * too, so the platforms read "macos", "w64" and "linux".
  */
 export type ParsedClientType = {
-  /** Platform alone, as older clients sent it: "native macos", "native w64", "linux", "react", "web". */
+  /** Platform alone, without the "native" some clients put first: "macos", "w64", "linux", "react", "web". */
   type: string;
   /** "arm64", "x64", "x86", ... Undefined when the client did not report one. */
   arch?: string;
@@ -32,10 +33,12 @@ export function parseClientType(raw: string): ParsedClientType {
     return { type: raw };
   }
 
-  // "native" is a prefix of the platform name, not a platform.
-  const typeLength = tokens[0] === "native" && tokens.length > 1 ? 2 : 1;
-  const type = tokens.slice(0, typeLength).join(" ");
-  const rest = tokens.slice(typeLength);
+  // Mac and Windows clients say "native macOS" and "native W64", Linux says
+  // just "Linux". Drop the prefix so every platform is named the same way.
+  if (tokens[0] === "native" && tokens.length > 1) {
+    tokens.shift();
+  }
+  const [type, ...rest] = tokens;
 
   let arch: string | undefined;
   if (rest.length && ARCH_PATTERN.test(rest[0])) {
